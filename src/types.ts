@@ -1,0 +1,147 @@
+export interface User {
+  uid: string;
+  name: string;
+  email: string;
+  avatar: string;
+  provider?: 'email' | 'google';
+  createdAt?: string;
+  coins?: number; // Cosmo-Puan balance
+  inventory?: string[]; // Item IDs purchased e.g. ['theme_gold', 'chibi_solo']
+  equippedTheme?: string | null; // Equipped comment card theme e.g. 'theme_gold'
+  equippedBadge?: string | null; // Equipped VIP title badge e.g. 'S-Rank Avcı'
+  unlockedEmojiPacks?: string[]; // Unlocked chibi emoji pack IDs e.g. ['chibi_solo']
+  lastDailyCheckin?: string; // Date string "YYYY-MM-DD"
+  lastDailySpin?: string; // Date string "YYYY-MM-DD"
+}
+
+export type SeriesType = 'Manhwa' | 'Web Novel' | 'Manga' | 'Webtoon' | 'Manhua' | 'One Shot';
+export type SeriesStatus = 'Devam Ediyor' | 'Tamamlandı' | 'Güncel' | 'Yakında' | 'Bıraktıldı';
+
+export interface Chapter {
+  id: string;
+  number: number;
+  title: string;
+  publishedDate: string; // e.g. "2026-07-20" or "2 saat önce"
+  createdAt?: number; // Epoch timestamp for exact time-based 12/24 hour "YENİ" tag calculations
+  isNew?: boolean;
+  specialTag?: 'Sezon Finali' | 'Final' | 'Ekstra' | 'Yan Bölüm' | 'Özel' | string;
+  content?: string; // HTML or Markdown text for Web Novels
+  images?: string[]; // Image URLs for Manhwa/Webtoons
+  notice?: string; // Chapter specific admin notice / translator note
+}
+
+export interface Series {
+  id: string;
+  title: string;
+  slug: string;
+  coverImage: string;
+  heroImage?: string;
+  bannerImage?: string;
+  type: SeriesType;
+  status: SeriesStatus;
+  rating: number; // e.g. 9.4
+  ageRating?: '18+' | '21+' | 'Genel';
+  is18Plus?: boolean; // 18+ adult content tag managed by admin
+  isHot?: boolean;
+  isNew?: boolean;
+  isGuncel?: boolean; // "GÜNCEL" badge for up-to-date ongoing series
+  isColored?: boolean;
+  synopsis: string;
+  author: string;
+  artist?: string;
+  releaseYear?: number | string;
+  customBadges?: string[];
+  translator?: string;
+  genres: string[];
+  chapters: Chapter[];
+  updatedAt: string;
+  releaseDay?: 'Pazartesi' | 'Salı' | 'Çarşamba' | 'Perşembe' | 'Cuma' | 'Cumartesi' | 'Pazar' | 'Düzensiz';
+  releaseTime?: string; // e.g. "18:00"
+  notice?: string; // Series specific admin announcement/note
+}
+
+export interface BookmarkFolder {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+}
+
+export interface BookmarkItem {
+  seriesId: string;
+  folders: string[]; // Folder names or IDs
+  addedAt: string;
+}
+
+export interface ReadingProgress {
+  seriesId: string;
+  lastChapterId: string;
+  lastChapterNumber: number;
+  lastChapterTitle: string;
+  readAt: string;
+  scrollPosition?: number;
+}
+
+export interface NovelSettings {
+  bgColor: string;
+  textColor: string;
+  fontSize: number; // in px
+  fontFamily: string;
+  lineHeight: string; // e.g. "160%"
+  textAlign: 'left' | 'center' | 'justify';
+  padding: string; // e.g. "20px"
+  widthMode: 'dar' | 'orta' | 'genis'; // dar = 600px, orta = 800px, genis = 100%
+  isBold: boolean;
+  scrollSpeed: number; // 1, 2, 3
+}
+
+export interface Comment {
+  id: string;
+  seriesId: string;
+  chapterId?: string; // Optional: specific to a chapter
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  text: string;
+  imageUrl?: string;
+  date: string;
+  likes: string[]; // User IDs who liked
+  dislikes: string[]; // User IDs who disliked
+  parentId?: string | null;
+  isSpoiler?: boolean;
+  reported?: boolean;
+  equippedTheme?: string | null; // Equipped comment card theme style e.g. 'theme_gold'
+  equippedBadge?: string | null; // Equipped VIP title badge e.g. 'S-Rank Avcı'
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  text: string;
+  type: 'announcement' | 'warning' | 'info' | 'maintenance' | 'danger';
+  active: boolean;
+}
+
+export interface SeriesRequest {
+  id: string;
+  title: string;
+  type: SeriesType;
+  synopsis: string;
+  votes: number;
+  votedUserIds: string[];
+  status: 'İncelemede' | 'Çevriliyor' | 'Takvime Eklendi' | 'Reddedildi';
+  requestedBy: string;
+  createdAt: string;
+  coverImage?: string;
+}
+
+export interface ScheduleItem {
+  seriesId: string;
+  time: string;
+  chapterNote?: string;
+}
+
+export interface ScheduleDay {
+  day: 'Pazartesi' | 'Salı' | 'Çarşamba' | 'Perşembe' | 'Cuma' | 'Cumartesi' | 'Pazar';
+  dayShort: 'Pzt' | 'Sal' | 'Çar' | 'Per' | 'Cum' | 'Cmt' | 'Paz';
+  items: ScheduleItem[];
+}

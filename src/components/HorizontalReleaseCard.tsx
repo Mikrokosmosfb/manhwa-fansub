@@ -1,0 +1,183 @@
+import React from 'react';
+import { useApp } from '../context/AppContext';
+import { Series } from '../types';
+import { Sparkles, RefreshCw, Calendar, Star, ChevronRight } from 'lucide-react';
+import { checkIsChapterNew } from '../utils/dateUtils';
+import { ChapterSpecialBadge } from './ChapterSpecialBadge';
+
+interface HorizontalReleaseCardProps {
+  series: Series;
+  maxChapters?: number;
+}
+
+export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({ series, maxChapters = 1 }) => {
+  const { setView } = useApp();
+
+  // Take latest chapters based on maxChapters
+  const recentChapters = [...series.chapters].reverse().slice(0, maxChapters);
+
+  const getTypeBadgeClass = (type: Series['type']) => {
+    switch (type) {
+      case 'Manhwa':
+        return 'bg-emerald-600 text-white';
+      case 'Manhua':
+        return 'bg-sky-600 text-white';
+      case 'Webtoon':
+        return 'bg-amber-600 text-black font-extrabold';
+      case 'Manga':
+        return 'bg-rose-600 text-white';
+      case 'Web Novel':
+        return 'bg-purple-600 text-white';
+      default:
+        return 'bg-teal-600 text-white';
+    }
+  };
+
+  // Helper to format date compactly so chapter title has maximum space
+  const formatDateCompact = (dateStr: string) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const parts = dateStr.split('-');
+      return `${parts[2]}.${parts[1]}`; // e.g. "21.07"
+    }
+    return dateStr.replace(' saat ', 's ').replace(' gün ', 'g ').replace(' önce', '');
+  };
+
+  return (
+    <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-3xl p-3.5 sm:p-4 flex gap-3.5 sm:gap-5 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group">
+      
+      {/* Left: Cover Poster with Badges */}
+      <div 
+        onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+        className="relative w-28 sm:w-36 md:w-40 aspect-[2/3] flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 self-start sm:self-center"
+      >
+        <img
+          src={series.coverImage}
+          alt={series.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          loading="lazy"
+        />
+
+        {/* Top Left Badges (Yeni / Sıcak / Güncel) */}
+        <div className="absolute top-2 left-2 flex flex-col items-start gap-1 z-10">
+          {series.isNew && (
+            <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[10px] px-2 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 animate-pulse flex items-center gap-0.5">
+              <Sparkles size={10} className="text-purple-200 fill-purple-200" />
+              YENİ
+            </span>
+          )}
+          {!series.isNew && series.isHot && (
+            <span className="bg-orange-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md shadow-md">
+              Sıcak
+            </span>
+          )}
+          {(series.isGuncel || series.status === 'Güncel') && (
+            <span className="bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-cyan-300/40 flex items-center gap-0.5">
+              <RefreshCw size={9} className="animate-spin-slow" />
+              GÜNCEL
+            </span>
+          )}
+        </div>
+
+        {/* 18+ Adult Content Badge */}
+        {(series.is18Plus || series.ageRating === '18+' || series.genres.includes('18+')) && (
+          <span className="absolute top-2 right-2 bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
+            18+
+          </span>
+        )}
+
+        {/* Bottom Badge (Manhwa / Manhua / Webtoon) */}
+        <span className={`absolute bottom-2 left-2 text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)}`}>
+          {series.type}
+        </span>
+      </div>
+
+      {/* Right Column: Title + Latest Chapters Bullet List */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+        <div>
+          {/* Series Title + Release Day */}
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h3
+                onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+                className="text-base sm:text-lg font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition line-clamp-1 leading-snug"
+                title={series.title}
+              >
+                {series.title}
+              </h3>
+              {series.releaseYear && (
+                <span className="text-[10px] text-gray-400 font-semibold bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800">
+                  {series.releaseYear}
+                </span>
+              )}
+            </div>
+
+            {series.releaseDay && (
+              <span className="text-[10px] font-extrabold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-lg flex-shrink-0 flex items-center gap-1">
+                <Calendar size={11} className="text-purple-300" />
+                {series.releaseDay} {series.releaseTime || ''}
+              </span>
+            )}
+          </div>
+
+          {/* Chapters List (Clean Vertical Stack, Compact) */}
+          <div className="flex flex-col gap-1.5">
+            {recentChapters.map((ch) => {
+              const isChapterNew = checkIsChapterNew(ch, 24);
+
+              return (
+                <div
+                  key={ch.id}
+                  className="group/ch relative flex items-center justify-between px-2.5 py-1 sm:py-1.5 rounded-lg bg-gray-950/50 hover:bg-purple-950/70 border border-gray-800/70 hover:border-purple-500/40 cursor-pointer transition-all duration-200"
+                  onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
+                >
+                  {/* Left: Indicator + Title + Special Tag + New Badge */}
+                  <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover/ch:bg-purple-300 group-hover/ch:scale-125 transition-transform flex-shrink-0" />
+                    
+                    <span className="font-semibold text-xs text-gray-200 group-hover/ch:text-purple-200 truncate">
+                      {ch.title || `Bölüm ${ch.number}`}
+                    </span>
+
+                    {/* Chapter Special Badge (Sezon Finali, Final, Ekstra, Yan Bölüm, vb.) */}
+                    {ch.specialTag && (
+                      <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                    )}
+
+                    {/* Parıltılı Mor "YENİ" Etiketi */}
+                    {isChapterNew && (
+                      <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[9px] px-1.5 py-0.2 rounded shadow-sm border border-purple-300/40 animate-pulse flex items-center gap-0.5 flex-shrink-0">
+                        <Sparkles size={9} className="text-purple-100 fill-purple-100" />
+                        YENİ
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: Date */}
+                  <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/ch:text-gray-300 flex-shrink-0 font-medium bg-gray-900/80 border border-gray-800/60 px-1.5 py-0.5 rounded">
+                    {formatDateCompact(ch.publishedDate)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* View All Button or Sub-info */}
+        <div className="mt-2.5 pt-1.5 border-t border-gray-800/60 flex items-center justify-between text-xs text-gray-400">
+          <button
+            onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+            className="text-[11px] font-bold text-purple-400 hover:text-purple-200 transition flex items-center gap-1 group/btn"
+          >
+            Tüm Bölümler ({series.chapters.length})
+            <span className="group-hover/btn:translate-x-0.5 transition-transform">→</span>
+          </button>
+          <span className="text-[10px] text-gray-400 font-bold bg-gray-950 px-2 py-0.5 rounded-md border border-gray-800 flex items-center gap-1">
+            <Star size={11} className="fill-current text-amber-400" /> {series.rating}
+          </span>
+        </div>
+      </div>
+
+    </div>
+  );
+};
