@@ -218,23 +218,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('mk_user');
     if (!saved) {
-      // Default auto-created guest user with unlimited coins for testing
       return {
-        uid: 'u-vip-guest',
-        name: 'VIP Test Okuyucusu',
-        email: 'vip@mikrokosmos.com',
-        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=VIP',
+        uid: 'u-guest',
+        name: 'Okuyucu Misafir',
+        email: 'misafir@mikrokosmos.com',
+        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Guest',
         provider: 'google',
-        coins: 999999,
+        coins: 250,
         inventory: [],
         unlockedEmojiPacks: []
       };
     }
     try {
       const parsed = JSON.parse(saved);
+      const isUnlimitedUser = parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
       return {
         ...parsed,
-        coins: Math.max(parsed.coins ?? 999999, 999999),
+        coins: isUnlimitedUser ? 999999999 : (parsed.coins ?? 250),
         inventory: parsed.inventory || [],
         unlockedEmojiPacks: parsed.unlockedEmojiPacks || []
       };
@@ -343,7 +343,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const earnPoints = (amount: number, reason: string) => {
     setUser(prev => {
       if (!prev) return null;
-      const currentCoins = prev.coins ?? 999999;
+      if (prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com') {
+        return { ...prev, coins: 999999999 };
+      }
+      const currentCoins = prev.coins ?? 250;
       return {
         ...prev,
         coins: currentCoins + amount
@@ -351,24 +354,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Add Unlimited Points (+999.999 CP)
+  // Add Unlimited Points (+999.999 CP) - Only allowed for aseleliyeva77@gmail.com
   const addUnlimitedPoints = () => {
     setUser(prev => {
-      if (!prev) {
-        return {
-          uid: 'u-vip-' + Date.now(),
-          name: 'VIP Okuyucu',
-          email: 'vip@mikrokosmos.com',
-          avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=VIP',
-          provider: 'google',
-          coins: 999999,
-          inventory: [],
-          unlockedEmojiPacks: []
-        };
+      if (!prev) return null;
+      if (prev.email?.toLowerCase() !== 'aseleliyeva77@gmail.com') {
+        alert('Sınırsız Cosmo-Puan yetkisi sadece aseleliyeva77@gmail.com hesabına tanımlıdır!');
+        return prev;
       }
       return {
         ...prev,
-        coins: Math.max((prev.coins || 0) + 999999, 999999)
+        coins: 999999999
       };
     });
   };
@@ -383,11 +379,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (user.lastDailyCheckin === today) {
       return { success: false, message: 'Bugünkü günlük ödülünüzü zaten aldınız! Yarın tekrar gelin.' };
     }
-    const currentCoins = user.coins ?? 250;
+    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+    const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
     const reward = 100;
     const updatedUser: User = {
       ...user,
-      coins: currentCoins + reward,
+      coins: isUnlimited ? 999999999 : currentCoins + reward,
       lastDailyCheckin: today
     };
     setUser(updatedUser);
@@ -412,10 +409,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       { pts: 300, name: '300 Cosmo-Puan!' }
     ];
     const prize = rewards[Math.floor(Math.random() * rewards.length)];
-    const currentCoins = user.coins ?? 250;
+    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+    const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
     const updatedUser: User = {
       ...user,
-      coins: currentCoins + prize.pts,
+      coins: isUnlimited ? 999999999 : currentCoins + prize.pts,
       lastDailySpin: today
     };
     setUser(updatedUser);
@@ -442,15 +440,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Bu ürüne zaten sahipsiniz!' };
     }
 
-    const currentCoins = user.coins ?? 250;
-    if (currentCoins < item.price) {
+    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+    const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
+    if (!isUnlimited && currentCoins < item.price) {
       return { success: false, message: `Yetersiz Cosmo-Puan! Bu ürün için ${item.price} CP gerekiyor, bakiyeniz: ${currentCoins} CP.` };
     }
 
     const newInventory = [...userInventory, itemId];
     let updatedUser: User = {
       ...user,
-      coins: currentCoins - item.price,
+      coins: isUnlimited ? 999999999 : Math.max(0, currentCoins - item.price),
       inventory: newInventory
     };
 
@@ -518,10 +517,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return { success: false, message: 'Bu promosyon kodunu daha önce kullandınız.' };
     }
 
-    const currentCoins = user.coins ?? 250;
+    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+    const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
     const updatedUser: User = {
       ...user,
-      coins: currentCoins + promo.points,
+      coins: isUnlimited ? 999999999 : currentCoins + promo.points,
       inventory: [...userInventory, promoKey]
     };
     setUser(updatedUser);
@@ -996,6 +996,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSeriesRequests(prev => [newReq, ...prev]);
   };
 
+  const prepareUserCoins = (u: User): User => {
+    const isUnlimited = u.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+    return {
+      ...u,
+      coins: isUnlimited ? 999999999 : (u.coins ?? 250)
+    };
+  };
+
   const loginWithEmail = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const res = await fetch('/api/auth/login', {
@@ -1005,7 +1013,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json() as any;
       if (data.success && data.user) {
-        setUser(data.user);
+        setUser(prepareUserCoins(data.user));
         return { success: true };
       }
       return { success: false, message: data.message || 'Giriş yapılamadı.' };
@@ -1016,7 +1024,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         name: email.split('@')[0],
         email,
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(email)}`,
-        provider: 'email'
+        provider: 'email',
+        coins: email.toLowerCase() === 'aseleliyeva77@gmail.com' ? 999999999 : 250
       };
       setUser(u);
       return { success: true };
@@ -1032,7 +1041,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json() as any;
       if (data.success && data.user) {
-        setUser(data.user);
+        setUser(prepareUserCoins(data.user));
         return { success: true };
       }
       return { success: false, message: data.message || 'Kayıt yapılamadı.' };
@@ -1043,7 +1052,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         name,
         email,
         avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`,
-        provider: 'email'
+        provider: 'email',
+        coins: email.toLowerCase() === 'aseleliyeva77@gmail.com' ? 999999999 : 250
       };
       setUser(u);
       return { success: true };
@@ -1062,8 +1072,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json() as any;
       if (data.success && data.user) {
-        setUser(data.user);
-        localStorage.setItem('mk_user', JSON.stringify(data.user));
+        const prepared = prepareUserCoins(data.user);
+        setUser(prepared);
+        localStorage.setItem('mk_user', JSON.stringify(prepared));
         return { success: true, message: 'Google hesabınızla başarıyla giriş yapıldı!' };
       }
       return { success: false, message: data.message || 'Giriş yapılamadı.' };
@@ -1085,8 +1096,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       const data = await res.json() as any;
       if (data.success && data.user) {
-        setUser(data.user);
-        localStorage.setItem('mk_user', JSON.stringify(data.user));
+        const prepared = prepareUserCoins(data.user);
+        setUser(prepared);
+        localStorage.setItem('mk_user', JSON.stringify(prepared));
         return { success: true, message: data.message || 'Google ile üyeliğiniz başarıyla oluşturuldu!' };
       }
       return { success: false, message: data.message || 'Kayıt yapılamadı.' };

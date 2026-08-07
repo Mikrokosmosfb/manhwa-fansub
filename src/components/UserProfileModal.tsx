@@ -338,7 +338,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
                   <span className="bg-amber-950/80 border border-amber-500/50 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-lg flex items-center gap-1">
                     <Coins size={11} className="text-amber-400 animate-pulse" />
-                    {user.coins ?? 250} CP
+                    {user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞ CP' : `${user.coins ?? 250} CP`}
                   </span>
 
                   <button

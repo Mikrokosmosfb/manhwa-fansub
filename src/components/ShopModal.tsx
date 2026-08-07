@@ -47,7 +47,7 @@ export const ShopContent: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
 
-  const userCoins = user?.coins ?? 999999;
+  const userCoins = user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? 999999999 : (user?.coins ?? 250);
   const userInventory = user?.inventory || [];
   const equippedTheme = user?.equippedTheme || null;
   const equippedBadge = user?.equippedBadge || null;

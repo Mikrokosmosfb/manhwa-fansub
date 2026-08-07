@@ -330,7 +330,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
             className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95"
           >
             <ShoppingBag size={14} className="stroke-[2.5]" />
-            <span>Mağaza ({user?.coins ?? 250} CP)</span>
+            <span>Mağaza ({user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞ CP' : `${user?.coins ?? 250} CP`})</span>
           </button>
 
           {user ? (

@@ -347,7 +347,7 @@ export const Header: React.FC = () => {
               <ShoppingBag size={18} className="stroke-[2.5]" />
               Mikrokosmos Mağazası
             </span>
-            <span className="text-xs bg-black/20 px-2 py-0.5 rounded font-mono font-bold">{user?.coins ?? 250} CP</span>
+            <span className="text-xs bg-black/20 px-2 py-0.5 rounded font-mono font-bold">{user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞ CP' : `${user?.coins ?? 250} CP`}</span>
           </button>
 
           {/* Mobile Theme Toggle Button */}
