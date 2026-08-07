@@ -65,7 +65,35 @@ CREATE TABLE IF NOT EXISTS chapters (
     FOREIGN KEY(series_id) REFERENCES series(id) ON DELETE CASCADE
 );
 
--- 4. Kullanıcı Favorileri & Okuma Geçmişi
+-- 4. Mağaza Eşyaları Tablosu (Shop Items Table)
+CREATE TABLE IF NOT EXISTS shop_items (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    category TEXT NOT NULL,
+    theme_type TEXT,
+    price INTEGER NOT NULL,
+    description TEXT,
+    icon TEXT,
+    rarity TEXT,
+    badge_text TEXT
+);
+
+-- 5. Tema Stilleri Tablosu (Theme Styles Table)
+CREATE TABLE IF NOT EXISTS theme_styles (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    card_class TEXT,
+    avatar_border_class TEXT,
+    name_class TEXT,
+    badge_bg_class TEXT,
+    glow_color TEXT,
+    accent_text TEXT,
+    card_bg_image_url TEXT,
+    effect_overlay TEXT,
+    theme_type TEXT
+);
+
+-- 6. Kullanıcı Favorileri & Okuma Geçmişi
 CREATE TABLE IF NOT EXISTS user_bookmarks (
     user_id TEXT NOT NULL,
     series_id TEXT NOT NULL,

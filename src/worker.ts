@@ -253,6 +253,36 @@ export default {
             );
           `).run();
 
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS shop_items (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              category TEXT NOT NULL,
+              theme_type TEXT,
+              price INTEGER NOT NULL,
+              description TEXT,
+              icon TEXT,
+              rarity TEXT,
+              badge_text TEXT
+            );
+          `).run();
+
+          await db.prepare(`
+            CREATE TABLE IF NOT EXISTS theme_styles (
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              card_class TEXT,
+              avatar_border_class TEXT,
+              name_class TEXT,
+              badge_bg_class TEXT,
+              glow_color TEXT,
+              accent_text TEXT,
+              card_bg_image_url TEXT,
+              effect_overlay TEXT,
+              theme_type TEXT
+            );
+          `).run();
+
           try {
             await db.prepare("ALTER TABLE series ADD COLUMN slug TEXT").run();
           } catch (e) {}
@@ -641,6 +671,118 @@ export default {
                 success: true,
                 storage: (env.COMMENTS_DB || env.COMMENTS_D1 || env.DB_COMMENTS) ? 'D1 (Ayrı Yorumlar DB)' : 'D1'
               }), { headers });
+            }
+
+            return new Response(JSON.stringify({ success: true }), { headers });
+          }
+        }
+
+        // SHOP & THEMES API
+        if (path.startsWith('/api/shop')) {
+          if (request.method === 'GET') {
+            if (r2) {
+              const item = await r2.get('data/shop.json');
+              const data = item ? await item.json() : { shopItems: [], themeStyles: {} };
+              return new Response(JSON.stringify({ success: true, storage: 'R2', ...data }), { headers });
+            }
+            if (kv) {
+              const data = (await kv.get('data/shop.json', 'json')) || { shopItems: [], themeStyles: {} };
+              return new Response(JSON.stringify({ success: true, storage: 'KV', ...data }), { headers });
+            }
+            if (db) {
+              const { results: items } = await db.prepare("SELECT * FROM shop_items").all();
+              const { results: styles } = await db.prepare("SELECT * FROM theme_styles").all();
+
+              const shopItems = (items || []).map((i: any) => ({
+                id: i.id,
+                name: i.name,
+                category: i.category,
+                themeType: i.theme_type,
+                price: i.price,
+                description: i.description,
+                icon: i.icon,
+                rarity: i.rarity,
+                badgeText: i.badge_text
+              }));
+
+              const themeStylesMap: Record<string, any> = {};
+              (styles || []).forEach((s: any) => {
+                themeStylesMap[s.id] = {
+                  id: s.id,
+                  name: s.name,
+                  cardClass: s.card_class,
+                  avatarBorderClass: s.avatar_border_class,
+                  nameClass: s.name_class,
+                  badgeBgClass: s.badge_bg_class,
+                  glowColor: s.glow_color,
+                  accentText: s.accent_text,
+                  cardBgImageUrl: s.card_bg_image_url,
+                  effectOverlay: s.effect_overlay,
+                  themeType: s.theme_type
+                };
+              });
+
+              return new Response(JSON.stringify({ success: true, storage: 'D1', shopItems, themeStyles: themeStylesMap }), { headers });
+            }
+            return new Response(JSON.stringify({ success: true, shopItems: [], themeStyles: {} }), { headers });
+          }
+
+          if (request.method === 'POST') {
+            const body: any = await request.json();
+            const shopItemsInput = body.shopItems || [];
+            const themeStylesInput = body.themeStyles || {};
+
+            if (r2) {
+              await r2.put('data/shop.json', JSON.stringify({ shopItems: shopItemsInput, themeStyles: themeStylesInput }), {
+                httpMetadata: { contentType: 'application/json' }
+              });
+              return new Response(JSON.stringify({ success: true, storage: 'R2', message: 'Mağaza ve temalar R2 deposuna kaydedildi' }), { headers });
+            }
+
+            if (kv) {
+              await kv.put('data/shop.json', JSON.stringify({ shopItems: shopItemsInput, themeStyles: themeStylesInput }));
+              return new Response(JSON.stringify({ success: true, storage: 'KV', message: 'Mağaza ve temalar KV deposuna kaydedildi' }), { headers });
+            }
+
+            if (db) {
+              const statements: any[] = [];
+              for (const item of shopItemsInput) {
+                statements.push(
+                  db.prepare(`
+                    INSERT OR REPLACE INTO shop_items (
+                      id, name, category, theme_type, price, description, icon, rarity, badge_text
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  `).bind(
+                    item.id, item.name, item.category, item.themeType || '', item.price,
+                    item.description || '', item.icon || '', item.rarity || '', item.badgeText || ''
+                  )
+                );
+              }
+
+              for (const ts of Object.values(themeStylesInput) as any[]) {
+                statements.push(
+                  db.prepare(`
+                    INSERT OR REPLACE INTO theme_styles (
+                      id, name, card_class, avatar_border_class, name_class, badge_bg_class,
+                      glow_color, accent_text, card_bg_image_url, effect_overlay, theme_type
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  `).bind(
+                    ts.id, ts.name, ts.cardClass || '', ts.avatarBorderClass || '', ts.nameClass || '',
+                    ts.badgeBgClass || '', ts.glowColor || '', ts.accentText || '',
+                    ts.cardBgImageUrl || '', ts.effectOverlay || '', ts.themeType || ''
+                  )
+                );
+              }
+
+              if (statements.length > 0) {
+                const BATCH_SIZE = 50;
+                for (let i = 0; i < statements.length; i += BATCH_SIZE) {
+                  const chunk = statements.slice(i, i + BATCH_SIZE);
+                  await db.batch(chunk);
+                }
+              }
+
+              return new Response(JSON.stringify({ success: true, storage: 'D1', message: 'Mağaza ve temalar D1 veritabanına kaydedildi' }), { headers });
             }
 
             return new Response(JSON.stringify({ success: true }), { headers });
