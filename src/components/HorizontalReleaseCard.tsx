@@ -52,12 +52,12 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
   };
 
   return (
-    <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-2.5 sm:p-4 flex gap-2.5 sm:gap-5 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group">
+    <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl p-3 sm:p-3.5 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group">
       
       {/* Left: Cover Poster with Badges */}
       <div 
         onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
-        className="relative w-24 sm:w-36 md:w-40 aspect-[2/3] flex-shrink-0 rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 self-start sm:self-center"
+        className="relative w-24 xs:w-26 sm:w-28 md:w-30 lg:w-32 aspect-[2/3] flex-shrink-0 rounded-xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 self-start sm:self-center"
       >
         {/* Top-Left Diagonal Status Ribbon */}
         <DiagonalStatusRibbon status={series.status} size="sm" />
@@ -70,27 +70,27 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
         />
 
         {/* Top Right Badges (Yeni / Sıcak / 18+) */}
-        <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+        <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1 z-10">
           {series.isNew && (
-            <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 flex items-center gap-0.5">
-              <Sparkles size={9} className="text-purple-200 fill-purple-200" />
+            <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 flex items-center gap-0.5">
+              <Sparkles size={8} className="text-purple-200 fill-purple-200" />
               YENİ
             </span>
           )}
           {!series.isNew && series.isHot && (
-            <span className="bg-orange-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md">
+            <span className="bg-orange-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md">
               SICAK
             </span>
           )}
           {(series.is18Plus || series.ageRating === '18+' || series.genres.includes('18+')) && (
-            <span className="bg-rose-600 text-white font-black text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
+            <span className="bg-rose-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
               18+
             </span>
           )}
         </div>
 
         {/* Bottom Badge (Manhwa / Manhua / Webtoon) */}
-        <span className={`absolute bottom-2 left-2 text-[10px] sm:text-xs font-extrabold px-2 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)}`}>
+        <span className={`absolute bottom-1.5 left-1.5 text-[9px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)}`}>
           {series.type}
         </span>
       </div>
@@ -99,26 +99,26 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
         <div>
           {/* Series Title + Release Day */}
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2 flex-wrap min-w-0">
+          <div className="flex items-center justify-between gap-1.5 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0 flex-1">
               <h3
                 onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
-                className="text-base sm:text-lg font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition line-clamp-1 leading-snug"
+                className="text-sm sm:text-base font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition truncate leading-snug"
                 title={series.title}
               >
                 {series.title}
               </h3>
               {series.releaseYear && (
-                <span className="text-[10px] text-gray-400 font-semibold bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800">
+                <span className="text-[9px] text-gray-400 font-semibold bg-gray-950 px-1.5 py-0.5 rounded border border-gray-800 flex-shrink-0">
                   {series.releaseYear}
                 </span>
               )}
             </div>
 
             {series.releaseDay && (
-              <span className="text-[10px] font-extrabold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-lg flex-shrink-0 flex items-center gap-1">
-                <Calendar size={11} className="text-purple-300" />
-                {series.releaseDay} {series.releaseTime || ''}
+              <span className="text-[9px] sm:text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-1.5 py-0.5 rounded-md flex-shrink-0 flex items-center gap-1">
+                <Calendar size={10} className="text-purple-300" />
+                <span>{series.releaseDay}{series.releaseTime ? ` ${series.releaseTime}` : ''}</span>
               </span>
             )}
           </div>
