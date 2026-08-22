@@ -218,8 +218,8 @@ const MainContent: React.FC = () => {
 
             {/* Bilgisayarda (md ve lg ekranlarda) 2'li grid, mobilde tekli liste */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
-              {comicSeries.map(s => (
-                <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} />
+              {comicSeries.map((s, idx) => (
+                <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} index={idx} />
               ))}
             </div>
           </section>

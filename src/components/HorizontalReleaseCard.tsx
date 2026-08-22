@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { Series } from '../types';
 import { Sparkles, Calendar, Star } from 'lucide-react';
@@ -11,13 +12,15 @@ interface HorizontalReleaseCardProps {
   maxChapters?: number;
   showSynopsis?: boolean;
   showGenres?: boolean;
+  index?: number;
 }
 
 export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({ 
   series, 
   maxChapters = 4,
   showSynopsis = false,
-  showGenres = false
+  showGenres = false,
+  index
 }) => {
   const { setView } = useApp();
 
@@ -52,7 +55,17 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
   };
 
   return (
-    <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group items-stretch">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-40px' }}
+      transition={{ 
+        duration: 0.45, 
+        ease: [0.21, 0.47, 0.32, 0.98],
+        delay: typeof index === 'number' ? Math.min((index % 6) * 0.07, 0.35) : 0
+      }}
+      className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group items-stretch"
+    >
       
       {/* Left: Cover Poster with Badges & Star Rating Directly Underneath (No Gap Stretch) */}
       <div className="w-24 sm:w-28 md:w-30 lg:w-32 flex-shrink-0 flex flex-col items-center gap-1.5 self-start">
@@ -214,6 +227,6 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
 
       </div>
 
-    </div>
+    </motion.div>
   );
 };

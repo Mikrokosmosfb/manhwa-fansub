@@ -320,8 +320,8 @@ export const SeriesListView: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-4">
-          {sorted.map(s => (
-            <HorizontalReleaseCard key={s.id} series={s} showSynopsis={true} showGenres={true} />
+          {sorted.map((s, idx) => (
+            <HorizontalReleaseCard key={s.id} series={s} showSynopsis={true} showGenres={true} index={idx} />
           ))}
         </div>
       )}
