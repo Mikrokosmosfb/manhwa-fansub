@@ -10,9 +10,10 @@ import {
   Announcement,
   SeriesRequest,
   ToastMessage,
+  AppNotification,
   isAuthorizedAdmin
 } from '../types';
-import { INITIAL_SERIES, INITIAL_ANNOUNCEMENT } from '../data/mockData';
+import { INITIAL_SERIES, INITIAL_ANNOUNCEMENT, INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
 
 type ViewState =
@@ -31,7 +32,8 @@ type ViewState =
   | { type: 'join-team' }
   | { type: 'admin' }
   | { type: 'management' }
-  | { type: 'advanced-search' };
+  | { type: 'advanced-search' }
+  | { type: 'notifications' };
 
 export const viewToHash = (v: ViewState): string => {
   switch (v.type) {
@@ -66,6 +68,8 @@ export const viewToHash = (v: ViewState): string => {
       return '#/yonetim';
     case 'advanced-search':
       return '#/gelismis-arama';
+    case 'notifications':
+      return '#/bildirimler';
     default:
       return '#/';
   }
@@ -110,6 +114,8 @@ export const hashToView = (hash: string): ViewState => {
       return { type: 'management' };
     case 'gelismis-arama':
       return { type: 'advanced-search' };
+    case 'bildirimler':
+      return { type: 'notifications' };
     default:
       return { type: 'home' };
   }
@@ -150,7 +156,15 @@ interface AppContextType {
   isFollowingSeries: (seriesId: string) => boolean;
   toggleFollowSeries: (seriesId: string) => boolean;
 
-  // Toast Notifications
+  // Notifications Center & Toasts
+  notifications: AppNotification[];
+  unreadNotificationsCount: number;
+  addNotification: (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => void;
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: () => void;
+  deleteNotification: (id: string) => void;
+  clearAllNotifications: () => void;
+
   toasts: ToastMessage[];
   showToast: (toast: Omit<ToastMessage, 'id'>) => void;
   dismissToast: (id: string) => void;
@@ -347,6 +361,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [followedSeriesIds, setFollowedSeriesIds] = useState<string[]>(() => {
     const saved = localStorage.getItem('mk_followed_series');
     return saved ? JSON.parse(saved) : [];
+  });
+
+  // Persistent Notifications State
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    const saved = localStorage.getItem('mk_notifications_list');
+    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
   });
 
   // Global Toast Notifications State
@@ -876,6 +896,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [followedSeriesIds]);
 
   useEffect(() => {
+    localStorage.setItem('mk_notifications_list', JSON.stringify(notifications));
+  }, [notifications]);
+
+  useEffect(() => {
     localStorage.setItem('mk_novel_settings', JSON.stringify(novelSettings));
   }, [novelSettings]);
 
@@ -890,6 +914,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('mk_user');
     }
   }, [user]);
+
+  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+
+  const addNotification = (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
+    const newNotif: AppNotification = {
+      ...notif,
+      id: 'notif-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
+  };
+
+  const markNotificationAsRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const deleteNotification = (id: string) => {
+    setNotifications(prev => prev.filter(n => n.id !== id));
+  };
+
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
 
   const dismissToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));
@@ -949,11 +1001,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const prevChapterCount = existingSeries?.chapters?.length ?? 0;
     const newChapterCount = newSeries.chapters?.length ?? 0;
 
-    // Check if new chapters were added and the user is following or bookmarked this series
+    // Check if new chapters were added
     if (existingSeries && newChapterCount > prevChapterCount) {
+      const latestNewChapter = newSeries.chapters[newSeries.chapters.length - 1];
       const isTracked = followedSeriesIds.includes(newSeries.id) || !!bookmarks[newSeries.id];
+
+      // Add to Notifications Center
+      addNotification({
+        title: `${newSeries.title} - Yeni Bölüm!`,
+        message: `${latestNewChapter ? (latestNewChapter.title || `Bölüm ${latestNewChapter.number}`) : 'Yeni bölüm'} yüklendi ve yayında!`,
+        type: 'chapter',
+        seriesId: newSeries.id,
+        seriesTitle: newSeries.title,
+        chapterId: latestNewChapter?.id,
+        chapterTitle: latestNewChapter?.title || `Bölüm ${latestNewChapter?.number}`,
+        chapterNumber: latestNewChapter?.number,
+        coverImage: newSeries.coverImage
+      });
+
+      // If tracked by the user, show toast popup
       if (isTracked) {
-        const latestNewChapter = newSeries.chapters[newSeries.chapters.length - 1];
         showToast({
           title: 'Yeni Bölüm Yayınlandı! 🔔',
           message: `Kütüphanenizdeki "${newSeries.title}" için yeni ${latestNewChapter ? (latestNewChapter.title || `Bölüm ${latestNewChapter.number}`) : 'bölüm'} eklendi!`,
@@ -1672,6 +1739,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         followedSeriesIds,
         isFollowingSeries,
         toggleFollowSeries,
+        notifications,
+        unreadNotificationsCount,
+        addNotification,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        deleteNotification,
+        clearAllNotifications,
         toasts,
         showToast,
         dismissToast

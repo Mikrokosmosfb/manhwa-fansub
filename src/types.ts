@@ -188,3 +188,18 @@ export interface ToastMessage {
   coverImage?: string;
   duration?: number;
 }
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'chapter' | 'announcement' | 'system' | 'reward';
+  seriesId?: string;
+  seriesTitle?: string;
+  chapterId?: string;
+  chapterTitle?: string;
+  chapterNumber?: number;
+  coverImage?: string;
+  createdAt: string; // ISO date or formatted
+  isRead: boolean;
+}

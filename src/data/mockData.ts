@@ -1,4 +1,4 @@
-import { Series, Announcement } from '../types';
+import { Series, Announcement, AppNotification } from '../types';
 
 export const INITIAL_ANNOUNCEMENT: Announcement = {
   id: 'ann-1',
@@ -629,9 +629,56 @@ Karma... Sonunda beni bulmuştu.`
 ];
 
 export const GENRE_LIST = [
-  'Aksiyon', 'Macera', 'Komedi', 'Drama', 'Fantastik', 'Tarihi',
-  'Korku', 'Isekai', 'Büyü', 'Gizem', 'Psikolojik', 'Romantik',
-  'Bilimkurgu', 'Yaşamdan', 'Spor', 'Gerilim', 'Trajedi', 'Yaoi',
-  'Yuri', 'BL', 'GL', 'Reenkarnasyon', 'Okul Hayatı', 'Doğaüstü',
-  'Sistem', '18+', '21+', 'Dark Fantasy', 'Webtoon', 'Web Novel'
-];
+   'Aksiyon', 'Macera', 'Komedi', 'Drama', 'Fantastik', 'Tarihi',
+   'Korku', 'Isekai', 'Büyü', 'Gizem', 'Psikolojik', 'Romantik',
+   'Bilimkurgu', 'Yaşamdan', 'Spor', 'Gerilim', 'Trajedi', 'Yaoi',
+   'Yuri', 'BL', 'GL', 'Reenkarnasyon', 'Okul Hayatı', 'Doğaüstü',
+   'Sistem', '18+', '21+', 'Dark Fantasy', 'Webtoon', 'Web Novel'
+ ];
+ 
+ export const INITIAL_NOTIFICATIONS: AppNotification[] = [
+   {
+     id: 'notif-hob-5',
+     title: 'Yeni Bölüm Yayınlandı!',
+     message: 'Heaven Official\'s Blessing için Bölüm 5 yayında. Hemen okumaya başlayabilirsiniz!',
+     type: 'chapter',
+     seriesId: 's-blessing',
+     seriesTitle: 'Heaven Official\'s Blessing',
+     chapterId: 'c-hob-5',
+     chapterTitle: 'Bölüm 5',
+     chapterNumber: 5,
+     coverImage: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=600&auto=format&fit=crop&q=80',
+     createdAt: new Date(Date.now() - 1000 * 60 * 45).toISOString(), // 45 mins ago
+     isRead: false
+   },
+   {
+     id: 'notif-plum-5',
+     title: 'Yeni Sezon Finali Yayında!',
+     message: 'Don\'t Press The Plum serisi için Sezon Finali (Bölüm 5) yüklendi!',
+     type: 'chapter',
+     seriesId: 's-plum',
+     seriesTitle: 'Don\'t Press The Plum',
+     chapterId: 'c-plum-5',
+     chapterTitle: 'Bölüm 5 (Sezon Finali)',
+     chapterNumber: 5,
+     coverImage: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=600&auto=format&fit=crop&q=80',
+     createdAt: new Date(Date.now() - 1000 * 60 * 180).toISOString(), // 3 hours ago
+     isRead: false
+   },
+   {
+     id: 'notif-sys-welcome',
+     title: 'Mikrokosmos Fansub\'a Hoş Geldiniz! 🌌',
+     message: 'Tüm güncel Manhwa, Webtoon ve Web Novel çevirilerini takip etmek için serileri kütüphanenize ekleyip bildirim zilini açabilirsiniz.',
+     type: 'system',
+     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(), // 1 day ago
+     isRead: true
+   },
+   {
+     id: 'notif-ann-server',
+     title: 'Sunucu Bakım Duyurusu',
+     message: 'Sunucu optimizasyonları tamamlandı. Yüksek çözünürlüklü okuyucu modu devrede.',
+     type: 'announcement',
+     createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+     isRead: true
+   }
+ ];

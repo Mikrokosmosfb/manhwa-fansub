@@ -30,6 +30,7 @@ import { RequestModal } from './components/RequestModal';
 import { JoinTeamModal } from './components/JoinTeamModal';
 import { AdminModal } from './components/AdminModal';
 import { ManagementPanel } from './components/ManagementPanel';
+import { NotificationsView } from './components/NotificationsView';
 import { AuthModal } from './components/AuthModal';
 import { isSeries18Plus } from './types';
 import { ShopModal, ShopView } from './components/ShopModal';
@@ -130,6 +131,10 @@ const MainContent: React.FC = () => {
 
   if (view.type === 'admin' || view.type === 'management') {
     return <ManagementPanel />;
+  }
+
+  if (view.type === 'notifications') {
+    return <NotificationsView />;
   }
 
   // DEFAULT: Home View

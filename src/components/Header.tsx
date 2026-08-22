@@ -23,21 +23,38 @@ import {
   ShoppingBag,
   Coins,
   LogOut,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Bell
 } from 'lucide-react';
 
 import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { SaturnIcon } from './SaturnIcon';
+import { NotificationsDropdown } from './NotificationsDropdown';
 
 export const Header: React.FC = () => {
-  const { theme, toggleTheme, setView, seriesList, isAdminLoggedIn, user, logout, openAuthModal, openShop, showNsfw, toggleNsfw } = useApp();
+  const {
+    theme,
+    toggleTheme,
+    setView,
+    seriesList,
+    isAdminLoggedIn,
+    user,
+    logout,
+    openAuthModal,
+    openShop,
+    showNsfw,
+    toggleNsfw,
+    unreadNotificationsCount
+  } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [profileInitialTab, setProfileInitialTab] = useState<'profile' | 'badges' | 'shop' | 'library'>('profile');
   const searchRef = useRef<HTMLDivElement>(null);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationButtonRef = useRef<HTMLDivElement>(null);
 
   const handleOpenProfile = (tab: 'profile' | 'badges' | 'shop' | 'library' = 'profile') => {
     if (tab === 'shop') {
@@ -148,6 +165,7 @@ export const Header: React.FC = () => {
               onClick={() => {
                 setIsSearchOpen(!isSearchOpen);
                 setIsMobileMenuOpen(false);
+                setIsNotificationsOpen(false);
               }}
               className={`p-2 rounded-full transition flex items-center justify-center ${
                 isSearchOpen
@@ -160,6 +178,35 @@ export const Header: React.FC = () => {
               <Search size={18} />
             </button>
 
+            {/* Notification Bell Action Button with Dropdown (Desktop & Mobile) */}
+            <div className="relative" ref={notificationButtonRef}>
+              <button
+                onClick={() => {
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  setIsSearchOpen(false);
+                  setIsProfileDropdownOpen(false);
+                }}
+                className={`relative p-2 rounded-full transition flex items-center justify-center ${
+                  isNotificationsOpen
+                    ? 'bg-purple-700 text-white shadow-lg ring-2 ring-purple-400'
+                    : 'text-purple-200 hover:text-white hover:bg-purple-800/50'
+                }`}
+                title={`Bildirimler (${unreadNotificationsCount} yeni)`}
+                aria-label="Bildirimler"
+              >
+                <Bell size={18} />
+                {unreadNotificationsCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-red-500 to-pink-500 text-white text-[9px] font-black flex items-center justify-center border-2 border-gray-950 shadow-md animate-pulse">
+                    {unreadNotificationsCount > 99 ? '99+' : unreadNotificationsCount}
+                  </span>
+                )}
+              </button>
+
+              <NotificationsDropdown
+                isOpen={isNotificationsOpen}
+                onClose={() => setIsNotificationsOpen(false)}
+              />
+            </div>
 
             {/* +18 / NSFW Quick Toggle Button */}
             <button
@@ -237,6 +284,24 @@ export const Header: React.FC = () => {
                           <span className="text-[9px] bg-amber-500/30 text-amber-200 px-1.5 py-0.5 rounded font-extrabold uppercase">Süper Admin</span>
                         </button>
                       )}
+
+                      <button
+                        onClick={() => {
+                          setView({ type: 'notifications' });
+                          setIsProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-purple-200 hover:bg-purple-900/50 hover:text-white flex items-center justify-between transition"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Bell size={15} className="text-purple-400" />
+                          <span>Bildirimlerim</span>
+                        </span>
+                        {unreadNotificationsCount > 0 && (
+                          <span className="text-[10px] bg-purple-600 text-white font-black px-1.5 py-0.2 rounded-full">
+                            {unreadNotificationsCount}
+                          </span>
+                        )}
+                      </button>
 
                       <button
                         onClick={() => handleOpenProfile('profile')}
@@ -445,6 +510,20 @@ export const Header: React.FC = () => {
             className="w-full text-left px-3.5 py-2 rounded-xl text-sm font-bold text-purple-100 hover:bg-purple-900/50 flex items-center gap-2"
           >
             <Home size={16} className="text-purple-400" /> Ana Sayfa
+          </button>
+
+          <button
+            onClick={() => { setView({ type: 'notifications' }); setIsMobileMenuOpen(false); }}
+            className="w-full text-left px-3.5 py-2 rounded-xl text-sm font-extrabold text-purple-200 bg-purple-950/40 hover:bg-purple-900/50 flex items-center justify-between border border-purple-800/40"
+          >
+            <span className="flex items-center gap-2">
+              <Bell size={16} className="text-purple-400" /> Bildirimler
+            </span>
+            {unreadNotificationsCount > 0 && (
+              <span className="text-xs bg-purple-600 text-white font-black px-2 py-0.5 rounded-full">
+                {unreadNotificationsCount} yeni
+              </span>
+            )}
           </button>
 
           <button
