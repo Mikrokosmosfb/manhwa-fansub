@@ -416,60 +416,6 @@ export const Header: React.FC = () => {
       {/* Mobile Nav Drawer */}
       {isMobileMenuOpen && (
         <div className="md:hidden bg-gray-950 border-t border-purple-800/80 px-4 pt-3 pb-5 space-y-1.5 shadow-2xl">
-          
-          {/* Mobile Profile Card with Library & Shop Sub-Links */}
-          <div className="bg-purple-950/80 border border-purple-700/60 rounded-2xl p-2.5 space-y-1 mb-2 shadow-lg">
-            <div className="text-[10px] font-black uppercase text-purple-300 tracking-wider px-2 py-1 flex items-center justify-between border-b border-purple-800/60 mb-1">
-              <span>👤 Profil & Mağaza Menüm</span>
-              <span className="text-amber-400 font-mono font-extrabold">
-                {user ? (user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞ CP' : `${user.coins ?? 250} CP`) : 'Misafir'}
-              </span>
-            </div>
-
-            <button
-              onClick={() => {
-                handleOpenProfile('profile');
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-white hover:bg-purple-900/60 flex items-center gap-2"
-            >
-              <User size={16} className="text-purple-300" /> Profilim & Ayarlar
-            </button>
-
-            <button
-              onClick={() => {
-                setView({ type: 'library' });
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-white hover:bg-purple-900/60 flex items-center gap-2"
-            >
-              <Bookmark size={16} className="text-purple-300 fill-purple-300/30" /> Kütüphanem
-            </button>
-
-            <button
-              onClick={() => {
-                handleOpenProfile('shop');
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-xl text-xs font-black text-amber-300 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/40 flex items-center justify-between"
-            >
-              <span className="flex items-center gap-2">
-                <ShoppingBag size={16} className="text-amber-400" /> Mağaza & Temalar
-              </span>
-              <span className="text-[10px] bg-amber-500 text-black px-2 py-0.5 rounded font-bold">CP</span>
-            </button>
-
-            <button
-              onClick={() => {
-                handleOpenProfile('badges');
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-purple-200 hover:bg-purple-900/60 flex items-center gap-2"
-            >
-              <Award size={16} className="text-amber-400" /> Başarımlar & İstatistikler
-            </button>
-          </div>
-
           {/* Mobile NSFW Toggle */}
           <div className="mb-2">
             <button
