@@ -8,22 +8,16 @@ interface AuthModalProps {
   initialTab?: 'login' | 'register';
 }
 
-// Default device/browser Google account suggestion
-const DEFAULT_GOOGLE_ACCOUNT = {
-  email: 'aseleliyeva77@gmail.com',
-  name: 'Aysel Eliyeva',
-  avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c'
-};
-
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTab = 'login' }) => {
-  const { loginWithEmail, registerWithEmail, loginWithGoogle, registerWithGoogle } = useApp();
+  const { loginWithEmail, registerWithEmail, loginWithGoogle, registerWithGoogle, verifyAdminPassword } = useApp();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(initialTab);
 
-  // Google Account Chooser Step
+  // Google Account Input Step
   const [isGoogleStep, setIsGoogleStep] = useState(false);
-  const [useCustomEmail, setUseCustomEmail] = useState(false);
   const [googleEmailInput, setGoogleEmailInput] = useState('');
   const [googleNameInput, setGoogleNameInput] = useState('');
+  const [adminPinInput, setAdminPinInput] = useState('');
+  const [showAdminPinField, setShowAdminPinField] = useState(false);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -51,6 +45,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
       return;
     }
 
+    const trimmedEmail = loginEmail.trim().toLowerCase();
+    const isAdmin = trimmedEmail === 'aseleliyeva77@gmail.com' || trimmedEmail === 'mikrokosmosfansub@gmail.com';
+    if (isAdmin) {
+      const isValidAdmin = verifyAdminPassword(loginPassword);
+      if (!isValidAdmin) {
+        setErrorMessage('Geçersiz yönetici şifresi / PIN.');
+        return;
+      }
+    }
+
     setIsLoading(true);
     try {
       const res = await loginWithEmail(loginEmail, loginPassword);
@@ -76,6 +80,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
 
     if (!registerName.trim() || !registerEmail.trim() || !registerPassword) {
       setErrorMessage('Lütfen tüm zorunlu alanları doldurunuz.');
+      return;
+    }
+
+    const trimmedEmail = registerEmail.trim().toLowerCase();
+    const isAdmin = trimmedEmail === 'aseleliyeva77@gmail.com' || trimmedEmail === 'mikrokosmosfansub@gmail.com';
+    if (isAdmin) {
+      setErrorMessage('Bu e-posta adresi sistem yöneticisine aittir. Lütfen kendi e-posta adresinizi kullanın.');
       return;
     }
 
@@ -109,20 +120,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
 
   const handleOpenGoogleChooser = () => {
     setIsGoogleStep(true);
-    setUseCustomEmail(false);
     setErrorMessage(null);
     setSuccessMessage(null);
+    setShowAdminPinField(false);
+    setAdminPinInput('');
   };
 
-  const handleSelectGoogleAccount = async (email: string, name?: string) => {
-    setIsLoading(true);
+  const handleCustomGoogleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const email = googleEmailInput.trim();
+    if (!email || !email.includes('@')) {
+      setErrorMessage('Lütfen geçerli bir Google e-posta adresi girin.');
+      return;
+    }
+
+    const trimmedEmail = email.toLowerCase();
+    const isAdmin = trimmedEmail === 'aseleliyeva77@gmail.com' || trimmedEmail === 'mikrokosmosfansub@gmail.com';
+
+    if (isAdmin && !showAdminPinField) {
+      setShowAdminPinField(true);
+      setErrorMessage('Bu hesap bir yönetici hesabıdır. Devam etmek için yönetici güvenlik PIN / şifresini giriniz.');
+      return;
+    }
+
+    if (isAdmin && showAdminPinField) {
+      const isValidAdmin = verifyAdminPassword(adminPinInput);
+      if (!isValidAdmin) {
+        setErrorMessage('Geçersiz yönetici PIN kodu! Erişim reddedildi.');
+        return;
+      }
+    }
+
+    setIsLoading(true);
     try {
-      const res = activeTab === 'login' 
-        ? await loginWithGoogle(email) 
-        : await registerWithGoogle(email, name);
+      const res = activeTab === 'login'
+        ? await loginWithGoogle(email)
+        : await registerWithGoogle(email, googleNameInput.trim() || undefined);
 
       if (res.success) {
         setSuccessMessage(res.message || `Google hesabınızla (${email}) başarıyla oturum açıldı!`);
@@ -131,24 +167,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
         }, 900);
       } else {
         setErrorMessage(res.message || 'Google yetkilendirmesi başarısız oldu.');
-        if (activeTab === 'login') {
-          setActiveTab('register');
-        }
       }
     } catch (err) {
       setErrorMessage('Google yetkilendirmesi sırasında bir hata oluştu.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleCustomGoogleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!googleEmailInput.trim()) {
-      setErrorMessage('Lütfen geçerli bir Google e-posta adresi girin.');
-      return;
-    }
-    await handleSelectGoogleAccount(googleEmailInput.trim(), googleNameInput.trim() || undefined);
   };
 
   return (
@@ -204,11 +228,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
                   />
                 </svg>
               </div>
-              <h2 className="text-xl font-black text-white">Bir Google Hesabı Seçin</h2>
+              <h2 className="text-xl font-black text-white">Google ile Devam Et</h2>
               <p className="text-xs text-purple-200/80 mt-1">
                 {activeTab === 'login'
-                  ? 'Giriş yapmak istediğiniz Google hesabınızı seçin:'
-                  : 'Kayıt olmak istediğiniz Google hesabınızı seçin:'}
+                  ? 'Giriş yapmak için Google e-posta adresinizi girin:'
+                  : 'Kayıt olmak için Google e-posta adresinizi ve profil adınızı girin:'}
               </p>
             </div>
 
@@ -227,113 +251,91 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
               </div>
             )}
 
-            {/* Google Accounts List Card Container */}
-            {!useCustomEmail ? (
-              <div className="space-y-2.5">
-                {/* Default Device Account Option */}
-                <button
-                  type="button"
-                  disabled={isLoading}
-                  onClick={() => handleSelectGoogleAccount(DEFAULT_GOOGLE_ACCOUNT.email, DEFAULT_GOOGLE_ACCOUNT.name)}
-                  className="w-full flex items-center justify-between p-3.5 rounded-2xl bg-gray-900/90 hover:bg-purple-900/40 border border-purple-500/30 hover:border-purple-400 transition text-left group shadow-md"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-500 to-purple-600 p-0.5 shadow">
-                      <div className="w-full h-full bg-gray-900 rounded-full flex items-center justify-center text-amber-300 font-extrabold text-sm">
-                        A
-                      </div>
-                    </div>
-                    <div>
-                      <strong className="text-sm font-bold text-white block group-hover:text-amber-200 transition">
-                        {DEFAULT_GOOGLE_ACCOUNT.name}
-                      </strong>
-                      <span className="text-xs text-purple-300 block">{DEFAULT_GOOGLE_ACCOUNT.email}</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] bg-purple-900/80 text-purple-200 px-2 py-1 rounded-lg border border-purple-700/50 font-bold">
-                    Oturum Açık
-                  </span>
-                </button>
-
-                {/* Option: Use Another Google Account */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUseCustomEmail(true);
-                    setErrorMessage(null);
-                  }}
-                  className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-black/40 hover:bg-gray-900 border border-purple-500/20 hover:border-purple-400/50 transition text-left text-purple-200 hover:text-white"
-                >
-                  <div className="w-10 h-10 rounded-full bg-purple-950 flex items-center justify-center border border-purple-800 text-purple-300">
-                    <Plus size={18} />
-                  </div>
-                  <div>
-                    <strong className="text-xs font-bold block">Başka bir Google Hesabı kullan</strong>
-                    <span className="text-[10px] text-gray-400">Farklı bir e-posta adresi yazın</span>
-                  </div>
-                </button>
+            {/* Google Email Form */}
+            <form onSubmit={handleCustomGoogleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-purple-200 mb-1.5">
+                  Google E-Posta Adresiniz
+                </label>
+                <div className="relative">
+                  <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
+                  <input
+                    type="email"
+                    value={googleEmailInput}
+                    onChange={e => {
+                      setGoogleEmailInput(e.target.value);
+                      setShowAdminPinField(false);
+                    }}
+                    placeholder="ornek.hesap@gmail.com"
+                    required
+                    className="w-full bg-black/60 border border-purple-500/40 focus:border-purple-300 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none transition"
+                  />
+                </div>
               </div>
-            ) : (
-              /* Custom Email Form */
-              <form onSubmit={handleCustomGoogleSubmit} className="space-y-4">
+
+              {activeTab === 'register' && (
                 <div>
                   <label className="block text-xs font-bold text-purple-200 mb-1.5">
-                    Google E-Posta Adresiniz
+                    Kullanıcı Adınız
                   </label>
                   <div className="relative">
-                    <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
+                    <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
                     <input
-                      type="email"
-                      value={googleEmailInput}
-                      onChange={e => setGoogleEmailInput(e.target.value)}
-                      placeholder="ornek.hesap@gmail.com"
+                      type="text"
+                      value={googleNameInput}
+                      onChange={e => setGoogleNameInput(e.target.value)}
+                      placeholder="Profil İsminiz"
                       required
                       className="w-full bg-black/60 border border-purple-500/40 focus:border-purple-300 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none transition"
                     />
                   </div>
                 </div>
+              )}
 
-                {activeTab === 'register' && (
-                  <div>
-                    <label className="block text-xs font-bold text-purple-200 mb-1.5">
-                      Kullanıcı Adınız
-                    </label>
-                    <div className="relative">
-                      <User size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
-                      <input
-                        type="text"
-                        value={googleNameInput}
-                        onChange={e => setGoogleNameInput(e.target.value)}
-                        placeholder="Profil İsminiz"
-                        required
-                        className="w-full bg-black/60 border border-purple-500/40 focus:border-purple-300 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none transition"
-                      />
-                    </div>
+              {showAdminPinField && (
+                <div className="p-3 bg-purple-950/80 border border-amber-500/50 rounded-2xl space-y-2">
+                  <label className="block text-xs font-bold text-amber-300">
+                    Yönetici PIN / Şifresi
+                  </label>
+                  <div className="relative">
+                    <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400" />
+                    <input
+                      type="password"
+                      value={adminPinInput}
+                      onChange={e => setAdminPinInput(e.target.value)}
+                      placeholder="Yönetici PIN Kodu"
+                      required
+                      className="w-full bg-black/80 border border-amber-500/50 focus:border-amber-300 rounded-xl py-2 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none transition font-mono"
+                    />
                   </div>
-                )}
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUseCustomEmail(false);
-                      setErrorMessage(null);
-                    }}
-                    className="flex-1 bg-gray-900 hover:bg-gray-800 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition border border-gray-800"
-                  >
-                    Kayıtlı Listeye Dön
-                  </button>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="flex-1 bg-white hover:bg-gray-100 text-gray-900 font-extrabold py-2.5 px-4 rounded-xl text-xs transition shadow-xl disabled:opacity-50"
-                  >
-                    {isLoading ? 'Denetleniyor...' : activeTab === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
-                  </button>
+                  <p className="text-[10px] text-purple-300">
+                    Bu e-posta adresi yönetici ayrıcalıklarına sahiptir ve PIN doğrulaması gerektirir.
+                  </p>
                 </div>
-              </form>
-            )}
+              )}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsGoogleStep(false);
+                    setErrorMessage(null);
+                    setShowAdminPinField(false);
+                  }}
+                  className="flex-1 bg-gray-900 hover:bg-gray-800 text-gray-300 font-bold py-2.5 rounded-xl text-xs transition border border-gray-800"
+                >
+                  Vazgeç
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="flex-1 bg-white hover:bg-gray-100 text-gray-900 font-extrabold py-2.5 px-4 rounded-xl text-xs transition shadow-xl disabled:opacity-50"
+                >
+                  {isLoading ? 'Denetleniyor...' : activeTab === 'login' ? 'Giriş Yap' : 'Kayıt Ol'}
+                </button>
+              </div>
+            </form>
           </div>
         ) : (
           /* STANDARD FORM */
