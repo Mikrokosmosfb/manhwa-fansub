@@ -209,6 +209,7 @@ interface AppContextType {
 
   // Announcement
   announcement: Announcement;
+  updateAnnouncement: (newAnn: Announcement) => void;
 
   // Export / Backup
   exportBackupData: () => void;
@@ -366,7 +367,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Persistent Notifications State
   const [notifications, setNotifications] = useState<AppNotification[]>(() => {
     const saved = localStorage.getItem('mk_notifications_list');
-    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
+    if (saved) {
+      try {
+        const parsed: AppNotification[] = JSON.parse(saved);
+        const legacyDemoIds = ['notif-hob-5', 'notif-plum-5', 'notif-sys-welcome', 'notif-ann-server'];
+        const clean = Array.isArray(parsed) ? parsed.filter(n => !legacyDemoIds.includes(n.id)) : [];
+        return clean;
+      } catch {
+        return [];
+      }
+    }
+    return INITIAL_NOTIFICATIONS;
   });
 
   // Global Toast Notifications State
@@ -820,7 +831,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ];
   });
 
-  const [announcement] = useState<Announcement>(INITIAL_ANNOUNCEMENT);
+  const [announcement, setAnnouncementState] = useState<Announcement>(() => {
+    const saved = localStorage.getItem('mk_announcement');
+    return saved ? JSON.parse(saved) : INITIAL_ANNOUNCEMENT;
+  });
+
+  const updateAnnouncement = (newAnn: Announcement) => {
+    setAnnouncementState(newAnn);
+    localStorage.setItem('mk_announcement', JSON.stringify(newAnn));
+  };
 
   // Admin Authentication State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState<boolean>(() => {
@@ -1757,6 +1776,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         changeAdminPassword,
         logoutAdmin,
         announcement,
+        updateAnnouncement,
         exportBackupData,
         importBackupData,
         isShopOpen,

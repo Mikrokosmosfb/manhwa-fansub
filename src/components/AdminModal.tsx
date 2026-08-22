@@ -52,10 +52,11 @@ import {
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { ShopItem, ThemeStyle } from '../data/shopData';
+import { AdminNotificationsManager } from './AdminNotificationsManager';
 
 export interface AdminModalProps {
-  activeTabOverride?: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management';
-  onTabChange?: (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => void;
+  activeTabOverride?: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management';
+  onTabChange?: (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => void;
   hideHeader?: boolean;
   hideTabs?: boolean;
   hideActionBar?: boolean;
@@ -78,6 +79,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     readingHistory,
     bookmarks,
     comments,
+    notifications,
     isAdminLoggedIn,
     verifyAdminPassword,
     changeAdminPassword,
@@ -92,10 +94,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     user
   } = useApp();
 
-  const [internalTab, setInternalTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('manage-series');
+  const [internalTab, setInternalTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('manage-series');
 
   const activeTab = activeTabOverride !== undefined ? activeTabOverride : internalTab;
-  const setActiveTab = (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => {
+  const setActiveTab = (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => {
     setInternalTab(tab);
     if (onTabChange) onTabChange(tab);
   };
@@ -1480,6 +1482,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({
             }`}
           >
             Mevcut Seriler ({seriesList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('announcements-notifications')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-pink-300 ${
+              activeTab === 'announcements-notifications'
+                ? 'border-pink-400 text-pink-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Megaphone size={15} />
+            📢 Duyuru & Bildirimler
           </button>
           <button
             onClick={() => setActiveTab('blogger-import')}
@@ -3746,6 +3759,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Announcements & Notifications Broadcast Manager */}
+      {activeTab === 'announcements-notifications' && (
+        <div className="bg-gray-900/95 border border-purple-500/20 rounded-3xl p-6 shadow-xl">
+          <AdminNotificationsManager />
         </div>
       )}
 

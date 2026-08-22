@@ -34,15 +34,19 @@ import {
   Shield,
   FileCode,
   FileArchive,
-  Search
+  Search,
+  Megaphone,
+  Bell
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { downloadProjectZip } from '../utils/exportZip';
+import { AdminNotificationsManager } from './AdminNotificationsManager';
 
 export type ManagementNavTab =
   | 'manage-series'
   | 'add-series'
   | 'add-chapter'
+  | 'announcements-notifications'
   | 'blogger-import'
   | 'cloudflare-d1'
   | 'shop-management'
@@ -59,6 +63,7 @@ export const ManagementPanel: React.FC = () => {
     readingHistory,
     shopItems,
     themeStyles,
+    notifications,
     isAdminLoggedIn,
     verifyAdminPassword,
     logoutAdmin,
@@ -216,6 +221,14 @@ export const ManagementPanel: React.FC = () => {
           icon: Zap,
           badge: `${totalChapters} Bölüm`,
           badgeColor: 'bg-indigo-950 text-indigo-300 border-indigo-500/40'
+        },
+        {
+          id: 'announcements-notifications' as ManagementNavTab,
+          label: 'Duyuru & Bildirimler',
+          desc: 'Genel bildirim gönder & üst bant duyurusu',
+          icon: Megaphone,
+          badge: `${notifications.length} Bildirim`,
+          badgeColor: 'bg-pink-950 text-pink-300 border-pink-500/40'
         }
       ]
     },
@@ -599,6 +612,11 @@ export const ManagementPanel: React.FC = () => {
           {/* ===================== VIEW CONTENT SWITCHER ===================== */}
           <div className="space-y-6 animate-fadeIn">
             
+            {/* ANNOUNCEMENTS & NOTIFICATIONS BROADCAST TAB */}
+            {activeNav === 'announcements-notifications' && (
+              <AdminNotificationsManager />
+            )}
+
             {/* Core Admin Engine for Series, Chapters, Blogger, Cloudflare D1 and Shop */}
             {(activeNav === 'manage-series' ||
               activeNav === 'add-series' ||
