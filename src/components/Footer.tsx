@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { SaturnIcon } from './SaturnIcon';
+import { Home } from 'lucide-react';
 
 export const Footer: React.FC = () => {
   const { setView } = useApp();
@@ -13,7 +13,7 @@ export const Footer: React.FC = () => {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 border-b border-gray-900 pb-6">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-600/50 to-indigo-600/50 border border-purple-500/30 flex items-center justify-center text-amber-300">
-              <SaturnIcon size={18} />
+              <Home size={18} />
             </div>
             <span className="font-extrabold text-base text-white">
               Mikrokosmos Fansub
