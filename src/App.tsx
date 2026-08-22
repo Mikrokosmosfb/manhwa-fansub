@@ -28,6 +28,7 @@ import { ReportModal } from './components/ReportModal';
 import { RequestModal } from './components/RequestModal';
 import { JoinTeamModal } from './components/JoinTeamModal';
 import { AdminModal } from './components/AdminModal';
+import { ManagementPanel } from './components/ManagementPanel';
 import { AuthModal } from './components/AuthModal';
 import { isSeries18Plus } from './types';
 import { ShopModal, ShopView } from './components/ShopModal';
@@ -125,8 +126,8 @@ const MainContent: React.FC = () => {
     return <JoinTeamModal />;
   }
 
-  if (view.type === 'admin') {
-    return <AdminModal />;
+  if (view.type === 'admin' || view.type === 'management') {
+    return <ManagementPanel />;
   }
 
   // DEFAULT: Home View

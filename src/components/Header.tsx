@@ -26,7 +26,7 @@ import {
   SlidersHorizontal
 } from 'lucide-react';
 
-import { Series, isSeries18Plus } from '../types';
+import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { SaturnIcon } from './SaturnIcon';
 
 export const Header: React.FC = () => {
@@ -174,24 +174,6 @@ export const Header: React.FC = () => {
               <span className={`w-1.5 h-1.5 rounded-full ${showNsfw ? 'bg-white animate-pulse' : 'bg-gray-500'}`} />
             </button>
 
-            {/* Admin Icon */}
-            <button
-              onClick={() => setView({ type: 'admin' })}
-              className={`p-2 rounded-full transition border shadow flex items-center justify-center ${
-                isAdminLoggedIn
-                  ? 'bg-amber-950/80 text-amber-300 border-amber-500/50 hover:bg-amber-900/90'
-                  : 'bg-purple-900/60 text-purple-200 border-purple-500/30 hover:bg-purple-800/80 hover:text-white'
-              }`}
-              title={isAdminLoggedIn ? 'Yönetici Paneli (Açık)' : 'Yönetici Girişi (Korumalı)'}
-              aria-label="Yönetim Paneli"
-            >
-              {isAdminLoggedIn ? (
-                <ShieldCheck size={18} className="text-amber-400" />
-              ) : (
-                <Lock size={18} className="text-purple-300" />
-              )}
-            </button>
-
             {/* User Profile / Auth Button (Desktop Only - Mobile uses Bottom Nav) */}
             <div className="hidden md:block">
               {user ? (
@@ -213,7 +195,7 @@ export const Header: React.FC = () => {
                       </div>
                     )}
                     <span className="text-[11px] font-extrabold text-amber-300 font-mono">
-                      {user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞' : (user.coins ?? 250)} CP
+                      {isAuthorizedAdmin(user.email) ? '∞' : (user.coins ?? 250)} CP
                     </span>
                   </button>
 
@@ -236,6 +218,23 @@ export const Header: React.FC = () => {
                           <p className="text-[10px] text-purple-300 truncate">{user.email}</p>
                         </div>
                       </div>
+
+                      {/* Management Panel - EXCLUSIVELY for Authorized Admin Accounts */}
+                      {isAuthorizedAdmin(user.email) && (
+                        <button
+                          onClick={() => {
+                            setView({ type: 'management' });
+                            setIsProfileDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3 py-2 rounded-xl text-xs font-black text-amber-300 bg-gradient-to-r from-amber-950/80 via-purple-950 to-amber-950/80 border border-amber-500/50 hover:bg-amber-900/90 flex items-center justify-between transition shadow-md group"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Crown size={15} className="text-amber-400 group-hover:scale-110 transition" />
+                            <span>Yönetim Paneli</span>
+                          </span>
+                          <span className="text-[9px] bg-amber-500/30 text-amber-200 px-1.5 py-0.5 rounded font-extrabold uppercase">Süper Admin</span>
+                        </button>
+                      )}
 
                       <button
                         onClick={() => handleOpenProfile('profile')}
@@ -549,24 +548,19 @@ export const Header: React.FC = () => {
             <Clock size={16} className="text-purple-400" /> Okuma Geçmişi
           </button>
 
-          <button
-            onClick={() => { setView({ type: 'admin' }); setIsMobileMenuOpen(false); }}
-            className={`w-full text-left px-3.5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 ${
-              isAdminLoggedIn
-                ? 'text-amber-300 bg-amber-950/60 border border-amber-500/30'
-                : 'text-purple-200 hover:bg-purple-900/50'
-            }`}
-          >
-            {isAdminLoggedIn ? (
-              <>
-                <Crown size={16} className="text-amber-400" /> Yönetim Paneli (Açık)
-              </>
-            ) : (
-              <>
-                <Lock size={16} className="text-purple-400" /> Yönetici Paneli (Korumalı)
-              </>
-            )}
-          </button>
+          {/* Management Panel - ONLY for Authorized Super Admins */}
+          {isAuthorizedAdmin(user?.email) && (
+            <button
+              onClick={() => { setView({ type: 'management' }); setIsMobileMenuOpen(false); }}
+              className="w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-black text-amber-300 bg-amber-950/80 border border-amber-500/40 flex items-center justify-between shadow-lg"
+            >
+              <span className="flex items-center gap-2">
+                <Crown size={17} className="text-amber-400" />
+                <span>Yönetim Paneli</span>
+              </span>
+              <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded font-extrabold">Süper Admin</span>
+            </button>
+          )}
         </div>
       )}
     </header>

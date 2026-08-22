@@ -8,7 +8,8 @@ import {
   NovelSettings,
   Comment,
   Announcement,
-  SeriesRequest
+  SeriesRequest,
+  isAuthorizedAdmin
 } from '../types';
 import { INITIAL_SERIES, INITIAL_ANNOUNCEMENT } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
@@ -28,6 +29,7 @@ type ViewState =
   | { type: 'report' }
   | { type: 'join-team' }
   | { type: 'admin' }
+  | { type: 'management' }
   | { type: 'advanced-search' };
 
 export const viewToHash = (v: ViewState): string => {
@@ -59,7 +61,8 @@ export const viewToHash = (v: ViewState): string => {
     case 'join-team':
       return '#/ekibe-katil';
     case 'admin':
-      return '#/admin';
+    case 'management':
+      return '#/yonetim';
     case 'advanced-search':
       return '#/gelismis-arama';
     default:
@@ -102,7 +105,8 @@ export const hashToView = (hash: string): ViewState => {
     case 'ekibe-katil':
       return { type: 'join-team' };
     case 'admin':
-      return { type: 'admin' };
+    case 'yonetim':
+      return { type: 'management' };
     case 'gelismis-arama':
       return { type: 'advanced-search' };
     default:

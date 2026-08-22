@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { ReadingProgress } from '../types';
+import { ReadingProgress, isAuthorizedAdmin } from '../types';
 import { LibraryView } from './LibraryView';
 import { ShopContent } from './ShopModal';
 import {
@@ -368,7 +368,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {/* Super Admin Management Panel Button - EXCLUSIVELY for Authorized Emails */}
+          {isAuthorizedAdmin(user?.email) && (
+            <button
+              onClick={() => {
+                setView({ type: 'management' });
+                onClose();
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-amber-500 via-purple-600 to-indigo-600 hover:from-amber-400 hover:to-indigo-500 text-white font-black text-xs rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-purple-950/60 shrink-0 active:scale-95 border border-amber-300/60 group"
+              title="Süper Yönetim Panelini Aç"
+            >
+              <Crown size={15} className="text-amber-200 group-hover:scale-110 transition animate-pulse" />
+              <span>👑 Yönetim Paneli</span>
+            </button>
+          )}
+
           {/* Quick Access Buttons */}
           <button
             onClick={() => {
@@ -405,6 +420,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
       {/* Navigation Tabs Bar */}
       <div className="flex bg-gray-900/90 border border-purple-500/20 p-1.5 rounded-2xl gap-2 overflow-x-auto no-scrollbar shadow-lg">
+        {isAuthorizedAdmin(user?.email) && (
+          <button
+            onClick={() => {
+              setView({ type: 'management' });
+              onClose();
+            }}
+            className="px-5 py-2.5 text-xs font-black rounded-xl transition flex items-center gap-2 whitespace-nowrap bg-gradient-to-r from-amber-950 via-purple-950 to-amber-950 border border-amber-500/60 text-amber-300 hover:bg-amber-900/80 shadow-md group shrink-0"
+          >
+            <Crown size={15} className="text-amber-400 group-hover:scale-110 transition" />
+            <span>👑 Yönetim Paneli</span>
+            <span className="bg-amber-500/30 text-amber-200 text-[9px] px-1.5 py-0.2 rounded uppercase">Süper Admin</span>
+          </button>
+        )}
+
         <button
           onClick={() => setActiveTab('profile')}
           className={`px-5 py-2.5 text-xs font-extrabold rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
@@ -486,6 +515,38 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 </div>
               ) : (
                 <>
+                  {/* SUPER ADMIN SHORTCUT BANNER - ONLY FOR AUTHORIZED EMAILS */}
+                  {isAuthorizedAdmin(user.email) && (
+                    <div className="p-5 bg-gradient-to-r from-amber-950/70 via-purple-950/90 to-indigo-950/80 border-2 border-amber-500/50 rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center text-black font-black text-xl shadow-lg shrink-0">
+                          👑
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm sm:text-base font-black text-white">Süper Yönetici Paneli</h4>
+                            <span className="bg-amber-500/30 text-amber-200 text-[10px] font-black px-2 py-0.5 rounded-full uppercase border border-amber-500/40">Özel Yetkili</span>
+                          </div>
+                          <p className="text-xs text-purple-200/90 mt-0.5">
+                            Serileri yönetin, yeni bölümler yükleyin, Cloudflare D1 verilerini güncelleyin ve mağaza içeriklerini düzenleyin.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setView({ type: 'management' });
+                          onClose();
+                        }}
+                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-black font-black text-xs rounded-xl flex items-center gap-2 transition shadow-lg shadow-amber-950/50 shrink-0 active:scale-95 cursor-pointer"
+                      >
+                        <Crown size={15} />
+                        <span>Yönetim Paneline Git</span>
+                      </button>
+                    </div>
+                  )}
+
                   {/* EDIT PROFILE FORM (COLLAPSIBLE) */}
                   <div className="bg-gray-900/80 border border-purple-500/20 rounded-2xl shadow-lg overflow-hidden transition-all">
                     <button

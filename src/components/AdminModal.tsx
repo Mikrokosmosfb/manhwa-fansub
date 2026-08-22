@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { Series, SeriesType, SeriesStatus, Chapter } from '../types';
+import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin } from '../types';
 import { GENRE_LIST } from '../data/mockData';
 import {
   Plus,
@@ -74,7 +74,8 @@ export const AdminModal: React.FC = () => {
     updateThemeStyle,
     addShopItemAndStyle,
     deleteShopItemAndStyle,
-    resetShopToDefault
+    resetShopToDefault,
+    user
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('add-series');
@@ -1218,8 +1219,9 @@ export const AdminModal: React.FC = () => {
     return scoreB - scoreA;
   });
 
-  // If not logged in as Admin, show the password login screen
-  if (!isAdminLoggedIn) {
+  // If not logged in as Admin and not an authorized super admin, show the password login screen
+  const isSuperAdmin = isAuthorizedAdmin(user?.email);
+  if (!isAdminLoggedIn && !isSuperAdmin) {
     return (
       <div className="max-w-md mx-auto my-12 px-4 py-8">
         <div className="bg-gray-900 border-2 border-purple-500/40 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6 text-center relative overflow-hidden">

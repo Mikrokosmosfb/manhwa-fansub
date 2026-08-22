@@ -1,3 +1,13 @@
+export const AUTHORIZED_ADMIN_EMAILS = [
+  'mikrokosmosfansub@gmail.com',
+  'aseleliyeva77@gmail.com'
+];
+
+export const isAuthorizedAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  return AUTHORIZED_ADMIN_EMAILS.includes(email.toLowerCase().trim());
+};
+
 export interface User {
   uid: string;
   name: string;
