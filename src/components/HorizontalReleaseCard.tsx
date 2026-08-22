@@ -96,10 +96,32 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
           </span>
         </div>
 
-        {/* Star Rating Under Poster */}
-        <div className="flex items-center justify-center gap-1 bg-gray-950/90 border border-amber-500/30 px-2 py-0.5 rounded-md shadow-sm w-full">
-          <Star size={11} className="fill-current text-amber-400" />
-          <span className="text-[10px] sm:text-xs font-bold text-amber-300">
+        {/* 5-Star Rating Pill Under Poster (Image Match: ★★★★★ 9.6) */}
+        <div className="flex items-center justify-center gap-1 bg-black/90 border border-neutral-800/80 px-2 py-0.5 rounded-full shadow-inner w-full max-w-[120px]">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((starIndex) => {
+              // rating is out of 10, normalized to 5 stars (each star = 2 points)
+              const scoreOutOf5 = (series.rating || 0) / 2;
+              const isFilled = scoreOutOf5 >= starIndex;
+              const isHalf = !isFilled && scoreOutOf5 >= starIndex - 0.5;
+
+              return (
+                <div key={starIndex} className="relative inline-block">
+                  <Star
+                    size={10}
+                    className={`transition-colors ${
+                      isFilled
+                        ? 'fill-amber-400 text-amber-400'
+                        : isHalf
+                        ? 'fill-amber-500/70 text-amber-500/70'
+                        : 'fill-amber-950/60 text-amber-900/60'
+                    }`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span className="text-[11px] font-black text-amber-400 ml-0.5 tracking-tight">
             {series.rating}
           </span>
         </div>
