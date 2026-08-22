@@ -54,8 +54,8 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
   return (
     <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group items-stretch">
       
-      {/* Left: Cover Poster with Badges & Star Rating Directly Underneath */}
-      <div className="w-24 sm:w-28 md:w-30 lg:w-32 flex-shrink-0 flex flex-col items-center justify-between gap-1.5">
+      {/* Left: Cover Poster with Badges & Star Rating Directly Underneath (No Gap Stretch) */}
+      <div className="w-24 sm:w-28 md:w-30 lg:w-32 flex-shrink-0 flex flex-col items-center gap-1.5 self-start">
         <div 
           onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
           className="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 group-hover:border-purple-500/40 transition-colors"
