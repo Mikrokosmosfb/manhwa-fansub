@@ -61,8 +61,8 @@ export const HeroSlider: React.FC = () => {
       {/* Subtle Dark Vignette & Gradient Overlay for readability */}
       <div className="hero-gradient-overlay absolute inset-0 bg-gradient-to-r from-gray-950/90 via-gray-950/70 to-black/50 z-10 pointer-events-none backdrop-brightness-90" />
 
-      {/* Content Container */}
-      <div className="relative z-20 max-w-7xl mx-auto w-full px-2.5 sm:px-10 md:px-16 pt-3 pb-6 sm:py-6 md:py-8 flex flex-row items-center gap-3 sm:gap-6 md:gap-10">
+      {/* Content Container - Symmetrical vertical padding */}
+      <div className="relative z-20 max-w-7xl mx-auto w-full px-3 sm:px-10 md:px-16 py-6 sm:py-8 md:py-10 flex flex-row items-center gap-3 sm:gap-6 md:gap-10">
         
         {/* Cover Image & Badges */}
         <div className="relative flex-shrink-0 w-28 sm:w-44 md:w-52 group-hover:scale-105 transition-transform duration-300">
@@ -87,10 +87,30 @@ export const HeroSlider: React.FC = () => {
             </span>
           )}
 
-          {/* Star Rating */}
-          <div className="flex items-center justify-center gap-1 mt-1 sm:mt-2.5 bg-black/70 backdrop-blur-md py-0.5 px-2 sm:px-3 rounded-full border border-white/10 w-fit mx-auto shadow-md">
-            <div className="flex scale-85 sm:scale-100">{renderStars(current.rating)}</div>
-            <span className="text-[10px] sm:text-xs font-bold text-amber-300 ml-0.5">
+          {/* 5-Star Rating Pill Under Cover */}
+          <div className="flex items-center justify-center gap-1.5 mt-1.5 sm:mt-2.5 bg-black/90 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full border border-neutral-800/80 shadow-md w-fit mx-auto">
+            <div className="flex items-center gap-0.5">
+              {[1, 2, 3, 4, 5].map((starIndex) => {
+                const scoreOutOf5 = (current.rating || 0) / 2;
+                const isFilled = scoreOutOf5 >= starIndex;
+                const isHalf = !isFilled && scoreOutOf5 >= starIndex - 0.5;
+
+                return (
+                  <Star
+                    key={starIndex}
+                    size={11}
+                    className={`transition-colors sm:w-3.5 sm:h-3.5 ${
+                      isFilled
+                        ? 'fill-amber-400 text-amber-400'
+                        : isHalf
+                        ? 'fill-amber-500/70 text-amber-500/70'
+                        : 'fill-amber-950/60 text-amber-900/60'
+                    }`}
+                  />
+                );
+              })}
+            </div>
+            <span className="text-[11px] sm:text-xs font-black text-amber-400 ml-0.5 tracking-tight">
               {current.rating}
             </span>
           </div>

@@ -19,6 +19,16 @@ export const QuickNav: React.FC = () => {
 
   const links = [
     {
+      title: 'Tüm Seriler',
+      icon: <ListOrdered className="w-3.5 h-3.5 text-purple-300" />,
+      onClick: () => setView({ type: 'series-list' })
+    },
+    {
+      title: 'Kategoriler',
+      icon: <Tags className="w-3.5 h-3.5 text-purple-300" />,
+      onClick: () => setView({ type: 'categories' })
+    },
+    {
       title: 'Gelişmiş Arama',
       icon: <SlidersHorizontal className="w-3.5 h-3.5 text-purple-300" />,
       onClick: () => setView({ type: 'advanced-search' })
@@ -27,6 +37,16 @@ export const QuickNav: React.FC = () => {
       title: 'Yayın Takvimi',
       icon: <Calendar className="w-3.5 h-3.5 text-amber-300" />,
       onClick: () => setView({ type: 'schedule' })
+    },
+    {
+      title: 'A-Z Liste',
+      icon: <ArrowDownAZ className="w-3.5 h-3.5 text-purple-300" />,
+      onClick: () => setView({ type: 'az-list' })
+    },
+    {
+      title: 'Geçmiş',
+      icon: <Clock className="w-3.5 h-3.5 text-purple-300" />,
+      onClick: () => setView({ type: 'history' })
     },
     {
       title: 'İstek Panosu',
@@ -42,26 +62,6 @@ export const QuickNav: React.FC = () => {
       title: 'Başvuru',
       icon: <FileText className="w-3.5 h-3.5 text-purple-300" />,
       onClick: () => setView({ type: 'join-team' })
-    },
-    {
-      title: 'Geçmiş',
-      icon: <Clock className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'history' })
-    },
-    {
-      title: 'Kategoriler',
-      icon: <Tags className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'categories' })
-    },
-    {
-      title: 'Tüm Seriler',
-      icon: <ListOrdered className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'series-list' })
-    },
-    {
-      title: 'A-Z Liste',
-      icon: <ArrowDownAZ className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'az-list' })
     },
     {
       title: 'Sorun Bildir',
