@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   User,
   Series,
+  Chapter,
   ReadingProgress,
   BookmarkFolder,
   BookmarkItem,
@@ -132,7 +133,7 @@ interface AppContextType {
   setSeriesList: React.Dispatch<React.SetStateAction<Series[]>>;
   isLoadingSeries: boolean;
   setIsLoadingSeries: React.Dispatch<React.SetStateAction<boolean>>;
-  addOrUpdateSeries: (series: Series) => Promise<any>;
+  addOrUpdateSeries: (series: Series, options?: { notifyFollowers?: boolean; notifyChapter?: Chapter; customMessage?: string }) => Promise<any>;
   addBatchSeries: (seriesBatch: Series[]) => Promise<any>;
   deleteSeries: (seriesId: string) => void;
   
@@ -160,6 +161,7 @@ interface AppContextType {
   notifications: AppNotification[];
   unreadNotificationsCount: number;
   addNotification: (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => void;
+  sendChapterNotification: (seriesId: string, chapter: Chapter, customMessage?: string) => void;
   markNotificationAsRead: (id: string) => void;
   markAllNotificationsAsRead: () => void;
   deleteNotification: (id: string) => void;
@@ -947,7 +949,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
-  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
+  const unreadNotificationsCount = notifications.filter(n => {
+    if (n.isRead) return false;
+    if (n.type === 'chapter' && n.seriesId) {
+      return followedSeriesIds.includes(n.seriesId) || !!bookmarks[n.seriesId];
+    }
+    return true;
+  }).length;
 
   const addNotification = (notif: Omit<AppNotification, 'id' | 'createdAt' | 'isRead'>) => {
     const newNotif: AppNotification = {
@@ -957,6 +965,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isRead: false,
     };
     setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
+  };
+
+  const sendChapterNotification = (seriesId: string, chapter: Chapter, customMessage?: string) => {
+    const targetSeries = seriesList.find(s => s.id === seriesId);
+    if (!targetSeries) return;
+
+    const isTracked = followedSeriesIds.includes(seriesId) || !!bookmarks[seriesId];
+    const chapterTitle = chapter.title || `Bölüm ${chapter.number}`;
+    const message = customMessage || `${chapterTitle} yüklendi ve yayında! Keyifli okumalar dileriz.`;
+
+    // Add to Notifications Center
+    addNotification({
+      title: `${targetSeries.title} - Yeni Bölüm!`,
+      message,
+      type: 'chapter',
+      seriesId: targetSeries.id,
+      seriesTitle: targetSeries.title,
+      chapterId: chapter.id,
+      chapterTitle,
+      chapterNumber: chapter.number,
+      coverImage: targetSeries.coverImage
+    });
+
+    // If tracked by the user, show toast popup
+    if (isTracked) {
+      showToast({
+        title: 'Yeni Bölüm Yayınlandı! 🔔',
+        message: `Kütüphanenizdeki "${targetSeries.title}" için yeni ${chapterTitle} eklendi!`,
+        type: 'chapter',
+        seriesId: targetSeries.id,
+        chapterId: chapter.id,
+        seriesTitle: targetSeries.title,
+        chapterTitle,
+        coverImage: targetSeries.coverImage
+      });
+    }
   };
 
   const markNotificationAsRead = (id: string) => {
@@ -1038,41 +1082,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addOrUpdateSeries = async (newSeries: Series) => {
+  const addOrUpdateSeries = async (
+    newSeries: Series,
+    options?: { notifyFollowers?: boolean; notifyChapter?: Chapter; customMessage?: string }
+  ) => {
     const existingSeries = seriesList.find(s => s.id === newSeries.id);
     const prevChapterCount = existingSeries?.chapters?.length ?? 0;
     const newChapterCount = newSeries.chapters?.length ?? 0;
 
-    // Check if new chapters were added
-    if (existingSeries && newChapterCount > prevChapterCount) {
-      const latestNewChapter = newSeries.chapters[newSeries.chapters.length - 1];
-      const isTracked = followedSeriesIds.includes(newSeries.id) || !!bookmarks[newSeries.id];
+    // Check if notification should be sent
+    const shouldNotify = options?.notifyFollowers !== false && (
+      Boolean(options?.notifyFollowers) ||
+      Boolean(options?.notifyChapter) ||
+      (existingSeries && newChapterCount > prevChapterCount)
+    );
 
-      // Add to Notifications Center
-      addNotification({
-        title: `${newSeries.title} - Yeni Bölüm!`,
-        message: `${latestNewChapter ? (latestNewChapter.title || `Bölüm ${latestNewChapter.number}`) : 'Yeni bölüm'} yüklendi ve yayında!`,
-        type: 'chapter',
-        seriesId: newSeries.id,
-        seriesTitle: newSeries.title,
-        chapterId: latestNewChapter?.id,
-        chapterTitle: latestNewChapter?.title || `Bölüm ${latestNewChapter?.number}`,
-        chapterNumber: latestNewChapter?.number,
-        coverImage: newSeries.coverImage
-      });
+    if (shouldNotify) {
+      const chapterToNotify = options?.notifyChapter ||
+        (newSeries.chapters && newSeries.chapters.length > 0
+          ? newSeries.chapters[newSeries.chapters.length - 1]
+          : undefined);
 
-      // If tracked by the user, show toast popup
-      if (isTracked) {
-        showToast({
-          title: 'Yeni Bölüm Yayınlandı! 🔔',
-          message: `Kütüphanenizdeki "${newSeries.title}" için yeni ${latestNewChapter ? (latestNewChapter.title || `Bölüm ${latestNewChapter.number}`) : 'bölüm'} eklendi!`,
+      if (chapterToNotify) {
+        const isTracked = followedSeriesIds.includes(newSeries.id) || !!bookmarks[newSeries.id];
+        const chapterTitle = chapterToNotify.title || `Bölüm ${chapterToNotify.number}`;
+        const message = options?.customMessage || `${chapterTitle} yüklendi ve yayında! Keyifli okumalar dileriz.`;
+
+        // Add to Notifications Center
+        addNotification({
+          title: `${newSeries.title} - Yeni Bölüm!`,
+          message,
           type: 'chapter',
           seriesId: newSeries.id,
-          chapterId: latestNewChapter?.id,
           seriesTitle: newSeries.title,
-          chapterTitle: latestNewChapter?.title || `Bölüm ${latestNewChapter?.number}`,
+          chapterId: chapterToNotify.id,
+          chapterTitle,
+          chapterNumber: chapterToNotify.number,
           coverImage: newSeries.coverImage
         });
+
+        // If tracked by the user, show toast popup
+        if (isTracked) {
+          showToast({
+            title: 'Yeni Bölüm Yayınlandı! 🔔',
+            message: `Kütüphanenizdeki "${newSeries.title}" için yeni ${chapterTitle} eklendi!`,
+            type: 'chapter',
+            seriesId: newSeries.id,
+            chapterId: chapterToNotify.id,
+            seriesTitle: newSeries.title,
+            chapterTitle,
+            coverImage: newSeries.coverImage
+          });
+        }
       }
     }
 
@@ -1803,6 +1864,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         notifications,
         unreadNotificationsCount,
         addNotification,
+        sendChapterNotification,
         markNotificationAsRead,
         markAllNotificationsAsRead,
         deleteNotification,

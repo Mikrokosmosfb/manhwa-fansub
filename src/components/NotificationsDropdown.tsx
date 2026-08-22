@@ -28,10 +28,12 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
     markAllNotificationsAsRead,
     deleteNotification,
     clearAllNotifications,
+    followedSeriesIds,
+    bookmarks,
     setView
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'chapters' | 'system' | 'unread'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'followed' | 'chapters' | 'system' | 'unread'>('all');
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close when clicking outside
@@ -51,9 +53,27 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
 
   if (!isOpen) return null;
 
+  const isSeriesFollowed = (seriesId?: string) => {
+    if (!seriesId) return false;
+    return followedSeriesIds.includes(seriesId) || !!bookmarks[seriesId];
+  };
+
+  const followedNotificationsCount = notifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
+  const chapterNotificationsCount = notifications.filter(n => n.type === 'chapter').length;
+  const systemNotificationsCount = notifications.filter(n => n.type !== 'chapter').length;
+
   // Filter notifications according to active tab
   const filteredNotifications = notifications.filter(n => {
-    if (activeTab === 'unread') return !n.isRead;
+    if (activeTab === 'unread') {
+      if (n.isRead) return false;
+      if (n.type === 'chapter' && n.seriesId) {
+        return isSeriesFollowed(n.seriesId);
+      }
+      return true;
+    }
+    if (activeTab === 'followed') {
+      return n.type === 'chapter' && isSeriesFollowed(n.seriesId);
+    }
     if (activeTab === 'chapters') return n.type === 'chapter';
     if (activeTab === 'system') return n.type !== 'chapter';
     return true;
@@ -148,6 +168,17 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
             Tümü ({notifications.length})
           </button>
           <button
+            onClick={() => setActiveTab('followed')}
+            className={`px-2.5 py-1 rounded-lg transition text-[11px] whitespace-nowrap flex items-center gap-1 ${
+              activeTab === 'followed'
+                ? 'bg-purple-600 text-white font-black'
+                : 'text-purple-300 hover:text-white hover:bg-purple-950/60'
+            }`}
+          >
+            <Sparkles size={11} className="text-amber-300" />
+            Takip Ettiklerim ({followedNotificationsCount})
+          </button>
+          <button
             onClick={() => setActiveTab('chapters')}
             className={`px-2.5 py-1 rounded-lg transition text-[11px] whitespace-nowrap ${
               activeTab === 'chapters'
@@ -155,7 +186,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                 : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
             }`}
           >
-            Bölümler ({notifications.filter(n => n.type === 'chapter').length})
+            Bölümler ({chapterNotificationsCount})
           </button>
           <button
             onClick={() => setActiveTab('system')}
@@ -165,7 +196,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                 : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
             }`}
           >
-            Duyurular
+            Duyurular ({systemNotificationsCount})
           </button>
           {unreadNotificationsCount > 0 && (
             <button
@@ -205,14 +236,22 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
               <Layers size={22} />
             </div>
             <p className="text-xs font-bold text-gray-300">
-              {activeTab === 'unread' ? 'Okunmamış bildirim bulunmuyor' : 'Henüz bildirim bulunmuyor'}
+              {activeTab === 'unread'
+                ? 'Okunmamış bildirim bulunmuyor'
+                : activeTab === 'followed'
+                ? 'Takip ettiğiniz serilere ait bildirim henüz yok'
+                : 'Henüz bildirim bulunmuyor'}
             </p>
             <p className="text-[10px] text-gray-500 max-w-[240px] mx-auto">
-              Takip ettiğiniz serilere yeni bölüm yüklendiğinde ve duyurular paylaşıldığında burada listelenecektir.
+              {activeTab === 'followed'
+                ? 'Seri detay sayfasından serileri takip ederek yeni bölümlerden anında haberdar olabilirsiniz.'
+                : 'Takip ettiğiniz serilere yeni bölüm yüklendiğinde ve duyurular paylaşıldığında burada listelenecektir.'}
             </p>
           </div>
         ) : (
-          filteredNotifications.map(notif => (
+          filteredNotifications.map(notif => {
+            const isFollowed = isSeriesFollowed(notif.seriesId);
+            return (
             <div
               key={notif.id}
               onClick={() => handleNotificationClick(notif)}
@@ -254,12 +293,17 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
               {/* Content */}
               <div className="flex-1 min-w-0 pr-4">
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <h4 className="font-extrabold text-xs text-purple-100 group-hover:text-purple-300 truncate max-w-[220px]">
+                  <h4 className="font-extrabold text-xs text-purple-100 group-hover:text-purple-300 truncate max-w-[200px]">
                     {notif.title}
                   </h4>
                   {notif.chapterNumber !== undefined && (
                     <span className="px-1.5 py-0.2 rounded bg-purple-800 text-purple-200 text-[9px] font-mono font-black">
                       #{notif.chapterNumber}
+                    </span>
+                  )}
+                  {isFollowed && notif.type === 'chapter' && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-purple-900/90 text-amber-300 border border-purple-500/40 text-[9px] font-extrabold flex items-center gap-0.5">
+                      <Sparkles size={9} /> Takipte
                     </span>
                   )}
                 </div>
@@ -313,8 +357,8 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                 </div>
               </div>
             </div>
-          ))
-        )}
+          );
+        }))}
       </div>
 
       {/* Footer */}

@@ -47,7 +47,9 @@ import {
   Sliders,
   X as CloseIcon,
   RotateCcw,
-  Loader2
+  Loader2,
+  Bell,
+  Send
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
@@ -80,6 +82,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     bookmarks,
     comments,
     notifications,
+    sendChapterNotification,
     isAdminLoggedIn,
     verifyAdminPassword,
     changeAdminPassword,
@@ -913,6 +916,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [editingSeries, setEditingSeries] = useState<Series | null>(null);
   const [editingBadgesText, setEditingBadgesText] = useState('');
 
+  // Chapter Notification Options
+  const [notifyFollowersOnAdd, setNotifyFollowersOnAdd] = useState(true);
+  const [notifyFollowersOnEdit, setNotifyFollowersOnEdit] = useState(false);
+  const [chapterNotifSentNotice, setChapterNotifSentNotice] = useState<string | null>(null);
+
   // Chapter Management & Edit State
   const [manageSearchQuery, setManageSearchQuery] = useState('');
   const [expandedSeriesId, setExpandedSeriesId] = useState<string | null>(null);
@@ -1071,14 +1079,28 @@ export const AdminModal: React.FC<AdminModalProps> = ({
       c.id === editingChapter.id ? updatedChapter : c
     );
 
-    addOrUpdateSeries({
-      ...targetSeries,
-      chapters: updatedChapters
-    });
+    addOrUpdateSeries(
+      {
+        ...targetSeries,
+        chapters: updatedChapters
+      },
+      {
+        notifyFollowers: notifyFollowersOnEdit,
+        notifyChapter: updatedChapter,
+        customMessage: `"${updatedChapter.title}" bölümü güncellendi!`
+      }
+    );
 
-    alert(`"${updatedChapter.title}" (Bölüm ${updatedChapter.number}) başarıyla güncellendi!`);
+    alert(`"${updatedChapter.title}" (Bölüm ${updatedChapter.number}) başarıyla güncellendi!${notifyFollowersOnEdit ? ' Takipçilere bildirim iletildi.' : ''}`);
     setEditingChapter(null);
     setEditingChapterSeriesId(null);
+  };
+
+  const handleSendInstantChapterNotification = () => {
+    if (!editingChapterSeriesId || !editingChapter) return;
+    sendChapterNotification(editingChapterSeriesId, editingChapter);
+    setChapterNotifSentNotice(`"${editingChapter.title}" için takipçilere anında bildirim gönderildi! 🔔`);
+    setTimeout(() => setChapterNotifSentNotice(null), 4500);
   };
 
   const handleDeleteChapter = (seriesId: string, chapterId: string, chapterNumber: number) => {
@@ -1219,8 +1241,12 @@ export const AdminModal: React.FC<AdminModalProps> = ({
       updatedAt: new Date().toISOString().slice(0, 10)
     };
 
-    addOrUpdateSeries(updatedSeries);
-    alert(`"${cTitle}" bölümü "${targetSeries.title}" serisine eklendi!`);
+    addOrUpdateSeries(updatedSeries, {
+      notifyFollowers: notifyFollowersOnAdd,
+      notifyChapter: newChapter
+    });
+    
+    alert(`"${cTitle}" bölümü "${targetSeries.title}" serisine eklendi!${notifyFollowersOnAdd ? ' Takipçilere anında bildirim gönderildi.' : ' (Bildirimsiz kaydedildi)'}`);
 
     setChapterNumber('');
     setChapterTitle('');
@@ -2047,6 +2073,34 @@ export const AdminModal: React.FC<AdminModalProps> = ({
             </div>
           </div>
 
+          {/* Follower Notification Checkbox Toggle */}
+          <div className="bg-purple-950/40 border border-purple-800/60 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+            <label className="flex items-start sm:items-center gap-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={notifyFollowersOnAdd}
+                onChange={e => setNotifyFollowersOnAdd(e.target.checked)}
+                className="w-4 h-4 mt-0.5 sm:mt-0 rounded text-purple-600 focus:ring-purple-500 bg-gray-950 border-purple-500/50 cursor-pointer"
+              />
+              <div>
+                <p className="text-xs font-bold text-white flex items-center gap-1.5">
+                  <Bell size={14} className="text-purple-400" />
+                  Takipçilere Bildirim Olarak Gönder
+                </p>
+                <p className="text-[11px] text-gray-400">
+                  Bu seriyi kütüphanesine ekleyen veya takip eden kullanıcılara anında yeni bölüm bildirimi ve açılır bildirim (toast) gider.
+                </p>
+              </div>
+            </label>
+            <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full border self-start sm:self-auto ${
+              notifyFollowersOnAdd
+                ? 'bg-purple-900/90 text-purple-200 border-purple-400/60 shadow-sm'
+                : 'bg-gray-900 text-gray-400 border-gray-700'
+            }`}>
+              {notifyFollowersOnAdd ? '🔔 Bildirim Açık' : '🔕 Bildirim Gönderilmeyecek'}
+            </span>
+          </div>
+
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm"
@@ -2187,6 +2241,49 @@ export const AdminModal: React.FC<AdminModalProps> = ({
                     onChange={e => setEditingChapterContentText(e.target.value)}
                     className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none resize-none"
                   />
+                </div>
+
+                {/* Chapter Notification Control in Edit Mode */}
+                <div className="bg-purple-950/40 border border-purple-700/60 rounded-2xl p-4 space-y-3">
+                  {chapterNotifSentNotice && (
+                    <div className="p-3 bg-emerald-950/90 border border-emerald-500/60 rounded-xl text-xs text-emerald-200 flex items-center gap-2 font-bold animate-fadeIn">
+                      <Check size={16} className="text-emerald-400 shrink-0" />
+                      <span>{chapterNotifSentNotice}</span>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-white flex items-center gap-1.5">
+                        <Bell size={14} className="text-purple-400" />
+                        Bu Bölüm İçin Takipçilere Bildirim Gönder
+                      </p>
+                      <p className="text-[11px] text-gray-400">
+                        Bölümü ilk eklerken bildirim atmayı unuttuysanız veya duyuruyu tazelemek istiyorsanız buradan tek tıkla takipçilere bildirim gönderebilirsiniz.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleSendInstantChapterNotification}
+                      className="px-3.5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-extrabold shadow-md transition flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <Send size={13} />
+                      <span>Şimdi Bildirim Gönder</span>
+                    </button>
+                  </div>
+
+                  <label className="flex items-center gap-2.5 cursor-pointer select-none pt-2 border-t border-purple-900/60">
+                    <input
+                      type="checkbox"
+                      checked={notifyFollowersOnEdit}
+                      onChange={e => setNotifyFollowersOnEdit(e.target.checked)}
+                      className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-gray-950 border-purple-500/50 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-purple-200">
+                      Değişiklikleri kaydederken de takipçilere yeni bildirim gönder
+                    </span>
+                  </label>
                 </div>
 
                 <div className="flex gap-2 pt-2">

@@ -28,11 +28,17 @@ export const NotificationsView: React.FC = () => {
     deleteNotification,
     clearAllNotifications,
     followedSeriesIds,
+    bookmarks,
     setView
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'all' | 'chapters' | 'system' | 'unread'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'followed' | 'chapters' | 'system' | 'unread'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isSeriesFollowed = (seriesId?: string) => {
+    if (!seriesId) return false;
+    return followedSeriesIds.includes(seriesId) || !!bookmarks[seriesId];
+  };
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return 'Az önce';
@@ -54,7 +60,16 @@ export const NotificationsView: React.FC = () => {
 
   const filteredNotifications = notifications.filter(n => {
     // Tab filter
-    if (activeTab === 'unread' && n.isRead) return false;
+    if (activeTab === 'unread') {
+      if (n.isRead) return false;
+      if (n.type === 'chapter' && n.seriesId) {
+        return isSeriesFollowed(n.seriesId);
+      }
+      return true;
+    }
+    if (activeTab === 'followed') {
+      return n.type === 'chapter' && isSeriesFollowed(n.seriesId);
+    }
     if (activeTab === 'chapters' && n.type !== 'chapter') return false;
     if (activeTab === 'system' && n.type === 'chapter') return false;
 
@@ -70,6 +85,7 @@ export const NotificationsView: React.FC = () => {
     return true;
   });
 
+  const totalFollowedNotifications = notifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
   const totalChapterNotifications = notifications.filter(n => n.type === 'chapter').length;
   const totalSystemNotifications = notifications.filter(n => n.type !== 'chapter').length;
 
@@ -169,6 +185,17 @@ export const NotificationsView: React.FC = () => {
             <span>Tüm Bildirimler ({notifications.length})</span>
           </button>
           <button
+            onClick={() => setActiveTab('followed')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === 'followed'
+                ? 'bg-purple-600 text-white shadow-md'
+                : 'text-purple-300 hover:text-white hover:bg-purple-950/60'
+            }`}
+          >
+            <Sparkles size={14} className="text-amber-300" />
+            <span>Takip Ettiklerim ({totalFollowedNotifications})</span>
+          </button>
+          <button
             onClick={() => setActiveTab('chapters')}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === 'chapters'
@@ -226,11 +253,17 @@ export const NotificationsView: React.FC = () => {
               <Bell size={28} />
             </div>
             <h3 className="text-base font-extrabold text-white">
-              {searchQuery ? 'Aramanızla eşleşen bildirim bulunamadı' : 'Bildirim Kutunuz Temiz'}
+              {searchQuery
+                ? 'Aramanızla eşleşen bildirim bulunamadı'
+                : activeTab === 'followed'
+                ? 'Takip ettiğiniz serilere ait bildirim henüz yok'
+                : 'Bildirim Kutunuz Temiz'}
             </h3>
             <p className="text-xs text-gray-400 max-w-md mx-auto">
               {searchQuery
                 ? `"${searchQuery}" terimi ile ilgili bildirim bulunamadı.`
+                : activeTab === 'followed'
+                ? 'Kütüphanenizden veya serilerin detay sayfalarından serileri takip edebilirsiniz.'
                 : 'Takip ettiğiniz serilere yeni bölümler yüklendiğinde ve duyurular yapıldığında anında burada görüntülenecektir.'}
             </p>
             <div className="pt-2">
@@ -243,7 +276,9 @@ export const NotificationsView: React.FC = () => {
             </div>
           </div>
         ) : (
-          filteredNotifications.map(notif => (
+          filteredNotifications.map(notif => {
+            const isFollowed = isSeriesFollowed(notif.seriesId);
+            return (
             <div
               key={notif.id}
               className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all flex flex-col sm:flex-row items-start gap-4 group relative ${
@@ -296,6 +331,11 @@ export const NotificationsView: React.FC = () => {
                   {notif.chapterNumber !== undefined && (
                     <span className="px-2 py-0.5 rounded-md bg-purple-800/90 text-purple-200 text-xs font-mono font-black border border-purple-600/50">
                       Bölüm {notif.chapterNumber}
+                    </span>
+                  )}
+                  {isFollowed && notif.type === 'chapter' && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-900/90 text-amber-300 border border-purple-500/50 text-[10px] font-extrabold flex items-center gap-1">
+                      <Sparkles size={11} /> Takip Ediliyor
                     </span>
                   )}
                 </div>
@@ -359,8 +399,8 @@ export const NotificationsView: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))
-        )}
+          );
+        }))}
       </div>
     </div>
   );
