@@ -200,38 +200,26 @@ const MainContent: React.FC = () => {
             </div>
           </section>
 
-          {/* Section 2: Yeni Yüklenen Çizgi Roman / Manhwa Bölümleri (Bilgisayarda İkili Grid Tasarımı) */}
-          <section className="space-y-4">
-            {/* Purple Header Banner matching screenshot */}
-            <div className="bg-gradient-to-r from-purple-700 via-purple-800 to-indigo-800 text-white rounded-2xl px-4 py-3 sm:py-3.5 flex items-center justify-between shadow-lg">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <div className="flex flex-col gap-0.5 opacity-90">
-                  <div className="flex gap-0.5">
-                    <span className="w-1.5 h-1.5 bg-white rounded-sm"></span>
-                    <span className="w-3.5 h-1.5 bg-white rounded-sm"></span>
-                  </div>
-                  <div className="flex gap-0.5">
-                    <span className="w-1.5 h-1.5 bg-white rounded-sm"></span>
-                    <span className="w-3.5 h-1.5 bg-white rounded-sm"></span>
-                  </div>
-                </div>
-                <h2 className="text-sm sm:text-base font-black tracking-wide text-white">
-                  Yeni Yüklenen Bölümler
-                </h2>
-              </div>
-
+          {/* Section 2: Yeni Yüklenen Çizgi Roman / Manhwa Bölümleri (Orijinal Tasarım, Bilgisayarda 2'li Grid) */}
+          <section className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-800">
+              <h2 className="text-sm sm:text-lg font-extrabold text-white flex items-center gap-1.5 sm:gap-2">
+                <Sparkles className="text-purple-400" size={18} />
+                Yeni Yüklenen Bölümler & Manhwalar
+              </h2>
               <button
                 onClick={() => setView({ type: 'series-list' })}
-                className="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] sm:text-[11px] font-black tracking-wider uppercase px-3 py-1.5 rounded-lg transition shadow-md flex items-center gap-1 active:scale-95 cursor-pointer"
+                className="text-[11px] sm:text-xs font-bold text-purple-300 hover:text-white bg-purple-950/80 hover:bg-purple-900 border border-purple-800 px-2.5 py-1 rounded-xl transition flex items-center gap-0.5 sm:gap-1 cursor-pointer"
               >
-                TÜMÜNÜ GÖR
+                Tümünü Gör
+                <ChevronRight size={13} />
               </button>
             </div>
 
-            {/* Grid: 2 columns on desktop/tablet, 1 column on mobile */}
+            {/* Bilgisayarda (md ve lg ekranlarda) 2'li grid, mobilde tekli liste */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
               {comicSeries.map(s => (
-                <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} compact={true} />
+                <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} />
               ))}
             </div>
           </section>
