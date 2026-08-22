@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { Series } from '../types';
-import { Sparkles, Calendar, Star } from 'lucide-react';
+import { Sparkles, Calendar, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
@@ -23,6 +23,7 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
   index
 }) => {
   const { setView } = useApp();
+  const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
 
   // Take latest chapters based on maxChapters
   const recentChapters = [...series.chapters].reverse().slice(0, maxChapters);
@@ -155,11 +156,45 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
           </div>
 
           {/* Series Synopsis / Özet (Sadece Seriler Kataloğunda aktif) */}
-          {showSynopsis && series.synopsis && (
-            <p className="text-xs text-gray-300/90 leading-relaxed line-clamp-2 sm:line-clamp-3 mb-2 font-normal bg-gray-950/40 p-2 sm:p-2.5 rounded-xl border border-gray-800/50">
-              {series.synopsis}
-            </p>
-          )}
+          {showSynopsis && series.synopsis && (() => {
+            const synopsisText = series.synopsis.trim();
+            const isLong = synopsisText.length > 140;
+
+            return (
+              <div className="mb-2 bg-gray-950/50 p-2.5 sm:p-3 rounded-xl border border-gray-800/70 transition-all group/syn">
+                <div className="relative">
+                  <p
+                    className={`text-xs text-gray-300 leading-relaxed font-normal break-words text-left transition-all duration-200 ${
+                      !isSynopsisExpanded && isLong ? 'line-clamp-2 sm:line-clamp-3 overflow-hidden' : ''
+                    }`}
+                  >
+                    {synopsisText}
+                  </p>
+                  {!isSynopsisExpanded && isLong && (
+                    <div className="absolute bottom-0 inset-x-0 h-5 bg-gradient-to-t from-gray-950/90 to-transparent pointer-events-none" />
+                  )}
+                </div>
+
+                {isLong && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSynopsisExpanded(!isSynopsisExpanded);
+                    }}
+                    className="mt-2 w-full py-1 px-2.5 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/20 hover:border-purple-400/40 text-purple-300 hover:text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 group/btn cursor-pointer"
+                  >
+                    <span>{isSynopsisExpanded ? 'Daha Az Göster' : 'Özetin Devamı'}</span>
+                    {isSynopsisExpanded ? (
+                      <ChevronUp size={13} className="text-purple-400 group-hover/btn:-translate-y-0.5 transition-transform" />
+                    ) : (
+                      <ChevronDown size={13} className="text-purple-400 group-hover/btn:translate-y-0.5 transition-transform" />
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Genres / Türler (Sadece Seriler Kataloğunda aktif) */}
           {showGenres && series.genres && series.genres.length > 0 && (
