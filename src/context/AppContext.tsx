@@ -416,19 +416,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [user, setUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('mk_user');
     if (!saved) {
-      return {
-        uid: 'u-guest',
-        name: 'Okuyucu Misafir',
-        email: 'misafir@mikrokosmos.com',
-        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Guest',
-        provider: 'google',
-        coins: 250,
-        inventory: [],
-        unlockedEmojiPacks: []
-      };
+      return null;
     }
     try {
       const parsed = JSON.parse(saved);
+      // Clean up legacy guest dummy accounts
+      if (
+        !parsed ||
+        parsed.uid === 'u-guest' ||
+        parsed.email === 'misafir@mikrokosmos.com' ||
+        parsed.name === 'Okuyucu Misafir'
+      ) {
+        localStorage.removeItem('mk_user');
+        return null;
+      }
       const isUnlimitedUser = parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
       return {
         ...parsed,
@@ -437,13 +438,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         unlockedEmojiPacks: parsed.unlockedEmojiPacks || []
       };
     } catch (e) {
+      localStorage.removeItem('mk_user');
       return null;
     }
   });
 
   // Shop state
   const [isShopOpen, setIsShopOpen] = useState(false);
-  const openShop = () => setIsShopOpen(true);
+  const openShop = () => {
+    if (!user) {
+      openAuthModal('login');
+      showToast({
+        title: 'Giriş Yapmalısınız 🔒',
+        message: 'Cosmo-Puan mağazasına erişmek ve temaları kullanmak için lütfen giriş yapın.',
+        type: 'info'
+      });
+      return;
+    }
+    setIsShopOpen(true);
+  };
   const closeShop = () => setIsShopOpen(false);
 
   const [shopItems, setShopItems] = useState<ShopItem[]>(() => {
@@ -963,6 +976,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleFollowSeries = (seriesId: string): boolean => {
+    if (!user) {
+      openAuthModal('login');
+      showToast({
+        title: 'Giriş Yapmalısınız 🔒',
+        message: 'Serileri takip etmek ve yeni bölüm bildirimleri almak için lütfen giriş yapın.',
+        type: 'info'
+      });
+      return false;
+    }
+
     const target = seriesList.find(s => s.id === seriesId);
     const title = target?.title || 'Seri';
     const cover = target?.coverImage;
@@ -1255,6 +1278,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBookmarkFolder = (name: string) => {
+    if (!user) {
+      openAuthModal('login');
+      showToast({
+        title: 'Giriş Yapmalısınız 🔒',
+        message: 'Özel kütüphane klasörü oluşturmak için lütfen giriş yapın.',
+        type: 'info'
+      });
+      return;
+    }
     if (!name.trim()) return;
     if (bookmarkFolders.some(f => f.name.toLowerCase() === name.trim().toLowerCase())) return;
     const newFolder: BookmarkFolder = {
@@ -1286,6 +1318,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleBookmark = (seriesId: string, folders: string[]) => {
+    if (!user) {
+      openAuthModal('login');
+      showToast({
+        title: 'Giriş Yapmalısınız 🔒',
+        message: 'Kütüphanenize seri eklemek ve yer imi kaydetmek için lütfen giriş yapın.',
+        type: 'info'
+      });
+      return;
+    }
     if (folders.length === 0) {
       removeBookmark(seriesId);
       return;

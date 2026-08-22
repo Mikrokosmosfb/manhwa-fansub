@@ -60,7 +60,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
     showNsfw,
     toggleNsfw,
     isFollowingSeries,
-    toggleFollowSeries
+    toggleFollowSeries,
+    openAuthModal
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -256,7 +257,13 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
               {/* Bookmark Button */}
               <button
-                onClick={() => setIsBookmarkModalOpen(true)}
+                onClick={() => {
+                  if (!user) {
+                    openAuthModal('login');
+                    return;
+                  }
+                  setIsBookmarkModalOpen(true);
+                }}
                 className={`mt-2.5 w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-sm shadow-lg transition-all ${
                   selectedFolderNames.length > 0
                     ? 'bg-purple-600 hover:bg-purple-500 text-white ring-2 ring-purple-400'

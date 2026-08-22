@@ -152,6 +152,61 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
+  if (!user) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-12 animate-fadeIn">
+        <div className="bg-gradient-to-b from-purple-950/80 via-gray-900/90 to-gray-950 border border-purple-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl text-center space-y-6 relative overflow-hidden">
+          <div className="w-20 h-20 mx-auto rounded-3xl bg-purple-900/50 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-xl shadow-purple-950/80">
+            <UserIcon size={36} className="text-purple-300" />
+          </div>
+
+          <div className="space-y-2 max-w-md mx-auto">
+            <h2 className="text-2xl font-black text-white">Profil Özelliklerine Erişin</h2>
+            <p className="text-sm text-purple-200/80 leading-relaxed">
+              Profil düzenleme, okuma başarımları, üye rozetleri, kütüphane takibi ve Cosmo-Puan mağazası giriş yapmış kullanıcılara özeldir.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto text-left pt-2">
+            <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1">
+              <div className="text-amber-400 font-black text-xs flex items-center gap-1.5">
+                <Award size={16} /> Başarımlar & Rozetler
+              </div>
+              <p className="text-[11px] text-gray-400">Okuma seviyeleri atlayın, üye rozetleri kazanın.</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1">
+              <div className="text-purple-400 font-black text-xs flex items-center gap-1.5">
+                <Bookmark size={16} /> Kütüphane & Takip
+              </div>
+              <p className="text-[11px] text-gray-400">Bölüm bildirimleri alın, okuma listelerinizi kaydedin.</p>
+            </div>
+            <div className="p-4 rounded-2xl bg-black/40 border border-purple-500/20 space-y-1">
+              <div className="text-emerald-400 font-black text-xs flex items-center gap-1.5">
+                <ShoppingBag size={16} /> Mağaza & Temalar
+              </div>
+              <p className="text-[11px] text-gray-400">Özel profiller, Chibi emojiler ve yorum temaları donatın.</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-4">
+            <button
+              onClick={() => openAuthModal('login')}
+              className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold rounded-2xl text-sm shadow-xl shadow-purple-950/60 transition active:scale-95 border border-purple-400/40"
+            >
+              Giriş Yap
+            </button>
+            <button
+              onClick={() => openAuthModal('register')}
+              className="w-full sm:w-auto px-8 py-3 bg-gray-900 hover:bg-gray-800 text-purple-200 hover:text-white font-bold rounded-2xl text-sm border border-purple-500/30 transition active:scale-95"
+            >
+              Ücretsiz Kayıt Ol
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Calculate stats
   let totalReadChaptersCount = 0;
   let novelReadCount = 0;

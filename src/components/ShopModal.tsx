@@ -74,6 +74,53 @@ export const ShopContent: React.FC = () => {
   const equippedTheme = user?.equippedTheme || null;
   const equippedBadge = user?.equippedBadge || null;
 
+  if (!user) {
+    return (
+      <div className="max-w-3xl mx-auto py-8 text-center space-y-6 animate-fadeIn">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-950/60">
+          <ShoppingBag size={32} />
+        </div>
+
+        <div className="space-y-2 max-w-md mx-auto">
+          <h2 className="text-xl sm:text-2xl font-black text-white">Mağazaya Erişmek İçin Giriş Yapın</h2>
+          <p className="text-xs sm:text-sm text-amber-200/80 leading-relaxed">
+            Cosmo-Puan mağazası, günlük çark çevirme, yorum temaları, Chibi emojiler ve özel unvan rozetleri kayıtlı üyelere özeldir.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg mx-auto text-left pt-2">
+          <div className="p-3.5 rounded-2xl bg-black/40 border border-amber-500/20 space-y-1">
+            <div className="text-amber-300 font-extrabold text-xs flex items-center gap-1.5">
+              <Gift size={15} /> Günlük Giriş & Şans Çarkı
+            </div>
+            <p className="text-[11px] text-gray-400">Her gün ücretsiz çark çevirin ve ekstra CP kazanın.</p>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-black/40 border border-amber-500/20 space-y-1">
+            <div className="text-purple-300 font-extrabold text-xs flex items-center gap-1.5">
+              <Palette size={15} /> Özel Temalar & VIP Rozetler
+            </div>
+            <p className="text-[11px] text-gray-400">Profilinizi ve yorumlarınızı parlak efektlerle donatın.</p>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => openAuthModal('login')}
+            className="w-full sm:w-auto px-7 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl text-xs sm:text-sm shadow-xl transition active:scale-95"
+          >
+            Giriş Yap
+          </button>
+          <button
+            onClick={() => openAuthModal('register')}
+            className="w-full sm:w-auto px-7 py-2.5 bg-gray-900 hover:bg-gray-800 text-amber-200 hover:text-white font-bold rounded-xl text-xs sm:text-sm border border-amber-500/30 transition active:scale-95"
+          >
+            Ücretsiz Kayıt Ol
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const filteredItems = itemsList.filter(item => {
     if (activeCategory === 'all') return true;
     if (activeCategory === 'theme_photo') return item.category === 'theme' && item.themeType === 'photo';

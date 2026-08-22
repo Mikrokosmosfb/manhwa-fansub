@@ -37,7 +37,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
     deleteComment,
     reportComment,
     user,
-    loginWithGoogle,
+    openAuthModal,
     logout,
     openShop,
     themeStyles: appThemeStyles,
@@ -68,8 +68,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
     if (!commentText.trim()) return;
 
     if (!user) {
-      alert('Yorum yapmak için lütfen Google ile giriş yapın veya misafir profilinizi onaylayın.');
-      loginWithGoogle();
+      openAuthModal('login');
       return;
     }
 
@@ -279,7 +278,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
             : 'pt-1 border-t border-gray-800/80'
         }`}>
           <button
-            onClick={() => user && toggleLikeComment(c.id, user.uid)}
+            onClick={() => {
+              if (!user) {
+                openAuthModal('login');
+                return;
+              }
+              toggleLikeComment(c.id, user.uid);
+            }}
             className={`flex items-center gap-1 font-semibold transition ${
               isLiked ? 'text-purple-400' : 'text-gray-400 hover:text-purple-300'
             }`}
@@ -289,7 +294,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           </button>
 
           <button
-            onClick={() => user && toggleDislikeComment(c.id, user.uid)}
+            onClick={() => {
+              if (!user) {
+                openAuthModal('login');
+                return;
+              }
+              toggleDislikeComment(c.id, user.uid);
+            }}
             className={`flex items-center gap-1 font-semibold transition ${
               isDisliked ? 'text-red-400' : 'text-gray-400 hover:text-red-300'
             }`}
@@ -299,7 +310,13 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           </button>
 
           <button
-            onClick={() => setReplyTo({ id: c.id, name: c.userName })}
+            onClick={() => {
+              if (!user) {
+                openAuthModal('login');
+                return;
+              }
+              setReplyTo({ id: c.id, name: c.userName });
+            }}
             className="flex items-center gap-1 text-gray-400 hover:text-purple-300 font-semibold transition"
           >
             <CornerDownRight size={14} />
@@ -330,7 +347,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
             className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95"
           >
             <ShoppingBag size={14} className="stroke-[2.5]" />
-            <span>Mağaza ({user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞ CP' : `${user?.coins ?? 250} CP`})</span>
+            <span>Mağaza {user ? (user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '(∞ CP)' : `(${user.coins ?? 250} CP)`) : ''}</span>
           </button>
 
           {user ? (
@@ -353,11 +370,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           ) : (
             <button
               type="button"
-              onClick={loginWithGoogle}
+              onClick={() => openAuthModal('login')}
               className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
             >
               <LogIn size={14} />
-              Google ile Giriş Yap
+              Giriş Yap / Kayıt Ol
             </button>
           )}
         </div>
