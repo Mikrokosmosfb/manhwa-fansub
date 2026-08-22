@@ -50,7 +50,7 @@ export const HeroSlider: React.FC = () => {
   const bgImage = current.bannerImage || current.heroImage || current.coverImage;
 
   return (
-    <div className="hero-slider-preserve-dark w-full relative overflow-hidden bg-gray-950 border-b border-purple-500/20 shadow-2xl group min-h-[380px] sm:min-h-[420px] md:min-h-[460px] flex items-center">
+    <div className="hero-slider-preserve-dark w-full relative overflow-hidden bg-gray-950 border-b border-purple-500/20 shadow-xl group flex items-center">
       
       {/* Blurred Background Layer using original series cover/banner artwork */}
       <div
@@ -59,17 +59,17 @@ export const HeroSlider: React.FC = () => {
       />
 
       {/* Subtle Dark Vignette & Gradient Overlay for readability */}
-      <div className="hero-gradient-overlay absolute inset-0 bg-gradient-to-r from-gray-950/85 via-gray-950/60 to-black/40 z-10 pointer-events-none backdrop-brightness-90" />
+      <div className="hero-gradient-overlay absolute inset-0 bg-gradient-to-r from-gray-950/90 via-gray-950/70 to-black/50 z-10 pointer-events-none backdrop-brightness-90" />
 
       {/* Content Container */}
-      <div className="relative z-20 max-w-7xl mx-auto w-full px-3 sm:px-12 md:px-16 py-5 sm:py-8 flex flex-row items-center gap-3.5 sm:gap-6 md:gap-10">
+      <div className="relative z-20 max-w-7xl mx-auto w-full px-2.5 sm:px-10 md:px-16 pt-3 pb-6 sm:py-6 md:py-8 flex flex-row items-center gap-3 sm:gap-6 md:gap-10">
         
         {/* Cover Image & Badges */}
-        <div className="relative flex-shrink-0 w-24 xs:w-32 sm:w-44 md:w-52 group-hover:scale-105 transition-transform duration-300">
+        <div className="relative flex-shrink-0 w-28 sm:w-44 md:w-52 group-hover:scale-105 transition-transform duration-300">
           <img
             src={current.coverImage}
             alt={current.title}
-            className="w-full aspect-[2/3] object-cover rounded-xl sm:rounded-2xl shadow-2xl border-2 border-purple-500/50"
+            className="w-full aspect-[2/3] object-cover rounded-xl sm:rounded-2xl shadow-xl border border-purple-500/40"
           />
           
           {/* Age Rating Badge */}
@@ -88,8 +88,8 @@ export const HeroSlider: React.FC = () => {
           )}
 
           {/* Star Rating */}
-          <div className="flex items-center justify-center gap-1 mt-1.5 sm:mt-3 bg-black/70 backdrop-blur-md py-0.5 px-2 sm:px-3 rounded-full border border-white/10 w-fit mx-auto shadow-md">
-            <div className="flex scale-90 sm:scale-100">{renderStars(current.rating)}</div>
+          <div className="flex items-center justify-center gap-1 mt-1 sm:mt-2.5 bg-black/70 backdrop-blur-md py-0.5 px-2 sm:px-3 rounded-full border border-white/10 w-fit mx-auto shadow-md">
+            <div className="flex scale-85 sm:scale-100">{renderStars(current.rating)}</div>
             <span className="text-[10px] sm:text-xs font-bold text-amber-300 ml-0.5">
               {current.rating}
             </span>
@@ -100,11 +100,11 @@ export const HeroSlider: React.FC = () => {
         <div className="flex-1 min-w-0 flex flex-col justify-center text-left">
           
           {/* Tags / Badges */}
-          <div className="flex flex-wrap items-center justify-start gap-1 sm:gap-2 mb-1 sm:mb-2">
-            <span className="bg-purple-600/90 text-white border border-purple-400/40 text-[9px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
+          <div className="flex flex-wrap items-center justify-start gap-1 sm:gap-2 mb-1">
+            <span className="bg-purple-600 text-white border border-purple-400/40 text-[9px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 rounded-full uppercase tracking-wider shadow">
               {current.type}
             </span>
-            <span className="bg-indigo-600/90 text-white border border-indigo-400/40 text-[9px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 rounded-full shadow">
+            <span className="bg-indigo-600 text-white border border-indigo-400/40 text-[9px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 rounded-full shadow">
               {current.status}
             </span>
             <span className="text-[10px] sm:text-xs text-purple-200 font-semibold drop-shadow">
@@ -115,13 +115,13 @@ export const HeroSlider: React.FC = () => {
           {/* Title */}
           <h2
             onClick={() => setView({ type: 'series-detail', seriesId: current.id })}
-            className="text-base sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-white hover:text-purple-300 cursor-pointer transition line-clamp-2 leading-snug drop-shadow-md"
+            className="text-sm sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-white hover:text-purple-300 cursor-pointer transition line-clamp-2 leading-snug drop-shadow-md"
           >
             {current.title}
           </h2>
 
           {/* Genres */}
-          <div className="flex flex-wrap justify-start gap-1 sm:gap-1.5 my-1.5 sm:my-3">
+          <div className="flex flex-wrap justify-start gap-1 sm:gap-1.5 my-1 sm:my-2.5">
             {current.genres.slice(0, 4).map(g => (
               <span
                 key={g}
@@ -133,7 +133,7 @@ export const HeroSlider: React.FC = () => {
           </div>
 
           {/* Synopsis */}
-          <p className="text-[11px] sm:text-sm text-gray-200 line-clamp-2 sm:line-clamp-3 leading-relaxed mb-2.5 sm:mb-5 max-w-2xl drop-shadow">
+          <p className="text-[10px] sm:text-sm text-gray-300 line-clamp-2 sm:line-clamp-3 leading-relaxed mb-2 sm:mb-4 max-w-2xl drop-shadow">
             {current.synopsis}
           </p>
 
@@ -141,9 +141,9 @@ export const HeroSlider: React.FC = () => {
           <div className="mt-auto flex items-center justify-start gap-2 sm:gap-3">
             <button
               onClick={() => setView({ type: 'series-detail', seriesId: current.id })}
-              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm px-4 sm:px-7 py-1.5 sm:py-3 rounded-full shadow-xl hover:shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-1 sm:gap-2 border border-purple-400/30"
+              className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm px-3.5 sm:px-7 py-1.5 sm:py-2.5 rounded-full shadow-lg hover:shadow-purple-500/30 hover:scale-105 active:scale-95 transition-all flex items-center gap-1 sm:gap-2 border border-purple-400/30"
             >
-              <BookOpen size={14} className="sm:w-4 sm:h-4" />
+              <BookOpen size={13} className="sm:w-4 sm:h-4" />
               Oku
             </button>
 
@@ -156,7 +156,7 @@ export const HeroSlider: React.FC = () => {
                     chapterId: firstChapter.id
                   })
                 }
-                className="bg-black/40 hover:bg-black/60 text-purple-200 hover:text-white font-semibold text-xs px-3 sm:px-5 py-1.5 sm:py-3 rounded-full border border-white/20 backdrop-blur-sm transition"
+                className="bg-black/50 hover:bg-black/70 text-purple-200 hover:text-white font-semibold text-xs px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-full border border-white/20 backdrop-blur-sm transition"
               >
                 İlk Bölüm
               </button>
@@ -169,7 +169,7 @@ export const HeroSlider: React.FC = () => {
       {/* Navigation Arrows */}
       <button
         onClick={handlePrev}
-        className="absolute left-1 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-30 p-1.5 sm:p-3 rounded-full bg-black/60 hover:bg-purple-600 text-white border border-white/10 backdrop-blur-md transition hover:scale-110 shadow-xl"
+        className="absolute left-1 sm:left-4 md:left-6 top-1/2 -translate-y-1/2 z-30 p-1 sm:p-2.5 rounded-full bg-black/60 hover:bg-purple-600 text-white border border-white/10 backdrop-blur-md transition hover:scale-110 shadow-xl opacity-80 sm:opacity-100"
         aria-label="Önceki"
       >
         <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
@@ -177,20 +177,20 @@ export const HeroSlider: React.FC = () => {
 
       <button
         onClick={handleNext}
-        className="absolute right-1 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-30 p-1.5 sm:p-3 rounded-full bg-black/60 hover:bg-purple-600 text-white border border-white/10 backdrop-blur-md transition hover:scale-110 shadow-xl"
+        className="absolute right-1 sm:right-4 md:right-6 top-1/2 -translate-y-1/2 z-30 p-1 sm:p-2.5 rounded-full bg-black/60 hover:bg-purple-600 text-white border border-white/10 backdrop-blur-md transition hover:scale-110 shadow-xl opacity-80 sm:opacity-100"
         aria-label="Sonraki"
       >
         <ChevronRight size={16} className="sm:w-5 sm:h-5" />
       </button>
 
       {/* Dots Indicators */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5">
+      <div className="absolute bottom-1.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5">
         {featuredSeries.map((_, idx) => (
           <button
             key={idx}
             onClick={() => setCurrentIndex(idx)}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              idx === currentIndex ? 'w-6 bg-purple-400' : 'w-2 bg-gray-600 hover:bg-gray-400'
+            className={`h-1.5 sm:h-2 rounded-full transition-all duration-300 ${
+              idx === currentIndex ? 'w-5 sm:w-6 bg-purple-400' : 'w-1.5 sm:w-2 bg-gray-600 hover:bg-gray-400'
             }`}
             aria-label={`Slayt ${idx + 1}`}
           />

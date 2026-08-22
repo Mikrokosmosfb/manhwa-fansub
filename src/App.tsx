@@ -132,7 +132,7 @@ const MainContent: React.FC = () => {
 
   // DEFAULT: Home View
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 md:space-y-8">
       {/* Hero Featured Slider */}
       <HeroSlider />
 
