@@ -73,9 +73,9 @@ export const ManagementPanel: React.FC = () => {
           </div>
 
           <div className="space-y-2">
-            <h2 className="text-xl sm:text-2xl font-black text-white">Yönetim Paneli - Gizli Alan</h2>
-            <p className="text-xs sm:text-sm text-gray-300 leading-relaxed">
-              Bu yönetim paneli genel kullanıma kapalıdır ve sadece yetkilendirilmiş kurucu hesaplar (<span className="text-purple-300 font-mono">mikrokosmosfansub@gmail.com</span> ve <span className="text-purple-300 font-mono">aseleliyeva77@gmail.com</span>) tarafından erişilebilir.
+            <h2 className="text-xl sm:text-2xl font-black text-white">Yönetim Paneli</h2>
+            <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
+              Bu alana erişim yetkiniz bulunmamaktadır. Lütfen yetkili hesabınızla giriş yapınız.
             </p>
           </div>
 
