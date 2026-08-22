@@ -1,0 +1,34 @@
+name = "fansub"
+main = "src/worker.ts"
+assets = { directory = "./dist" }
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Ana Veritabanı (Seriler ve Bölümler - 500 MB Kota)
+[[d1_databases]]
+binding = "DB"
+database_name = "mikrokosmos-db"
+database_id = "83409af1-9945-432c-a81a-01c0dbebac1d"
+
+# Yorumlar İçin İkinci Ayrı Veritabanı (Ayrı 500 MB Kota)
+[[d1_databases]]
+binding = "COMMENTS_DB"
+database_name = "mikrokosmos-comments-db"
+database_id = "50591184-ab62-40ce-8bdf-69699b39baf1"
+
+# Üyelik ve Kullanıcı Bilgileri İçin Üçüncü Ayrı Veritabanı (Ayrı 500 MB Kota)
+[[d1_databases]]
+binding = "USERS_DB"
+database_name = "mikrokosmos-users-db"
+database_id = "622f28fd-342e-4f3c-851e-5e0367e37f71"
+
+# Cloudflare R2 (Özel Profil Resmi & Medya Depolama - S3 Storage)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "mikrokosmos-r2"
+
+# Cloudflare KV (Oluşturulduğunda id ekleyiniz)
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "kv_id_buraya"
+
