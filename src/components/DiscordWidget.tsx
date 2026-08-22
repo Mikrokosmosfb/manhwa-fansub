@@ -2,12 +2,12 @@ import React from 'react';
 
 export const DiscordWidget: React.FC = () => {
   return (
-    <div className="relative overflow-visible rounded-2xl bg-gradient-to-br from-white via-indigo-50/70 to-purple-50/60 dark:from-[#1e1b29] dark:to-[#110f18] border-2 border-[#5865F2] p-5 text-center shadow-xl my-6 transition-colors">
+    <div className="relative overflow-visible rounded-2xl bg-gradient-to-b from-[#1b172a] via-[#141221] to-[#0e0c17] border-2 border-[#5865F2]/60 p-6 text-center shadow-[0_0_30px_rgba(88,101,242,0.15)] my-6">
       
       {/* Mascot Wrapper with Chibi SVG */}
-      <div className="-mt-12 mb-2 flex justify-center">
+      <div className="-mt-14 mb-2 flex justify-center">
         <svg
-          className="w-20 h-20 drop-shadow-xl animate-bounce duration-1000"
+          className="w-20 h-20 drop-shadow-[0_8px_16px_rgba(88,101,242,0.4)] animate-bounce duration-1000"
           viewBox="0 0 100 100"
           xmlns="http://www.w3.org/2000/svg"
         >
@@ -34,11 +34,11 @@ export const DiscordWidget: React.FC = () => {
         </svg>
       </div>
 
-      <div className="space-y-2">
-        <h3 className="text-base sm:text-lg font-black text-[#5865F2] uppercase tracking-wider">
-          Topluluğumuza Katıl!
+      <div className="space-y-2.5">
+        <h3 className="text-base sm:text-lg font-black text-white uppercase tracking-wider flex items-center justify-center gap-2">
+          <span className="text-[#5865F2]">✨</span> Topluluğumuza Katıl! <span className="text-[#5865F2]">✨</span>
         </h3>
-        <p className="text-xs sm:text-sm text-slate-700 dark:text-gray-300 font-medium leading-relaxed max-w-md mx-auto">
+        <p className="text-xs sm:text-sm text-gray-300 font-medium leading-relaxed max-w-md mx-auto">
           Mikrokosmos evreninde sohbet etmeye ve güncel bölümlerden anında haberdar olmaya ne dersin?
         </p>
         <div className="pt-2">
@@ -46,7 +46,7 @@ export const DiscordWidget: React.FC = () => {
             href="https://discord.com/invite/5d6sseKRfs"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 bg-[#5865F2] hover:bg-[#4752c4] !text-white badge-preserve-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-lg hover:shadow-[#5865F2]/40 hover:-translate-y-0.5 active:translate-y-0 transition-all w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 bg-[#5865F2] hover:bg-[#4752c4] text-white font-black text-sm px-7 py-3 rounded-xl shadow-lg shadow-[#5865F2]/30 hover:shadow-[#5865F2]/60 hover:-translate-y-0.5 active:translate-y-0 transition-all w-full sm:w-auto"
           >
             <svg className="w-5 h-5 fill-current" viewBox="0 0 16 16">
               <path d="M13.545 2.907a13.227 13.227 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.214 12.214 0 0 0-3.658 0 8.258 8.258 0 0 0-.412-.833.051.051 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.041.041 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032a.04.04 0 0 0 .016.028a13.16 13.16 0 0 0 3.977 2.01.05.05 0 0 0 .055-.018c.308-.42.582-.865.819-1.332a.05.05 0 0 0-.028-.069a8.63 8.63 0 0 1-1.242-.593.05.05 0 0 1-.005-.085c.084-.063.167-.128.247-.195a.05.05 0 0 1 .051-.007c2.443 1.12 5.084 1.12 7.488 0a.05.05 0 0 1 .051.007c.08.066.163.132.248.195a.05.05 0 0 1-.004.085 8.254 8.254 0 0 1-1.242.593.05.05 0 0 0-.027.069c.24.467.513.912.819 1.332a.05.05 0 0 1 .056.018a13.16 13.16 0 0 0 3.977-2.01.04.04 0 0 0 .016-.028c.398-3.529-.67-6.523-2.74-9.006a.043.043 0 0 0-.02-.018zM5.122 10.036c-.75 0-1.366-.688-1.366-1.53c0-.841.604-1.53 1.366-1.53.765 0 1.366.69 1.356 1.53 0 .842-.6 1.53-1.356 1.53zm4.99 0c-.75 0-1.366-.688-1.366-1.53c0-.841.604-1.53 1.366-1.53.765 0 1.366.69 1.356 1.53 0 .842-.6 1.53-1.356 1.53z" />
