@@ -29,7 +29,9 @@ import {
   ShieldAlert,
   Megaphone,
   Tag,
-  Lock
+  Lock,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 import { checkIsChapterNew } from '../utils/dateUtils';
@@ -56,7 +58,9 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
     markAllChaptersUnread,
     user,
     showNsfw,
-    toggleNsfw
+    toggleNsfw,
+    isFollowingSeries,
+    toggleFollowSeries
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -268,6 +272,34 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   : 'Kütüphaneye Ekle'}
               </button>
 
+              {/* Takip Et (Follow) Button */}
+              <button
+                onClick={() => toggleFollowSeries(series.id)}
+                className={`mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 ${
+                  isFollowingSeries(series.id)
+                    ? 'bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 text-emerald-300 ring-1 ring-emerald-500/30'
+                    : 'bg-gray-950/90 hover:bg-purple-950/80 border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400'
+                }`}
+                title={
+                  isFollowingSeries(series.id)
+                    ? 'Seri takip listenizde. Tıklayarak takibi bırakabilirsiniz.'
+                    : 'Yeni bölümler yüklendiğinde bildirim almak için seriyi takip edin.'
+                }
+              >
+                {isFollowingSeries(series.id) ? (
+                  <>
+                    <BellRing size={16} className="text-emerald-400 fill-emerald-500/20 animate-pulse" />
+                    <span>Takip Ediliyor</span>
+                    <Check size={14} className="text-emerald-400" />
+                  </>
+                ) : (
+                  <>
+                    <Bell size={16} className="text-purple-400" />
+                    <span>Takip Et</span>
+                  </>
+                )}
+              </button>
+
               {/* Status & Type info badges */}
               <div className="w-full grid grid-cols-2 gap-2 mt-3 text-center text-xs font-semibold">
                 <div className="bg-purple-950/80 border border-purple-800/60 p-2 rounded-xl text-purple-200">
@@ -366,14 +398,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                 </div>
               </div>
 
-              {/* Action Buttons (First / Last chapter / Progress) */}
+              {/* Action Buttons (First / Last chapter / Progress / Follow) */}
               <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3">
                 {firstChapter && (
                   <button
                     onClick={() =>
                       setView({ type: 'reader', seriesId: series.id, chapterId: firstChapter.id })
                     }
-                    className="flex-1 bg-purple-800 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow transition"
+                    className="flex-1 bg-purple-800 hover:bg-purple-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow transition active:scale-95"
                   >
                     <BookOpen size={16} />
                     İlk Bölüm ({firstChapter.number})
@@ -385,12 +417,34 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     onClick={() =>
                       setView({ type: 'reader', seriesId: series.id, chapterId: latestChapter.id })
                     }
-                    className="flex-1 bg-indigo-800 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow transition"
+                    className="flex-1 bg-indigo-800 hover:bg-indigo-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow transition active:scale-95"
                   >
                     <BookOpen size={16} />
                     Son Bölüm ({latestChapter.number})
                   </button>
                 )}
+
+                <button
+                  onClick={() => toggleFollowSeries(series.id)}
+                  className={`font-bold py-2.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow transition active:scale-95 border ${
+                    isFollowingSeries(series.id)
+                      ? 'bg-emerald-950/80 hover:bg-emerald-900 border-emerald-500/50 text-emerald-300'
+                      : 'bg-purple-950/80 hover:bg-purple-900 border-purple-500/40 text-purple-200 hover:text-white'
+                  }`}
+                  title={isFollowingSeries(series.id) ? 'Takip ediliyor' : 'Seriyi takip et'}
+                >
+                  {isFollowingSeries(series.id) ? (
+                    <>
+                      <BellRing size={16} className="text-emerald-400 fill-emerald-500/20" />
+                      <span>Takipte</span>
+                    </>
+                  ) : (
+                    <>
+                      <Bell size={16} className="text-purple-400" />
+                      <span>Takip Et</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Last read progress banner */}

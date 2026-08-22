@@ -11,7 +11,9 @@ import {
   Upload,
   Clock,
   ExternalLink,
-  BookOpen
+  BookOpen,
+  Bell,
+  BellRing
 } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 
@@ -30,7 +32,9 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
     readingHistory,
     removeBookmark,
     exportBackupData,
-    importBackupData
+    importBackupData,
+    isFollowingSeries,
+    toggleFollowSeries
   } = useApp();
 
   const handleNavigateSeries = (seriesId: string) => {
@@ -332,19 +336,41 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
                     {s.type}
                   </span>
 
-                  {/* Delete from library button */}
-                  <button
-                    onClick={e => {
-                      e.stopPropagation();
-                      if (confirm(`"${s.title}" kütüphanenizden çıkarılsın mı?`)) {
-                        removeBookmark(s.id);
-                      }
-                    }}
-                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-full shadow transition"
-                    title="Kütüphaneden Sil"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {/* Action buttons on card cover */}
+                  <div className="absolute top-2 right-2 flex items-center gap-1.5 z-10">
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        toggleFollowSeries(s.id);
+                      }}
+                      className={`p-1.5 rounded-full shadow backdrop-blur-sm transition ${
+                        isFollowingSeries(s.id)
+                          ? 'bg-emerald-600/90 text-white hover:bg-emerald-500'
+                          : 'bg-black/60 text-gray-300 hover:text-white hover:bg-black/80'
+                      }`}
+                      title={isFollowingSeries(s.id) ? 'Takip Ediliyor (Bildirimler Açık)' : 'Takip Et (Bildirimleri Aç)'}
+                    >
+                      {isFollowingSeries(s.id) ? (
+                        <BellRing size={13} className="text-white animate-pulse" />
+                      ) : (
+                        <Bell size={13} />
+                      )}
+                    </button>
+
+                    {/* Delete from library button */}
+                    <button
+                      onClick={e => {
+                        e.stopPropagation();
+                        if (confirm(`"${s.title}" kütüphanenizden çıkarılsın mı?`)) {
+                          removeBookmark(s.id);
+                        }
+                      }}
+                      className="bg-red-600/80 hover:bg-red-600 text-white p-1.5 rounded-full shadow transition"
+                      title="Kütüphaneden Sil"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Info */}

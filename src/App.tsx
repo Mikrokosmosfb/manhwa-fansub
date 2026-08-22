@@ -34,6 +34,7 @@ import { AuthModal } from './components/AuthModal';
 import { isSeries18Plus } from './types';
 import { ShopModal, ShopView } from './components/ShopModal';
 import { UserProfileModal } from './components/UserProfileModal';
+import { ToastNotification } from './components/ToastNotification';
 import { WeeklyPopularSlider } from './components/WeeklyPopularSlider';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { ScrollToTopBottom } from './components/ScrollToTopBottom';
@@ -348,6 +349,7 @@ const AppLayout: React.FC = () => {
         initialTab={authModalInitialTab}
       />
       <ShopModal />
+      <ToastNotification />
     </div>
   );
 };

@@ -13,6 +13,7 @@ export interface User {
   name: string;
   email: string;
   avatar: string;
+  role?: 'admin' | 'user';
   provider?: 'email' | 'google';
   createdAt?: string;
   coins?: number; // Cosmo-Puan balance
@@ -173,4 +174,17 @@ export interface ScheduleDay {
   day: 'Pazartesi' | 'Salı' | 'Çarşamba' | 'Perşembe' | 'Cuma' | 'Cumartesi' | 'Pazar';
   dayShort: 'Pzt' | 'Sal' | 'Çar' | 'Per' | 'Cum' | 'Cmt' | 'Paz';
   items: ScheduleItem[];
+}
+
+export interface ToastMessage {
+  id: string;
+  title: string;
+  message: string;
+  type?: 'success' | 'bell' | 'info' | 'warning' | 'chapter';
+  seriesId?: string;
+  chapterId?: string;
+  seriesTitle?: string;
+  chapterTitle?: string;
+  coverImage?: string;
+  duration?: number;
 }

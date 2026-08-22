@@ -9,6 +9,7 @@ import {
   Comment,
   Announcement,
   SeriesRequest,
+  ToastMessage,
   isAuthorizedAdmin
 } from '../types';
 import { INITIAL_SERIES, INITIAL_ANNOUNCEMENT } from '../data/mockData';
@@ -137,7 +138,7 @@ interface AppContextType {
   markAllChaptersRead: (seriesId: string) => void;
   markAllChaptersUnread: (seriesId: string) => void;
   
-  // Bookmarks
+  // Bookmarks & Following
   bookmarkFolders: BookmarkFolder[];
   addBookmarkFolder: (name: string) => void;
   deleteBookmarkFolder: (id: string) => void;
@@ -145,6 +146,14 @@ interface AppContextType {
   bookmarks: Record<string, BookmarkItem>;
   toggleBookmark: (seriesId: string, folders: string[]) => void;
   removeBookmark: (seriesId: string) => void;
+  followedSeriesIds: string[];
+  isFollowingSeries: (seriesId: string) => boolean;
+  toggleFollowSeries: (seriesId: string) => boolean;
+
+  // Toast Notifications
+  toasts: ToastMessage[];
+  showToast: (toast: Omit<ToastMessage, 'id'>) => void;
+  dismissToast: (id: string) => void;
   
   // Novel Settings
   novelSettings: NovelSettings;
@@ -333,6 +342,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('mk_bookmarks');
     return saved ? JSON.parse(saved) : {};
   });
+
+  // Followed Series State (series IDs that user follows for chapter alerts)
+  const [followedSeriesIds, setFollowedSeriesIds] = useState<string[]>(() => {
+    const saved = localStorage.getItem('mk_followed_series');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Global Toast Notifications State
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   // Novel Settings
   const [novelSettings, setNovelSettings] = useState<NovelSettings>(() => {
@@ -854,6 +872,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [bookmarks]);
 
   useEffect(() => {
+    localStorage.setItem('mk_followed_series', JSON.stringify(followedSeriesIds));
+  }, [followedSeriesIds]);
+
+  useEffect(() => {
     localStorage.setItem('mk_novel_settings', JSON.stringify(novelSettings));
   }, [novelSettings]);
 
@@ -869,7 +891,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [user]);
 
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const showToast = (toast: Omit<ToastMessage, 'id'>) => {
+    const id = 'toast-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+    const newToast: ToastMessage = { ...toast, id };
+    setToasts(prev => [...prev.slice(-4), newToast]);
+
+    const duration = toast.duration ?? 5000;
+    setTimeout(() => {
+      dismissToast(id);
+    }, duration);
+  };
+
+  const isFollowingSeries = (seriesId: string): boolean => {
+    return followedSeriesIds.includes(seriesId);
+  };
+
+  const toggleFollowSeries = (seriesId: string): boolean => {
+    const target = seriesList.find(s => s.id === seriesId);
+    const title = target?.title || 'Seri';
+    const cover = target?.coverImage;
+    const isCurrentlyFollowing = followedSeriesIds.includes(seriesId);
+
+    if (isCurrentlyFollowing) {
+      setFollowedSeriesIds(prev => prev.filter(id => id !== seriesId));
+      showToast({
+        title: 'Takipten Çıkarıldı',
+        message: `"${title}" serisi takip listenizden çıkarıldı.`,
+        type: 'info',
+        seriesId
+      });
+      return false;
+    } else {
+      setFollowedSeriesIds(prev => [...prev, seriesId]);
+      // Ensure the series is in the user's library/bookmarks under 'Okuyorum' folder
+      const existingBookmark = bookmarks[seriesId];
+      const currentFolders = existingBookmark ? existingBookmark.folders : [];
+      if (!currentFolders.includes('Okuyorum')) {
+        toggleBookmark(seriesId, currentFolders.length > 0 ? currentFolders : ['Okuyorum']);
+      }
+      showToast({
+        title: 'Takip Ediliyor 🔔',
+        message: `"${title}" kütüphanenize ve takip listenize eklendi! Yeni bölümler yüklendiğinde anında bildirim alacaksınız.`,
+        type: 'bell',
+        seriesId,
+        coverImage: cover
+      });
+      return true;
+    }
+  };
+
   const addOrUpdateSeries = async (newSeries: Series) => {
+    const existingSeries = seriesList.find(s => s.id === newSeries.id);
+    const prevChapterCount = existingSeries?.chapters?.length ?? 0;
+    const newChapterCount = newSeries.chapters?.length ?? 0;
+
+    // Check if new chapters were added and the user is following or bookmarked this series
+    if (existingSeries && newChapterCount > prevChapterCount) {
+      const isTracked = followedSeriesIds.includes(newSeries.id) || !!bookmarks[newSeries.id];
+      if (isTracked) {
+        const latestNewChapter = newSeries.chapters[newSeries.chapters.length - 1];
+        showToast({
+          title: 'Yeni Bölüm Yayınlandı! 🔔',
+          message: `Kütüphanenizdeki "${newSeries.title}" için yeni ${latestNewChapter ? (latestNewChapter.title || `Bölüm ${latestNewChapter.number}`) : 'bölüm'} eklendi!`,
+          type: 'chapter',
+          seriesId: newSeries.id,
+          chapterId: latestNewChapter?.id,
+          seriesTitle: newSeries.title,
+          chapterTitle: latestNewChapter?.title || `Bölüm ${latestNewChapter?.number}`,
+          coverImage: newSeries.coverImage
+        });
+      }
+    }
+
     setSeriesList(prev => {
       const idx = prev.findIndex(s => s.id === newSeries.id);
       if (idx >= 0) {
@@ -1571,7 +1668,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         buyShopItem,
         equipTheme,
         equipBadge,
-        redeemPromoCode
+        redeemPromoCode,
+        followedSeriesIds,
+        isFollowingSeries,
+        toggleFollowSeries,
+        toasts,
+        showToast,
+        dismissToast
       }}
     >
       {children}
