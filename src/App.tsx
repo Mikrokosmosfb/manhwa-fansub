@@ -13,6 +13,7 @@ import {
 } from './components/SidebarWidgets';
 import { SeriesCard } from './components/SeriesCard';
 import { HorizontalReleaseCard } from './components/HorizontalReleaseCard';
+import { NovelRowSkeleton, ReleaseGridSkeleton } from './components/SkeletonLoader';
 import { SeriesDetail } from './components/SeriesDetail';
 import { ManhwaReader } from './components/ManhwaReader';
 import { NovelReader } from './components/NovelReader';
@@ -41,7 +42,7 @@ import { SeoManager } from './components/SeoManager';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
 
 const MainContent: React.FC = () => {
-  const { view, setView, seriesList, showNsfw } = useApp();
+  const { view, setView, seriesList, showNsfw, isLoadingSeries } = useApp();
   const [popularTab, setPopularTab] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const novelScrollRef = useRef<HTMLDivElement>(null);
 
@@ -186,7 +187,9 @@ const MainContent: React.FC = () => {
               ref={novelScrollRef}
               className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x pb-2 pt-1"
             >
-              {novelSeries.length === 0 ? (
+              {isLoadingSeries ? (
+                <NovelRowSkeleton count={5} />
+              ) : novelSeries.length === 0 ? (
                 <div className="w-full py-8 text-center text-xs text-gray-500">
                   Henüz roman eklenmedi.
                 </div>
@@ -217,11 +220,15 @@ const MainContent: React.FC = () => {
             </div>
 
             {/* Bilgisayarda (md ve lg ekranlarda) 2'li grid, mobilde tekli liste */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
-              {comicSeries.map((s, idx) => (
-                <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} index={idx} />
-              ))}
-            </div>
+            {isLoadingSeries ? (
+              <ReleaseGridSkeleton count={6} />
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+                {comicSeries.map((s, idx) => (
+                  <HorizontalReleaseCard key={s.id} series={s} maxChapters={4} index={idx} />
+                ))}
+              </div>
+            )}
           </section>
 
         </div>

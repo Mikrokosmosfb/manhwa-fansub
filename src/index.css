@@ -258,6 +258,12 @@ html.light {
 .animate-starburst-3 { animation: starStarburst 2.6s ease-in-out 1.6s infinite; }
 .animate-shimmer-ray { animation: shimmerRay 4s ease-in-out infinite; }
 
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 
 
 

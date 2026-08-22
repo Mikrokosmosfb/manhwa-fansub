@@ -123,6 +123,8 @@ interface AppContextType {
   setView: (view: ViewState) => void;
   seriesList: Series[];
   setSeriesList: React.Dispatch<React.SetStateAction<Series[]>>;
+  isLoadingSeries: boolean;
+  setIsLoadingSeries: React.Dispatch<React.SetStateAction<boolean>>;
   addOrUpdateSeries: (series: Series) => Promise<any>;
   addBatchSeries: (seriesBatch: Series[]) => Promise<any>;
   deleteSeries: (seriesId: string) => void;
@@ -304,6 +306,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('mk_series_list');
     return saved ? JSON.parse(saved) : INITIAL_SERIES;
   });
+  const [isLoadingSeries, setIsLoadingSeries] = useState<boolean>(true);
+
+  // Smooth perceived loading transition on initial mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsLoadingSeries(false);
+    }, 450);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Reading History
   const [readingHistory, setReadingHistory] = useState<Record<string, ReadingProgress>>(() => {
@@ -1494,6 +1505,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setView,
         seriesList,
         setSeriesList,
+        isLoadingSeries,
+        setIsLoadingSeries,
         addOrUpdateSeries,
         addBatchSeries,
         deleteSeries,
