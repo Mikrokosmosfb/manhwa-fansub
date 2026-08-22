@@ -53,7 +53,21 @@ import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { ShopItem, ThemeStyle } from '../data/shopData';
 
-export const AdminModal: React.FC = () => {
+export interface AdminModalProps {
+  activeTabOverride?: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management';
+  onTabChange?: (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => void;
+  hideHeader?: boolean;
+  hideTabs?: boolean;
+  hideActionBar?: boolean;
+}
+
+export const AdminModal: React.FC<AdminModalProps> = ({
+  activeTabOverride,
+  onTabChange,
+  hideHeader = false,
+  hideTabs = false,
+  hideActionBar = false
+}) => {
   const {
     seriesList,
     addOrUpdateSeries,
@@ -78,7 +92,13 @@ export const AdminModal: React.FC = () => {
     user
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('add-series');
+  const [internalTab, setInternalTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('manage-series');
+
+  const activeTab = activeTabOverride !== undefined ? activeTabOverride : internalTab;
+  const setActiveTab = (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => {
+    setInternalTab(tab);
+    if (onTabChange) onTabChange(tab);
+  };
   
   // Blogger Import State
   interface BloggerParsedPost {
@@ -1285,50 +1305,52 @@ export const AdminModal: React.FC = () => {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className={`${hideHeader ? 'w-full space-y-5' : 'max-w-5xl mx-auto px-4 py-8 space-y-6'}`}>
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-900/80 p-4 sm:p-5 rounded-3xl border border-purple-500/30 shadow-xl">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
-              <Edit2 className="text-purple-400" size={24} />
-              İçerik & Seri Yönetim Paneli
-            </h1>
-            <span className="bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
-              <ShieldCheck size={12} className="text-amber-400" />
-              Yönetici
-            </span>
+      {!hideHeader && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-gray-900/80 p-4 sm:p-5 rounded-3xl border border-purple-500/30 shadow-xl">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-extrabold text-white flex items-center gap-2">
+                <Edit2 className="text-purple-400" size={24} />
+                İçerik & Seri Yönetim Paneli
+              </h1>
+              <span className="bg-amber-950 text-amber-300 border border-amber-500/40 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1">
+                <ShieldCheck size={12} className="text-amber-400" />
+                Yönetici
+              </span>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              Yeni Manhwa / Novel serisi ekleyin, bölümler yayınlayın ve verilerinizi indirin.
+            </p>
           </div>
-          <p className="text-xs text-gray-400 mt-1">
-            Yeni Manhwa / Novel serisi ekleyin, bölümler yayınlayın ve verilerinizi indirin.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <button
-            onClick={() => {
-              setIsChangePassOpen(!isChangePassOpen);
-              setPassError('');
-              setChangePassSuccess('');
-            }}
-            className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-500/40 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
-            title="Yönetici Şifrenizi Değiştirin"
-          >
-            <Key size={14} className="text-amber-400" />
-            Şifre Değiştir
-          </button>
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+              onClick={() => {
+                setIsChangePassOpen(!isChangePassOpen);
+                setPassError('');
+                setChangePassSuccess('');
+              }}
+              className="bg-purple-950 hover:bg-purple-900 text-purple-200 border border-purple-500/40 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+              title="Yönetici Şifrenizi Değiştirin"
+            >
+              <Key size={14} className="text-amber-400" />
+              Şifre Değiştir
+            </button>
 
-          <button
-            onClick={logoutAdmin}
-            className="bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-500/40 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
-            title="Yönetici Oturumunu Kapat"
-          >
-            <LogOut size={14} />
-            Çıkış Yap
-          </button>
+            <button
+              onClick={logoutAdmin}
+              className="bg-red-950/80 hover:bg-red-900 text-red-200 border border-red-500/40 font-bold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+              title="Yönetici Oturumunu Kapat"
+            >
+              <LogOut size={14} />
+              Çıkış Yap
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Change Password Modal / Sub-section */}
       {isChangePassOpen && (
@@ -1396,100 +1418,104 @@ export const AdminModal: React.FC = () => {
       )}
 
       {/* Action Bar */}
-      <div className="flex items-center gap-2 flex-wrap bg-gray-900/60 p-3 rounded-2xl border border-gray-800">
-        <button
-          onClick={handleZipDownload}
-          disabled={isZipping}
-          className="bg-purple-800 hover:bg-purple-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition disabled:opacity-50"
-          title="Tüm React & TypeScript kaynak kodlarını ZIP olarak indirir"
-        >
-          <FileArchive size={14} />
-          {isZipping ? '...' : 'Kaynak Kod ZIP İndir'}
-        </button>
-        <button
-          onClick={handleCopyMockDataCode}
-          className="bg-orange-700 hover:bg-orange-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
-          title="mockData.ts dosyasını kopyalar"
-        >
-          <FileCode size={15} />
-          {copiedCode ? '✓ Kopyalandı!' : 'src/data/mockData.ts Kopyala'}
-        </button>
-        <button
-          onClick={exportBackupData}
-          className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
-          title="JSON verisi indirir"
-        >
-          <Download size={15} />
-          Yedekle (JSON)
-        </button>
-      </div>
+      {!hideActionBar && (
+        <div className="flex items-center gap-2 flex-wrap bg-gray-900/60 p-3 rounded-2xl border border-gray-800">
+          <button
+            onClick={handleZipDownload}
+            disabled={isZipping}
+            className="bg-purple-800 hover:bg-purple-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition disabled:opacity-50"
+            title="Tüm React & TypeScript kaynak kodlarını ZIP olarak indirir"
+          >
+            <FileArchive size={14} />
+            {isZipping ? '...' : 'Kaynak Kod ZIP İndir'}
+          </button>
+          <button
+            onClick={handleCopyMockDataCode}
+            className="bg-orange-700 hover:bg-orange-600 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+            title="mockData.ts dosyasını kopyalar"
+          >
+            <FileCode size={15} />
+            {copiedCode ? '✓ Kopyalandı!' : 'src/data/mockData.ts Kopyala'}
+          </button>
+          <button
+            onClick={exportBackupData}
+            className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+            title="JSON verisi indirir"
+          >
+            <Download size={15} />
+            Yedekle (JSON)
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-800 gap-2 overflow-x-auto pb-1">
-        <button
-          onClick={() => setActiveTab('add-series')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
-            activeTab === 'add-series'
-              ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          + Yeni Seri Ekle
-        </button>
-        <button
-          onClick={() => setActiveTab('add-chapter')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
-            activeTab === 'add-chapter'
-              ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          + Yeni Bölüm Yayınla
-        </button>
-        <button
-          onClick={() => setActiveTab('manage-series')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
-            activeTab === 'manage-series'
-              ? 'border-purple-500 text-purple-400'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          Mevcut Seriler ({seriesList.length})
-        </button>
-        <button
-          onClick={() => setActiveTab('blogger-import')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-orange-300 ${
-            activeTab === 'blogger-import'
-              ? 'border-orange-400 text-orange-300'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          <Globe size={15} />
-          Blogger Aktarımı
-        </button>
-        <button
-          onClick={() => setActiveTab('cloudflare-d1')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-cyan-300 ${
-            activeTab === 'cloudflare-d1'
-              ? 'border-cyan-400 text-cyan-300'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          <Database size={15} />
-          Cloudflare D1 Veritabanı
-        </button>
-        <button
-          onClick={() => setActiveTab('shop-management')}
-          className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-amber-300 ${
-            activeTab === 'shop-management'
-              ? 'border-amber-400 text-amber-300'
-              : 'border-transparent text-gray-400 hover:text-white'
-          }`}
-        >
-          <ShoppingBag size={15} />
-          🛍️ Mağaza & Tema Yönetimi
-        </button>
-      </div>
+      {!hideTabs && (
+        <div className="flex border-b border-gray-800 gap-2 overflow-x-auto pb-1">
+          <button
+            onClick={() => setActiveTab('add-series')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'add-series'
+                ? 'border-purple-500 text-purple-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            + Yeni Seri Ekle
+          </button>
+          <button
+            onClick={() => setActiveTab('add-chapter')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'add-chapter'
+                ? 'border-purple-500 text-purple-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            + Yeni Bölüm Yayınla
+          </button>
+          <button
+            onClick={() => setActiveTab('manage-series')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap ${
+              activeTab === 'manage-series'
+                ? 'border-purple-500 text-purple-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Mevcut Seriler ({seriesList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('blogger-import')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-orange-300 ${
+              activeTab === 'blogger-import'
+                ? 'border-orange-400 text-orange-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Globe size={15} />
+            Blogger Aktarımı
+          </button>
+          <button
+            onClick={() => setActiveTab('cloudflare-d1')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-cyan-300 ${
+              activeTab === 'cloudflare-d1'
+                ? 'border-cyan-400 text-cyan-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Database size={15} />
+            Cloudflare D1 Veritabanı
+          </button>
+          <button
+            onClick={() => setActiveTab('shop-management')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-amber-300 ${
+              activeTab === 'shop-management'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <ShoppingBag size={15} />
+            🛍️ Mağaza & Tema Yönetimi
+          </button>
+        </div>
+      )}
 
       {/* Add Series Form */}
       {activeTab === 'add-series' && (
