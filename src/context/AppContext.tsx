@@ -229,10 +229,8 @@ const defaultFolders: BookmarkFolder[] = [
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Theme state
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    return (localStorage.getItem('mk_theme') as 'dark' | 'light') || 'dark';
-  });
+  // Theme state (Exclusively Dark Mode)
+  const [theme] = useState<'dark' | 'light'>('dark');
 
   // NSFW (+18) Content Filter state (Default: false / hidden)
   const [showNsfw, setShowNsfw] = useState<boolean>(() => {
@@ -808,19 +806,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .catch(() => {});
   }, []);
 
-  // Sync to local storage
+  // Sync theme (Permanently Dark Mode)
   useEffect(() => {
-    localStorage.setItem('mk_theme', theme);
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.documentElement.classList.add('dark-mode');
-      document.documentElement.classList.remove('light');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.documentElement.classList.remove('dark-mode');
-      document.documentElement.classList.add('light');
-    }
-  }, [theme]);
+    localStorage.setItem('mk_theme', 'dark');
+    document.documentElement.classList.add('dark');
+    document.documentElement.classList.add('dark-mode');
+    document.documentElement.classList.remove('light');
+  }, []);
+
+  const toggleTheme = () => {
+    // Exclusively Dark Mode
+  };
 
   useEffect(() => {
     localStorage.setItem('mk_series_requests', JSON.stringify(seriesRequests));
@@ -857,10 +853,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       localStorage.removeItem('mk_user');
     }
   }, [user]);
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  };
 
   const addOrUpdateSeries = async (newSeries: Series) => {
     setSeriesList(prev => {

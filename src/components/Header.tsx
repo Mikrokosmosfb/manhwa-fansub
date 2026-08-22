@@ -1,8 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
-  Sun,
-  Moon,
   Search,
   Bookmark,
   Menu,
@@ -160,14 +158,6 @@ export const Header: React.FC = () => {
               <Search size={18} />
             </button>
 
-            {/* Dark / Light Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-purple-800/50 text-purple-200 hover:text-amber-300 transition"
-              title={theme === 'dark' ? 'Açık Mod' : 'Karanlık Mod'}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
 
             {/* +18 / NSFW Quick Toggle Button */}
             <button
@@ -479,20 +469,8 @@ export const Header: React.FC = () => {
             </button>
           </div>
 
-          {/* Mobile Theme & NSFW Toggles */}
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <button
-              onClick={() => {
-                toggleTheme();
-              }}
-              className="w-full text-left p-2.5 rounded-xl text-xs font-extrabold text-purple-200 bg-purple-900/40 border border-purple-700/40 flex items-center justify-between shadow"
-            >
-              <span className="flex items-center gap-1.5">
-                {theme === 'dark' ? <Sun size={16} className="text-amber-300" /> : <Moon size={16} className="text-indigo-300" />}
-                {theme === 'dark' ? 'Açık Mod' : 'Karanlık'}
-              </span>
-            </button>
-
+          {/* Mobile NSFW Toggle */}
+          <div className="mb-2">
             <button
               onClick={() => {
                 toggleNsfw();
@@ -505,9 +483,9 @@ export const Header: React.FC = () => {
             >
               <span className="flex items-center gap-1.5">
                 <span>🔞</span>
-                <span>18+ Filtre</span>
+                <span>18+ Filtresi (Yetişkin İçerikler)</span>
               </span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded font-black ${
+              <span className={`text-[10px] px-2 py-0.5 rounded font-black ${
                 showNsfw ? 'bg-rose-600 text-white' : 'bg-gray-800 text-gray-400'
               }`}>
                 {showNsfw ? 'Açık' : 'Gizli'}
