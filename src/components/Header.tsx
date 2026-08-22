@@ -85,27 +85,37 @@ export const Header: React.FC = () => {
           
           {/* Left section: Mobile menu toggle & Full Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Mobile menu hamburger button - Clear & accessible */}
+            {/* Mobile menu hamburger button - Clear, styled button with unmistakable Menu icon and label/feedback */}
             <button
               onClick={() => {
                 setIsMobileMenuOpen(!isMobileMenuOpen);
                 setIsSearchOpen(false);
               }}
-              className="p-2 rounded-xl text-purple-200 hover:text-white bg-purple-950/70 hover:bg-purple-900 border border-purple-500/30 transition-all flex items-center justify-center md:hidden shadow-sm active:scale-95 flex-shrink-0"
-              aria-label="Menüyü Aç / Kapat"
-              title="Menü"
+              className="px-2.5 py-1.5 rounded-xl text-purple-100 hover:text-white bg-purple-950/90 hover:bg-purple-900 border border-purple-500/40 transition-all flex items-center gap-1.5 md:hidden shadow-md active:scale-95 flex-shrink-0"
+              aria-label="Menü"
+              title="Menüyü Aç"
             >
-              {isMobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              {isMobileMenuOpen ? (
+                <>
+                  <X size={18} className="text-purple-300" />
+                  <span className="text-xs font-bold">Kapat</span>
+                </>
+              ) : (
+                <>
+                  <Menu size={18} className="text-purple-300" />
+                  <span className="text-xs font-bold tracking-wide">Menü</span>
+                </>
+              )}
             </button>
 
-            {/* Logo - ALWAYS FULL & UNTRUNCATED WITH CLEAR HOME ICON */}
+            {/* Logo - ALWAYS FULL & UNTRUNCATED WITH ORIGINAL SATURN LOGO */}
             <button
               onClick={() => setView({ type: 'home' })}
               className="flex items-center gap-2 sm:gap-2.5 text-left group flex-shrink-0"
               title="Ana Sayfa"
             >
               <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-600 via-indigo-600 to-purple-800 border border-purple-400/50 flex items-center justify-center shadow-lg shadow-purple-950/50 group-hover:scale-105 group-hover:border-amber-400/60 transition duration-300 flex-shrink-0">
-                <Home size={20} className="text-amber-300 group-hover:text-amber-200 transition-colors drop-shadow" />
+                <SaturnIcon size={22} className="text-amber-300 group-hover:rotate-12 transition-transform duration-300" />
               </div>
               <div className="flex flex-col flex-shrink-0">
                 <span className="font-black text-lg sm:text-xl lg:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-amber-200 whitespace-nowrap leading-none drop-shadow-sm">
