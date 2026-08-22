@@ -54,72 +54,69 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
   return (
     <div className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group items-stretch">
       
-      {/* Left: Cover Poster with Status Ribbon, Type Badge & Rating Badge */}
-      <div 
-        onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
-        className="relative w-24 sm:w-28 md:w-32 lg:w-36 aspect-[2/3] flex-shrink-0 rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 self-center"
-      >
-        {/* Top-Left Diagonal Status Ribbon */}
-        <DiagonalStatusRibbon status={series.status} size="sm" />
+      {/* Left: Cover Poster with Badges & Star Rating Directly Underneath */}
+      <div className="w-24 sm:w-28 md:w-30 lg:w-32 flex-shrink-0 flex flex-col items-center justify-between gap-1.5">
+        <div 
+          onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+          className="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 group-hover:border-purple-500/40 transition-colors"
+        >
+          {/* Top-Left Diagonal Status Ribbon */}
+          <DiagonalStatusRibbon status={series.status} size="sm" />
 
-        <img
-          src={series.coverImage}
-          alt={series.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          loading="lazy"
-        />
+          <img
+            src={series.coverImage}
+            alt={series.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
 
-        {/* Top Right Badges (Yeni / Sıcak / 18+) */}
-        <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1 z-10">
-          {series.isNew && (
-            <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 flex items-center gap-0.5">
-              <Sparkles size={8} className="text-purple-200 fill-purple-200" />
-              YENİ
-            </span>
-          )}
-          {!series.isNew && series.isHot && (
-            <span className="bg-orange-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md">
-              SICAK
-            </span>
-          )}
-          {(series.is18Plus || series.ageRating === '18+' || series.genres.includes('18+')) && (
-            <span className="bg-rose-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
-              18+
-            </span>
-          )}
+          {/* Top Right Badges (Yeni / Sıcak / 18+) */}
+          <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1 z-10">
+            {series.isNew && (
+              <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 flex items-center gap-0.5">
+                <Sparkles size={8} className="text-purple-200 fill-purple-200" />
+                YENİ
+              </span>
+            )}
+            {!series.isNew && series.isHot && (
+              <span className="bg-orange-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md">
+                SICAK
+              </span>
+            )}
+            {(series.is18Plus || series.ageRating === '18+' || series.genres.includes('18+')) && (
+              <span className="bg-rose-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
+                18+
+              </span>
+            )}
+          </div>
+
+          {/* Bottom Badge (Manhwa / Manhua / Webtoon) */}
+          <span className={`absolute bottom-1.5 left-1.5 text-[8px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)} z-10`}>
+            {series.type}
+          </span>
         </div>
 
-        {/* Bottom Left: Type Badge (Manhwa / Manhua / Webtoon) */}
-        <span className={`absolute bottom-1.5 left-1.5 text-[8px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)} z-10`}>
-          {series.type}
-        </span>
-
-        {/* Bottom Right: Star Rating Badge (Integrated onto poster with high symmetry) */}
-        <div className="absolute bottom-1.5 right-1.5 bg-black/80 backdrop-blur-md border border-amber-500/40 text-amber-300 px-1.5 py-0.5 rounded-md text-[9px] sm:text-[10px] font-black flex items-center gap-0.5 shadow-md z-10">
-          <Star size={9} className="fill-current text-amber-400" />
-          <span>{series.rating}</span>
+        {/* Star Rating Under Poster */}
+        <div className="flex items-center justify-center gap-1 bg-gray-950/90 border border-amber-500/30 px-2 py-0.5 rounded-md shadow-sm w-full">
+          <Star size={11} className="fill-current text-amber-400" />
+          <span className="text-[10px] sm:text-xs font-bold text-amber-300">
+            {series.rating}
+          </span>
         </div>
       </div>
 
-      {/* Right Column: Title + Release Day + Latest Chapters */}
+      {/* Right Column: Title + Latest Chapters + Calendar Underneath */}
       <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
         <div>
-          {/* Series Title + Release Day (Clean Row, No Release Year, No Text Slicing) */}
-          <div className="flex items-center justify-between gap-2 mb-2 sm:mb-2.5">
+          {/* Series Title */}
+          <div className="mb-2">
             <h3
               onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
-              className="text-sm sm:text-base font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition truncate leading-snug min-w-0"
+              className="text-sm sm:text-base font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition truncate leading-snug"
               title={series.title}
             >
               {series.title}
             </h3>
-
-            {series.releaseDay && (
-              <span className="text-[9px] sm:text-[10px] font-bold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-lg flex-shrink-0 flex items-center gap-1 whitespace-nowrap shadow-sm">
-                <Calendar size={10} className="text-purple-300 flex-shrink-0" />
-                <span>{series.releaseDay}{series.releaseTime ? ` ${series.releaseTime}` : ''}</span>
-              </span>
-            )}
           </div>
 
           {/* Series Synopsis / Özet (Sadece Seriler Kataloğunda aktif) */}
@@ -182,6 +179,16 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
             })}
           </div>
         </div>
+
+        {/* Bottom Row under chapters/text: Release Day / Calendar Badge */}
+        {series.releaseDay && (
+          <div className="mt-2 pt-1.5 border-t border-gray-800/50 flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-md flex items-center gap-1.5 shadow-sm">
+              <Calendar size={11} className="text-purple-300" />
+              <span>Yayın Günü: <strong className="text-purple-200">{series.releaseDay}{series.releaseTime ? ` ${series.releaseTime}` : ''}</strong></span>
+            </span>
+          </div>
+        )}
 
       </div>
 
