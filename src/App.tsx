@@ -201,17 +201,17 @@ const MainContent: React.FC = () => {
           </section>
 
           {/* Section 2: Yeni Yüklenen Çizgi Roman / Manhwa Bölümleri (Orijinal Tasarım, Bilgisayarda 2'li Grid) */}
-          <section className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl">
-            <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-800">
-              <h2 className="text-sm sm:text-lg font-extrabold text-white flex items-center gap-1.5 sm:gap-2">
-                <Sparkles className="text-purple-400" size={18} />
-                Yeni Yüklenen Bölümler & Manhwalar
+          <section className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-3 sm:p-5 shadow-xl">
+            <div className="flex items-center justify-between pb-3 mb-3 sm:mb-4 border-b border-gray-800 gap-2">
+              <h2 className="text-sm sm:text-lg font-extrabold text-white flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <Sparkles className="text-purple-400 flex-shrink-0" size={18} />
+                <span className="truncate sm:overflow-visible">Yeni Yüklenen Bölümler & Manhwalar</span>
               </h2>
               <button
                 onClick={() => setView({ type: 'series-list' })}
-                className="text-[11px] sm:text-xs font-bold text-purple-300 hover:text-white bg-purple-950/80 hover:bg-purple-900 border border-purple-800 px-2.5 py-1 rounded-xl transition flex items-center gap-0.5 sm:gap-1 cursor-pointer"
+                className="text-[11px] sm:text-xs font-bold text-purple-300 hover:text-white bg-purple-950/80 hover:bg-purple-900 border border-purple-800 px-2.5 py-1 rounded-xl transition flex items-center gap-0.5 sm:gap-1 cursor-pointer whitespace-nowrap flex-shrink-0"
               >
-                Tümünü Gör
+                <span>Tümünü Gör</span>
                 <ChevronRight size={13} />
               </button>
             </div>
