@@ -1,0 +1,244 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="100%" height="100%">
+  <defs>
+    <!-- Midnight Deep Navy Canvas Gradient -->
+    <linearGradient id="silverNavyBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#05070f" />
+      <stop offset="30%" stop-color="#0a0e1c" />
+      <stop offset="65%" stop-color="#10152b" />
+      <stop offset="90%" stop-color="#080c18" />
+      <stop offset="100%" stop-color="#030509" />
+    </linearGradient>
+
+    <!-- Radial Nebula Glows -->
+    <radialGradient id="silverNebula1" cx="25%" cy="65%" r="50%">
+      <stop offset="0%" stop-color="#312e81" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#1e1b4b" stop-opacity="0.12" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+    <radialGradient id="silverNebula2" cx="70%" cy="20%" r="45%">
+      <stop offset="0%" stop-color="#4338ca" stop-opacity="0.25" />
+      <stop offset="70%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Silver Filigree Line Gradient -->
+    <linearGradient id="silverGrad1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#64748b" />
+      <stop offset="25%" stop-color="#cbd5e1" />
+      <stop offset="50%" stop-color="#ffffff" />
+      <stop offset="75%" stop-color="#e2e8f0" />
+      <stop offset="100%" stop-color="#94a3b8" />
+    </linearGradient>
+
+    <linearGradient id="silverGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="40%" stop-color="#e2e8f0" />
+      <stop offset="80%" stop-color="#94a3b8" />
+      <stop offset="100%" stop-color="#475569" />
+    </linearGradient>
+
+    <!-- Glow & Soft Filters -->
+    <filter id="silverGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur1" />
+      <feGaussianBlur stdDeviation="2" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softMist" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Reusable Silver Petal Drop Element -->
+    <g id="silverTeardrop">
+      <path d="M 0,0 C -5,-12 -12,-20 0,-34 C 12,-20 5,-12 0,0 Z" fill="url(#silverGrad1)" filter="url(#silverGlow)" />
+    </g>
+
+    <!-- Reusable Filigree Dot Cluster -->
+    <g id="dotCluster">
+      <circle cx="0" cy="0" r="7" fill="#ffffff" filter="url(#silverGlow)" />
+      <circle cx="16" cy="-6" r="5" fill="#e2e8f0" />
+      <circle cx="28" cy="-14" r="3.5" fill="#cbd5e1" />
+      <circle cx="38" cy="-24" r="2.5" fill="#94a3b8" />
+    </g>
+
+    <!-- Elegant Silver Butterfly Component -->
+    <g id="silverButterfly">
+      <!-- Upper Left Wing -->
+      <path d="M 0,0 C -12,-16 -32,-36 -44,-24 C -56,-12 -38,12 -14,8 Z" fill="url(#silverGrad1)" stroke="#ffffff" stroke-width="1.2" filter="url(#silverGlow)" />
+      <path d="M -8,-2 C -18,-14 -28,-22 -36,-16" stroke="#ffffff" stroke-width="0.8" fill="none" />
+      <!-- Lower Left Wing -->
+      <path d="M 0,4 C -14,8 -32,18 -26,30 C -20,40 -4,22 -2,8 Z" fill="url(#silverGrad2)" stroke="#e2e8f0" stroke-width="1" />
+      <!-- Upper Right Wing -->
+      <path d="M 4,0 C 16,-16 36,-36 48,-24 C 60,-12 42,12 18,8 Z" fill="url(#silverGrad1)" stroke="#ffffff" stroke-width="1.2" filter="url(#silverGlow)" />
+      <path d="M 12,-2 C 22,-14 32,-22 40,-16" stroke="#ffffff" stroke-width="0.8" fill="none" />
+      <!-- Lower Right Wing -->
+      <path d="M 4,4 C 18,8 36,18 30,30 C 24,40 8,22 6,8 Z" fill="url(#silverGrad2)" stroke="#e2e8f0" stroke-width="1" />
+      <!-- Butterfly Body & Antennae -->
+      <ellipse cx="2" cy="4" rx="2.5" ry="12" fill="#ffffff" filter="url(#silverGlow)" />
+      <path d="M 0,-6 Q -8,-18 -14,-22" stroke="#ffffff" stroke-width="1" fill="none" />
+      <circle cx="-14" cy="-22" r="1.5" fill="#ffffff" />
+      <path d="M 4,-6 Q 12,-18 18,-22" stroke="#ffffff" stroke-width="1" fill="none" />
+      <circle cx="18" cy="-22" r="1.5" fill="#ffffff" />
+    </g>
+  </defs>
+
+  <!-- Background Base Canvas -->
+  <rect width="1080" height="1920" fill="url(#silverNavyBg)" />
+  <rect width="1080" height="1920" fill="url(#silverNebula1)" />
+  <rect width="1080" height="1920" fill="url(#silverNebula2)" />
+
+  <!-- Shimmering Stardust Field -->
+  <g opacity="0.6" filter="url(#softMist)">
+    <circle cx="180" cy="320" r="2" fill="#ffffff" />
+    <circle cx="340" cy="210" r="2.5" fill="#e2e8f0" />
+    <circle cx="580" cy="460" r="1.8" fill="#ffffff" />
+    <circle cx="720" cy="280" r="3" fill="#cbd5e1" />
+    <circle cx="890" cy="190" r="2" fill="#ffffff" />
+    <circle cx="940" cy="440" r="2.5" fill="#e2e8f0" />
+    <circle cx="210" cy="850" r="2" fill="#ffffff" />
+    <circle cx="480" cy="920" r="2.5" fill="#cbd5e1" />
+    <circle cx="780" cy="840" r="3" fill="#ffffff" />
+    <circle cx="880" cy="1120" r="2" fill="#e2e8f0" />
+    <circle cx="620" cy="1380" r="2.5" fill="#ffffff" />
+    <circle cx="820" cy="1580" r="3" fill="#cbd5e1" />
+  </g>
+
+  <!-- ================= TOP FILIGREE VINES & SWIRLS ================= -->
+  <g opacity="0.85" filter="url(#silverGlow)">
+    <!-- Main Top-Left Swirl Loop -->
+    <path d="M -40,120 C 140,80 280,240 240,380 C 200,500 80,480 60,380 C 40,280 160,220 220,280 C 260,320 240,380 200,380 C 170,380 160,350 180,330" fill="none" stroke="url(#silverGrad1)" stroke-width="4.5" stroke-linecap="round" />
+    
+    <!-- Secondary Delicate Vines branching right -->
+    <path d="M 220,200 C 340,140 480,220 540,160 C 600,100 680,140 760,100 C 820,70 880,120 980,60" fill="none" stroke="url(#silverGrad2)" stroke-width="3" stroke-linecap="round" />
+    <path d="M 380,170 C 420,260 500,280 480,360 C 460,420 390,400 410,340" fill="none" stroke="url(#silverGrad1)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Top Swirl Flourishes & Droplets -->
+    <use href="#dotCluster" transform="translate(180, 330) rotate(-45) scale(0.9)" />
+    <use href="#dotCluster" transform="translate(540, 160) rotate(35) scale(0.8)" />
+    <use href="#dotCluster" transform="translate(760, 100) rotate(-20) scale(0.85)" />
+
+    <!-- Hanging Teardrop Florets along Top Swirls -->
+    <use href="#silverTeardrop" transform="translate(130, 200) rotate(135) scale(0.7)" />
+    <use href="#silverTeardrop" transform="translate(160, 220) rotate(155) scale(0.85)" />
+    <use href="#silverTeardrop" transform="translate(200, 230) rotate(175) scale(1)" />
+    <use href="#silverTeardrop" transform="translate(310, 160) rotate(-60) scale(0.75)" />
+    <use href="#silverTeardrop" transform="translate(340, 150) rotate(-40) scale(0.9)" />
+    <use href="#silverTeardrop" transform="translate(460, 230) rotate(70) scale(0.8)" />
+    <use href="#silverTeardrop" transform="translate(640, 120) rotate(-50) scale(0.85)" />
+    <use href="#silverTeardrop" transform="translate(850, 90) rotate(45) scale(0.9)" />
+  </g>
+
+  <!-- ================= SUBTLE MIDGROUND SHADOW VINES ================= -->
+  <g opacity="0.25">
+    <path d="M 120,950 C 260,780 460,820 540,700 C 620,580 520,440 640,360" fill="none" stroke="#64748b" stroke-width="18" stroke-linecap="round" />
+    <path d="M 40,1400 C 200,1250 350,1320 480,1180" fill="none" stroke="#475569" stroke-width="12" stroke-linecap="round" />
+  </g>
+
+  <!-- ================= BOTTOM-LEFT HERO FILIGREE VINES & BLOOMS ================= -->
+  <g filter="url(#silverGlow)">
+    <!-- Massive Main Trunk Vine Arching Upwards -->
+    <path d="M -60,1960 C 80,1800 160,1580 120,1380 C 80,1180 220,1020 340,1120 C 440,1200 380,1380 260,1340 C 180,1310 190,1200 280,1190 C 340,1180 370,1240 330,1280" fill="none" stroke="url(#silverGrad1)" stroke-width="6" stroke-linecap="round" />
+    
+    <!-- Secondary Sprouting S-Curves -->
+    <path d="M 140,1480 C 260,1400 380,1460 460,1360 C 520,1280 480,1160 560,1100 C 620,1050 710,1110 680,1200 C 650,1280 560,1270 570,1200" fill="none" stroke="url(#silverGrad1)" stroke-width="4.5" stroke-linecap="round" />
+    
+    <!-- Outer Extending Tendril towards Center -->
+    <path d="M 280,1190 C 380,1120 490,1180 540,1080 C 580,1000 680,1020 740,960" fill="none" stroke="url(#silverGrad2)" stroke-width="3" stroke-linecap="round" />
+
+    <!-- Delicate Curving Branch to Bottom Center-Right -->
+    <path d="M 180,1720 C 340,1650 480,1740 620,1660 C 720,1600 800,1680 920,1620" fill="none" stroke="url(#silverGrad2)" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 480,1700 C 560,1780 660,1760 720,1840" fill="none" stroke="url(#silverGrad1)" stroke-width="2.8" stroke-linecap="round" />
+
+    <!-- Botanical Leaves & Florets clustered along the Main Vine -->
+    <!-- Cluster 1 (Low Left) -->
+    <use href="#silverTeardrop" transform="translate(100, 1600) rotate(-40) scale(1.3)" />
+    <use href="#silverTeardrop" transform="translate(75, 1620) rotate(-65) scale(1.1)" />
+    <use href="#silverTeardrop" transform="translate(130, 1580) rotate(-15) scale(0.9)" />
+
+    <!-- Cluster 2 (Mid Vine Left) -->
+    <use href="#silverTeardrop" transform="translate(125, 1420) rotate(-55) scale(1.4)" />
+    <use href="#silverTeardrop" transform="translate(100, 1445) rotate(-80) scale(1.2)" />
+    <use href="#silverTeardrop" transform="translate(155, 1395) rotate(-30) scale(1)" />
+    <use href="#silverTeardrop" transform="translate(180, 1375) rotate(-10) scale(0.85)" />
+
+    <!-- Cluster 3 (Arching Apex) -->
+    <use href="#silverTeardrop" transform="translate(240, 1260) rotate(-45) scale(1.2)" />
+    <use href="#silverTeardrop" transform="translate(265, 1235) rotate(-20) scale(1)" />
+    <use href="#silverTeardrop" transform="translate(290, 1215) rotate(5) scale(0.85)" />
+    <use href="#dotCluster" transform="translate(330, 1280) rotate(70) scale(0.9)" />
+
+    <!-- Cluster 4 (Extended Branch Florets) -->
+    <use href="#silverTeardrop" transform="translate(420, 1390) rotate(35) scale(1.1)" />
+    <use href="#silverTeardrop" transform="translate(450, 1370) rotate(55) scale(0.95)" />
+    <use href="#silverTeardrop" transform="translate(520, 1220) rotate(-40) scale(1)" />
+    <use href="#silverTeardrop" transform="translate(640, 1120) rotate(45) scale(0.85)" />
+    <use href="#dotCluster" transform="translate(570, 1200) rotate(110) scale(0.8)" />
+
+    <!-- Lower Branch Florets -->
+    <use href="#silverTeardrop" transform="translate(400, 1670) rotate(60) scale(1)" />
+    <use href="#silverTeardrop" transform="translate(540, 1680) rotate(40) scale(0.9)" />
+    <use href="#silverTeardrop" transform="translate(680, 1630) rotate(70) scale(0.85)" />
+    <use href="#silverTeardrop" transform="translate(840, 1640) rotate(30) scale(0.8)" />
+
+    <!-- 5-Petal Filigree Silver Blossoms -->
+    <g transform="translate(220, 1350) scale(0.7)">
+      <use href="#silverTeardrop" transform="rotate(0) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(72) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(144) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(216) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(288) translate(0, -14)" />
+      <circle cx="0" cy="0" r="6" fill="#ffffff" />
+    </g>
+
+    <g transform="translate(580, 1720) scale(0.6)">
+      <use href="#silverTeardrop" transform="rotate(0) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(72) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(144) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(216) translate(0, -14)" />
+      <use href="#silverTeardrop" transform="rotate(288) translate(0, -14)" />
+      <circle cx="0" cy="0" r="5" fill="#ffffff" />
+    </g>
+  </g>
+
+  <!-- ================= SILVER BUTTERFLIES ================= -->
+  <!-- Hero Butterfly Perched / Fluttering on Main Vine -->
+  <use href="#silverButterfly" transform="translate(460, 1260) rotate(-18) scale(1.4)" />
+  
+  <!-- Secondary Fluttering Small Butterfly in Midground -->
+  <use href="#silverButterfly" transform="translate(570, 1020) rotate(28) scale(0.75)" />
+
+  <!-- Distant Delicate Tiny Butterfly near Top Right -->
+  <use href="#silverButterfly" transform="translate(840, 480) rotate(-35) scale(0.55)" opacity="0.8" />
+
+  <!-- ================= FOUR-POINT DIAMOND STARBURSTS ================= -->
+  <g filter="url(#silverGlow)">
+    <!-- Large Starburst Bottom Right -->
+    <g transform="translate(940, 1580) scale(0.9)">
+      <polygon points="0,-45 4,-8 0,-2 -4,-8" fill="#ffffff" />
+      <polygon points="0,45 4,8 0,2 -4,8" fill="#ffffff" />
+      <polygon points="-45,0 -8,4 -2,0 -8,-4" fill="#ffffff" />
+      <polygon points="45,0 8,4 2,0 8,-4" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3.5" fill="#ffffff" />
+    </g>
+    <!-- Mid Starburst Center -->
+    <g transform="translate(680, 890) scale(0.65)">
+      <polygon points="0,-35 3,-6 0,-2 -3,-6" fill="#ffffff" />
+      <polygon points="0,35 3,6 0,2 -3,6" fill="#ffffff" />
+      <polygon points="-35,0 -6,3 -2,0 -6,-3" fill="#ffffff" />
+      <polygon points="35,0 6,3 2,0 6,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+    </g>
+    <!-- Top-Right Starburst -->
+    <g transform="translate(780, 240) scale(0.55)">
+      <polygon points="0,-30 3,-5 0,-2 -3,-5" fill="#ffffff" />
+      <polygon points="0,30 3,5 0,2 -3,5" fill="#ffffff" />
+      <polygon points="-30,0 -5,3 -2,0 -5,-3" fill="#ffffff" />
+      <polygon points="30,0 5,3 2,0 5,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="2" fill="#ffffff" />
+    </g>
+  </g>
+</svg>

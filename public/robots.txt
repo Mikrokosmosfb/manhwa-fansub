@@ -1,0 +1,50 @@
+# ==========================================
+# Mikrokosmos Fansub - Robots.txt
+# ==========================================
+
+User-agent: *
+Allow: /
+Allow: /#/seriler
+Allow: /#/kategoriler
+Allow: /#/seri/
+Allow: /#/a-z
+Allow: /#/takvim
+Allow: /#/kutuphane
+
+# Disallow reader / reading pages so bots DO NOT crawl chapter contents
+Disallow: /#/oku/
+Disallow: /oku/
+Disallow: /reader/
+Disallow: /chapter/
+Disallow: /read/
+Disallow: /api/
+Disallow: /admin
+Disallow: /#/admin
+
+User-agent: Googlebot
+Allow: /
+Allow: /#/seriler
+Allow: /#/kategoriler
+Allow: /#/seri/
+Allow: /#/a-z
+Allow: /#/takvim
+Allow: /#/kutuphane
+
+# Strictly disallow Google bots from crawling reading chapters
+Disallow: /#/oku/
+Disallow: /oku/
+Disallow: /reader/
+Disallow: /chapter/
+Disallow: /read/
+Disallow: /api/
+Disallow: /admin
+Disallow: /#/admin
+
+User-agent: Googlebot-Image
+Allow: /
+# Disallow reading chapter images crawling if accessed via reader
+Disallow: /#/oku/
+Disallow: /oku/
+Disallow: /reader/
+
+Sitemap: https://mikrokosmosfansub.com/sitemap.xml

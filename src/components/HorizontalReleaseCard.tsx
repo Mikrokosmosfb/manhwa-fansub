@@ -1,0 +1,263 @@
+import React, { useState } from 'react';
+import { motion } from 'motion/react';
+import { useApp } from '../context/AppContext';
+import { Series } from '../types';
+import { Sparkles, Calendar, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { checkIsChapterNew } from '../utils/dateUtils';
+import { ChapterSpecialBadge } from './ChapterSpecialBadge';
+import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
+import { getOptimizedImageUrl } from '../utils/imageUtils';
+
+interface HorizontalReleaseCardProps {
+  series: Series;
+  maxChapters?: number;
+  showSynopsis?: boolean;
+  showGenres?: boolean;
+  index?: number;
+}
+
+export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({ 
+  series, 
+  maxChapters = 4,
+  showSynopsis = false,
+  showGenres = false,
+  index
+}) => {
+  const { setView } = useApp();
+  const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
+
+  // Take latest chapters based on maxChapters
+  const recentChapters = [...series.chapters].reverse().slice(0, maxChapters);
+
+  const getTypeBadgeClass = (type: Series['type']) => {
+    switch (type) {
+      case 'Manhwa':
+        return 'bg-emerald-600 text-white';
+      case 'Manhua':
+        return 'bg-sky-600 text-white';
+      case 'Webtoon':
+        return 'bg-amber-600 text-black font-extrabold';
+      case 'Manga':
+        return 'bg-rose-600 text-white';
+      case 'Web Novel':
+        return 'bg-purple-600 text-white';
+      default:
+        return 'bg-teal-600 text-white';
+    }
+  };
+
+  // Helper to format date compactly so chapter title has maximum space
+  const formatDateCompact = (dateStr: string) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const parts = dateStr.split('-');
+      return `${parts[2]}.${parts[1]}`; // e.g. "21.07"
+    }
+    return dateStr.replace(' saat ', 's ').replace(' gün ', 'g ').replace(' önce', '');
+  };
+
+  return (
+    <div
+      className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/40 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-900/20 group items-stretch"
+    >
+      
+      {/* Left: Cover Poster with Badges & Star Rating Directly Underneath (No Gap Stretch) */}
+      <div className="w-24 sm:w-28 md:w-30 lg:w-32 flex-shrink-0 flex flex-col items-center gap-1.5 self-start">
+        <div 
+          onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+          className="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer shadow-lg bg-gray-950 border border-purple-500/20 group-hover:border-purple-500/40 transition-colors"
+        >
+          {/* Top-Left Diagonal Status Ribbon */}
+          <DiagonalStatusRibbon status={series.status} size="sm" />
+
+          <img
+            src={getOptimizedImageUrl(series.coverImage, { width: 120, height: 180, quality: 65 })}
+            alt={series.title}
+            width="112"
+            height="168"
+            decoding="async"
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            loading="lazy"
+          />
+
+          {/* Top Right Badges (Yeni / Sıcak / 18+) */}
+          <div className="absolute top-1.5 right-1.5 flex flex-col items-end gap-1 z-10">
+            {series.isNew && (
+              <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-full shadow-lg shadow-purple-900/80 border border-purple-300/40 flex items-center gap-0.5">
+                <Sparkles size={8} className="text-purple-200 fill-purple-200" />
+                YENİ
+              </span>
+            )}
+            {!series.isNew && series.isHot && (
+              <span className="bg-orange-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md">
+                SICAK
+              </span>
+            )}
+            {(series.is18Plus || series.ageRating === '18+' || series.genres.includes('18+')) && (
+              <span className="bg-rose-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md border border-rose-300/40">
+                18+
+              </span>
+            )}
+          </div>
+
+          {/* Bottom Badge (Manhwa / Manhua / Webtoon) */}
+          <span className={`absolute bottom-1.5 left-1.5 text-[8px] sm:text-[10px] font-extrabold px-1.5 py-0.5 rounded-md shadow-md backdrop-blur-sm ${getTypeBadgeClass(series.type)} z-10`}>
+            {series.type}
+          </span>
+        </div>
+
+        {/* 5-Star Rating Pill Under Poster (Image Match: ★★★★★ 9.6) */}
+        <div className="flex items-center justify-center gap-1 bg-black/90 border border-neutral-800/80 px-2 py-0.5 rounded-full shadow-inner w-full max-w-[120px]">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((starIndex) => {
+              // rating is out of 10, normalized to 5 stars (each star = 2 points)
+              const scoreOutOf5 = (series.rating || 0) / 2;
+              const isFilled = scoreOutOf5 >= starIndex;
+              const isHalf = !isFilled && scoreOutOf5 >= starIndex - 0.5;
+
+              return (
+                <div key={starIndex} className="relative inline-block">
+                  <Star
+                    size={10}
+                    className={`transition-colors ${
+                      isFilled
+                        ? 'fill-amber-400 text-amber-400'
+                        : isHalf
+                        ? 'fill-amber-500/70 text-amber-500/70'
+                        : 'fill-amber-950/60 text-amber-900/60'
+                    }`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          <span className="text-[11px] font-black text-amber-400 ml-0.5 tracking-tight">
+            {series.rating}
+          </span>
+        </div>
+      </div>
+
+      {/* Right Column: Title + Latest Chapters + Calendar Underneath */}
+      <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
+        <div>
+          {/* Series Title */}
+          <div className="mb-2">
+            <h3
+              onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+              className="text-sm sm:text-base font-extrabold text-gray-100 hover:text-purple-300 cursor-pointer transition truncate leading-snug"
+              title={series.title}
+            >
+              {series.title}
+            </h3>
+          </div>
+
+          {/* Series Synopsis / Özet (Sadece Seriler Kataloğunda aktif) */}
+          {showSynopsis && series.synopsis && (() => {
+            const synopsisText = series.synopsis.trim();
+            const isLong = synopsisText.length > 140;
+
+            return (
+              <div className="mb-2 bg-gray-950/50 p-2.5 sm:p-3 rounded-xl border border-gray-800/70 transition-all group/syn">
+                <div className="relative">
+                  <p
+                    className={`text-xs text-gray-300 leading-relaxed font-normal break-words text-left transition-all duration-200 ${
+                      !isSynopsisExpanded && isLong ? 'line-clamp-2 sm:line-clamp-3 overflow-hidden' : ''
+                    }`}
+                  >
+                    {synopsisText}
+                  </p>
+                  {!isSynopsisExpanded && isLong && (
+                    <div className="absolute bottom-0 inset-x-0 h-5 bg-gradient-to-t from-gray-950/90 to-transparent pointer-events-none" />
+                  )}
+                </div>
+
+                {isLong && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSynopsisExpanded(!isSynopsisExpanded);
+                    }}
+                    className="mt-2 w-full py-1 px-2.5 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/20 hover:border-purple-400/40 text-purple-300 hover:text-white text-[11px] font-bold transition flex items-center justify-center gap-1.5 group/btn cursor-pointer"
+                  >
+                    <span>{isSynopsisExpanded ? 'Daha Az Göster' : 'Özetin Devamı'}</span>
+                    {isSynopsisExpanded ? (
+                      <ChevronUp size={13} className="text-purple-400 group-hover/btn:-translate-y-0.5 transition-transform" />
+                    ) : (
+                      <ChevronDown size={13} className="text-purple-400 group-hover/btn:translate-y-0.5 transition-transform" />
+                    )}
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Genres / Türler (Sadece Seriler Kataloğunda aktif) */}
+          {showGenres && series.genres && series.genres.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap mb-2">
+              {series.genres.slice(0, 5).map(g => (
+                <span key={g} className="text-[10px] text-purple-300/90 bg-purple-950/70 border border-purple-500/20 px-2 py-0.5 rounded-md font-medium">
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Chapters List (Clean Vertical Stack, Symmetrical Padding) */}
+          <div className="flex flex-col gap-1.5">
+            {recentChapters.map((ch) => {
+              const isChapterNew = checkIsChapterNew(ch, 24);
+
+              return (
+                <div
+                  key={ch.id}
+                  className="group/ch relative flex items-center justify-between px-2.5 py-1 sm:py-1.5 rounded-lg bg-gray-950/50 hover:bg-purple-950/70 border border-gray-800/70 hover:border-purple-500/40 cursor-pointer transition-all duration-200"
+                  onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
+                >
+                  {/* Left: Indicator + Title + Special Tag + New Badge */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 pr-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover/ch:bg-purple-300 group-hover/ch:scale-125 transition-transform flex-shrink-0" />
+                    
+                    <span className="font-semibold text-xs text-gray-200 group-hover/ch:text-purple-200 truncate">
+                      {ch.title || `Bölüm ${ch.number}`}
+                    </span>
+
+                    {/* Chapter Special Badge (Sezon Finali, Final, Ekstra, Yan Bölüm, vb.) */}
+                    {ch.specialTag && (
+                      <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                    )}
+
+                    {/* Parıltılı Mor "YENİ" Etiketi */}
+                    {isChapterNew && (
+                      <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded shadow-sm border border-purple-300/40 animate-pulse flex items-center gap-0.5 flex-shrink-0">
+                        <Sparkles size={8} className="text-purple-100 fill-purple-100" />
+                        YENİ
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Right: Date */}
+                  <span className="text-[9px] sm:text-[10px] text-gray-400 group-hover/ch:text-gray-300 flex-shrink-0 font-medium bg-gray-900/80 border border-gray-800/60 px-1.5 py-0.5 rounded whitespace-nowrap">
+                    {formatDateCompact(ch.publishedDate)}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Bottom Row under chapters/text: Release Day / Calendar Badge */}
+        {series.releaseDay && (
+          <div className="mt-2 pt-1.5 border-t border-gray-800/50 flex items-center justify-between">
+            <span className="text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-md flex items-center gap-1.5 shadow-sm">
+              <Calendar size={11} className="text-purple-300" />
+              <span>Yayın Günü: <strong className="text-purple-200">{series.releaseDay}{series.releaseTime ? ` ${series.releaseTime}` : ''}</strong></span>
+            </span>
+          </div>
+        )}
+
+      </div>
+
+    </div>
+  );
+};
