@@ -22,6 +22,7 @@ import { ScrollToTopBottom } from './components/ScrollToTopBottom';
 import { Footer } from './components/Footer';
 import { SeoManager } from './components/SeoManager';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
+import { AppSplashScreen } from './components/AppSplashScreen';
 import { sortSeriesByLatestRelease } from './utils/dateUtils';
 import { getOptimizedImageUrl } from './utils/imageUtils';
 
@@ -471,10 +472,15 @@ const MainContent: React.FC = () => {
 
 const AppLayout: React.FC = () => {
   const { theme, view, isAuthModalOpen, closeAuthModal, authModalInitialTab, isDailyRewardOpen, closeDailyReward, publicProfileUserId, closePublicProfile } = useApp();
+  const [showSplash, setShowSplash] = useState(true);
+
   return (
     <div className={`min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0 transition-colors duration-200 ${
       theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-950 text-gray-100'
     }`}>
+      {/* Cosmic Entrance Loading Splash Screen */}
+      {showSplash && <AppSplashScreen onFinished={() => setShowSplash(false)} />}
+
       <SeoManager />
       <Header />
       <QuickNav />
