@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppNotification } from '../types';
 import {
@@ -20,7 +20,9 @@ import {
   Clock,
   ArrowLeft,
   Filter,
-  Bookmark
+  Bookmark,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 export const NotificationsView: React.FC = () => {
@@ -41,6 +43,20 @@ export const NotificationsView: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'followed' | 'chapters' | 'system' | 'unread'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [pushPermissionStatus, setPushPermissionStatus] = useState<string>(() => checkNotificationPermission());
+
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  const scrollTabs = (offset: number) => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (tabsRef.current && e.deltaY !== 0) {
+      tabsRef.current.scrollLeft += e.deltaY;
+    }
+  };
 
   const handleRequestPushPermission = async () => {
     const result = await requestDeviceNotificationPermission();
@@ -229,70 +245,92 @@ export const NotificationsView: React.FC = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-gray-900/90 border border-purple-500/20 p-3 rounded-2xl">
-        {/* Category Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 md:pb-0">
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-gray-900/90 border border-purple-500/20 p-3 rounded-2xl">
+        {/* Category Tabs with Arrow Controls */}
+        <div className="relative flex-1 min-w-0 flex items-center gap-1.5">
           <button
-            onClick={() => setActiveTab('all')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'all'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
-            }`}
+            onClick={() => scrollTabs(-200)}
+            className="hidden sm:flex items-center justify-center w-7 h-7 rounded-lg bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/30 flex-shrink-0 transition active:scale-95"
+            title="Sola Kaydır"
           >
-            <Layers size={14} />
-            <span>Tüm Bildirimler ({currentNotifications.length})</span>
+            <ChevronLeft size={16} />
           </button>
-          <button
-            onClick={() => setActiveTab('followed')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'followed'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'text-purple-300 hover:text-white hover:bg-purple-950/60'
-            }`}
+
+          <div
+            ref={tabsRef}
+            onWheel={handleWheel}
+            className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-thin scrollbar-thumb-purple-700/50 scrollbar-track-transparent py-1 scroll-smooth min-w-0"
           >
-            <Sparkles size={14} className="text-amber-300" />
-            <span>Takip Ettiklerim ({totalFollowedNotifications})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('chapters')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'chapters'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
-            }`}
-          >
-            <BookOpen size={14} />
-            <span>Bölüm Güncellemeleri ({totalChapterNotifications})</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('system')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === 'system'
-                ? 'bg-purple-600 text-white shadow-md'
-                : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
-            }`}
-          >
-            <Megaphone size={14} />
-            <span>Duyurular & Sistem ({totalSystemNotifications})</span>
-          </button>
-          {unreadNotificationsCount > 0 && (
             <button
-              onClick={() => setActiveTab('unread')}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'unread'
-                  ? 'bg-amber-600 text-white shadow-md font-black'
-                  : 'text-amber-400 hover:text-amber-300 hover:bg-amber-950/60'
+              onClick={() => setActiveTab('all')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'all'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
               }`}
             >
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              <span>Okunmamış ({unreadNotificationsCount})</span>
+              <Layers size={14} />
+              <span>Tüm Bildirimler ({currentNotifications.length})</span>
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('followed')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'followed'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-purple-300 hover:text-white hover:bg-purple-950/60'
+              }`}
+            >
+              <Sparkles size={14} className="text-amber-300" />
+              <span>Takip Ettiklerim ({totalFollowedNotifications})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('chapters')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'chapters'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
+              }`}
+            >
+              <BookOpen size={14} />
+              <span>Bölüm Güncellemeleri ({totalChapterNotifications})</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('system')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                activeTab === 'system'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
+              }`}
+            >
+              <Megaphone size={14} />
+              <span>Duyurular & Sistem ({totalSystemNotifications})</span>
+            </button>
+            {unreadNotificationsCount > 0 && (
+              <button
+                onClick={() => setActiveTab('unread')}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 whitespace-nowrap flex-shrink-0 ${
+                  activeTab === 'unread'
+                    ? 'bg-amber-600 text-white shadow-md font-black'
+                    : 'text-amber-400 hover:text-amber-300 hover:bg-amber-950/60'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <span>Okunmamış ({unreadNotificationsCount})</span>
+              </button>
+            )}
+          </div>
+
+          <button
+            onClick={() => scrollTabs(200)}
+            className="hidden sm:flex items-center justify-center w-7 h-7 rounded-lg bg-purple-950/80 hover:bg-purple-800 text-purple-200 border border-purple-500/30 flex-shrink-0 transition active:scale-95"
+            title="Sağa Kaydır"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
 
         {/* Search Input */}
-        <div className="relative min-w-[220px]">
+        <div className="relative w-full lg:w-64 flex-shrink-0">
           <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
           <input
             type="text"
