@@ -1,0 +1,39 @@
+name = "fansub"
+main = "dist/_worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+assets = { directory = "./dist", binding = "ASSETS" }
+
+# Cloudflare Email Routing (Ücretsiz Doğrulama E-Postası Gönderimi)
+send_email = [
+  { name = "EMAIL" },
+  { name = "SEB" }
+]
+
+# Ana Veritabanı (Seriler ve Bölümler - 500 MB Kota)
+[[d1_databases]]
+binding = "DB"
+database_name = "mikrokosmos-db"
+database_id = "83409af1-9945-432c-a81a-01c0dbebac1d"
+
+# Yorumlar İçin İkinci Ayrı Veritabanı (Ayrı 500 MB Kota)
+[[d1_databases]]
+binding = "COMMENTS_DB"
+database_name = "mikrokosmos-comments-db"
+database_id = "145d3bfe-7672-4141-ab75-a8b250527407"
+
+# Üyelik ve Kullanıcı Bilgileri İçin Üçüncü Ayrı Veritabanı (Ayrı 500 MB Kota)
+[[d1_databases]]
+binding = "USERS_DB"
+database_name = "mikrokosmos-user-db"
+database_id = "bb7fc315-ec80-4139-80f6-27c79b8a1200"
+
+# Cloudflare R2 (Özel Profil Resmi & Medya Depolama - S3 Storage)
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "mikrokosmos-r2"
+
+# Cloudflare KV (Oluşturulduğunda id ekleyiniz)
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "kv_id_buraya"
