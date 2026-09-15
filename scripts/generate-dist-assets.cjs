@@ -8,7 +8,6 @@ execSync('npm run build', { stdio: 'inherit' });
 const distDir = path.join(__dirname, '..', 'dist');
 const indexHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf-8');
 const assetsDir = path.join(distDir, 'assets');
-const assetFiles = fs.readdirSync(assetsDir);
 
 const assetsMap = {};
 
@@ -24,14 +23,16 @@ if (fs.existsSync(assetsDir)) {
 }
 
 // 2. Root files in dist (e.g. manifest.webmanifest, registerSW.js, sw.js, pwa icons)
-const rootDistFiles = fs.readdirSync(distDir);
-rootDistFiles.forEach(file => {
-  const filePath = path.join(distDir, file);
-  if (fs.statSync(filePath).isFile() && file !== 'index.html' && !file.endsWith('.zip')) {
-    const content = fs.readFileSync(filePath, 'base64');
-    assetsMap[file] = content;
-  }
-});
+if (fs.existsSync(distDir)) {
+  const rootDistFiles = fs.readdirSync(distDir);
+  rootDistFiles.forEach(file => {
+    const filePath = path.join(distDir, file);
+    if (fs.statSync(filePath).isFile() && file !== 'index.html' && !file.endsWith('.zip')) {
+      const content = fs.readFileSync(filePath, 'base64');
+      assetsMap[file] = content;
+    }
+  });
+}
 
 const tsContent = `// Auto-generated production assets for instant Cloudflare Pages direct upload ZIP
 export const BUILT_INDEX_HTML = ${JSON.stringify(indexHtml)};
