@@ -45,12 +45,15 @@ type ViewState =
   | { type: 'admin' }
   | { type: 'management' }
   | { type: 'advanced-search' }
-  | { type: 'notifications' };
+  | { type: 'notifications' }
+  | { type: 'leaderboard' };
 
 export const viewToHash = (v: ViewState): string => {
   switch (v.type) {
     case 'home':
       return '#/';
+    case 'leaderboard':
+      return '#/liderlik-tablosu';
     case 'series-list':
       return '#/seriler';
     case 'series-detail':
@@ -157,6 +160,11 @@ export const hashToView = (hash: string): ViewState => {
       return { type: 'advanced-search' };
     case 'bildirimler':
       return { type: 'notifications' };
+    case 'liderlik-tablosu':
+    case 'top50':
+    case 'siralama':
+    case 'leaderboard':
+      return { type: 'leaderboard' };
     default:
       return { type: 'home' };
   }

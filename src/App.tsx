@@ -32,6 +32,7 @@ const ManhwaReader = React.lazy(() => import('./components/ManhwaReader').then(m
 const NovelReader = React.lazy(() => import('./components/NovelReader').then(m => ({ default: m.NovelReader })));
 const LibraryView = React.lazy(() => import('./components/LibraryView').then(m => ({ default: m.LibraryView })));
 const AdvancedSearchView = React.lazy(() => import('./components/AdvancedSearchView').then(m => ({ default: m.AdvancedSearchView })));
+const LeaderboardView = React.lazy(() => import('./components/LeaderboardView').then(m => ({ default: m.LeaderboardView })));
 const CategoriesView = React.lazy(() => import('./components/CategoriesView').then(m => ({ default: m.CategoriesView })));
 const SeriesListView = React.lazy(() => import('./components/SeriesListView').then(m => ({ default: m.SeriesListView })));
 const AZListView = React.lazy(() => import('./components/AZListView').then(m => ({ default: m.AZListView })));
@@ -252,6 +253,14 @@ const MainContent: React.FC = () => {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         <NotificationsView />
+      </Suspense>
+    );
+  }
+
+  if (view.type === 'leaderboard') {
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <LeaderboardView />
       </Suspense>
     );
   }

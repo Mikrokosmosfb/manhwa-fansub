@@ -12,13 +12,20 @@ import {
   ThumbsUp,
   SlidersHorizontal,
   GraduationCap,
-  Share2
+  Share2,
+  Trophy
 } from 'lucide-react';
 
 export const QuickNav: React.FC = () => {
   const { setView } = useApp();
 
   const links = [
+    {
+      title: 'Top 50 Liderlik',
+      icon: <Trophy className="w-3.5 h-3.5 text-amber-400 animate-pulse" />,
+      onClick: () => setView({ type: 'leaderboard' }),
+      highlight: true
+    },
     {
       title: 'Yayın Takvimi',
       icon: <Calendar className="w-3.5 h-3.5 text-amber-300" />,
@@ -83,7 +90,11 @@ export const QuickNav: React.FC = () => {
           <button
             key={idx}
             onClick={link.onClick}
-            className="flex items-center gap-1.5 bg-purple-900/40 hover:bg-purple-800/70 text-purple-100 hover:text-white text-xs font-semibold px-3 py-1 rounded-full border border-purple-700/30 transition-all duration-150 active:scale-95"
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full transition-all duration-150 active:scale-95 ${
+              (link as any).highlight
+                ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 text-amber-300 font-bold border border-amber-400/50 shadow-sm'
+                : 'bg-purple-900/40 hover:bg-purple-800/70 text-purple-100 hover:text-white border border-purple-700/30'
+            }`}
           >
             {link.icon}
             <span>{link.title}</span>

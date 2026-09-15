@@ -213,6 +213,18 @@ export const Header: React.FC = () => {
               <LayoutGrid size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'categories' ? 'text-white' : 'text-purple-300'}`} />
               <span>Kategoriler</span>
             </button>
+
+            <button
+              onClick={() => setView({ type: 'leaderboard' })}
+              className={`group flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
+                view.type === 'leaderboard'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-300/50'
+                  : 'text-amber-300/90 hover:text-white hover:bg-amber-950/40 hover:border-amber-500/30 border border-transparent'
+              }`}
+            >
+              <Crown size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'leaderboard' ? 'text-amber-300' : 'text-amber-400'}`} />
+              <span className="font-bold">Top 50</span>
+            </button>
           </nav>
 
           {/* Right Action Icons & Search */}
@@ -582,6 +594,18 @@ export const Header: React.FC = () => {
               </span>
             </button>
           </div>
+
+          <button
+            onClick={() => { setView({ type: 'leaderboard' }); setIsMobileMenuOpen(false); }}
+            className="w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-black text-amber-300 bg-gradient-to-r from-amber-950/60 to-purple-950/80 hover:from-amber-900/80 hover:to-purple-900/80 flex items-center justify-between border border-amber-500/40 shadow-md"
+          >
+            <span className="flex items-center gap-2">
+              <Crown size={16} className="text-amber-400" /> Top 50 Liderlik Tablosu
+            </span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-500 text-black">
+              Sıralama
+            </span>
+          </button>
 
           <button
             onClick={() => { setView({ type: 'home' }); setIsMobileMenuOpen(false); }}
