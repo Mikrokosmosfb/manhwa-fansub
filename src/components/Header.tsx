@@ -213,18 +213,6 @@ export const Header: React.FC = () => {
               <LayoutGrid size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'categories' ? 'text-white' : 'text-purple-300'}`} />
               <span>Kategoriler</span>
             </button>
-
-            <button
-              onClick={() => setView({ type: 'leaderboard' })}
-              className={`group flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
-                view.type === 'leaderboard'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-300/50'
-                  : 'text-amber-300/90 hover:text-white hover:bg-amber-950/40 hover:border-amber-500/30 border border-transparent'
-              }`}
-            >
-              <Crown size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'leaderboard' ? 'text-amber-300' : 'text-amber-400'}`} />
-              <span className="font-bold">Top 50</span>
-            </button>
           </nav>
 
           {/* Right Action Icons & Search */}
