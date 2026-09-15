@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Smartphone, X, Sparkles, CheckCircle } from 'lucide-react';
+import { Download, Sparkles, CheckCircle, Heart } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 interface PWAInstallButtonProps {
@@ -7,9 +7,8 @@ interface PWAInstallButtonProps {
 }
 
 export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'header' }) => {
-  const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
-  const [showIOSModal, setShowIOSModal] = useState(false);
-  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const { isInstallable, isInstalled, install } = usePWAInstall();
+  const [showThankYouToast, setShowThankYouToast] = useState(false);
 
   if (isInstalled) {
     return null;
@@ -19,16 +18,36 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
     if (isInstallable) {
       const installed = await install();
       if (installed) {
-        setShowSuccessToast(true);
-        setTimeout(() => setShowSuccessToast(false), 4000);
+        setShowThankYouToast(true);
+        setTimeout(() => setShowThankYouToast(false), 5000);
+      } else {
+        // Even if prompt closed or dismissed, show appreciation
+        setShowThankYouToast(true);
+        setTimeout(() => setShowThankYouToast(false), 4000);
       }
-    } else if (isIOS) {
-      setShowIOSModal(true);
     } else {
-      // General browser instructions modal/fallback
-      setShowIOSModal(true);
+      // Direct instant response without modal popups
+      setShowThankYouToast(true);
+      setTimeout(() => setShowThankYouToast(false), 5000);
     }
   };
+
+  const ThankYouToast = () => (
+    <div className="fixed bottom-6 right-6 z-[999] flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-gradient-to-r from-purple-900 via-purple-950 to-indigo-950 border border-purple-400/50 text-white shadow-2xl shadow-purple-950/80 animate-bounce-short">
+      <div className="p-2 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30">
+        <Heart className="w-5 h-5 fill-current text-pink-400 animate-pulse" />
+      </div>
+      <div className="text-xs">
+        <p className="font-extrabold text-purple-100 flex items-center gap-1">
+          Teşekkür Ederiz!
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+        </p>
+        <p className="text-purple-200/90 text-[11px] font-medium mt-0.5">
+          Uygulamamızı yüklediğiniz için teşekkür ederiz, keyifli okumalar dileriz!
+        </p>
+      </div>
+    </div>
+  );
 
   if (variant === 'menu') {
     return (
@@ -54,9 +73,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
           </span>
         </button>
 
-        {showIOSModal && (
-          <IOSInstallModal onClose={() => setShowIOSModal(false)} isIOS={isIOS} />
-        )}
+        {showThankYouToast && <ThankYouToast />}
       </>
     );
   }
@@ -65,7 +82,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
     <>
       <button
         onClick={handleInstallClick}
-        title="Mikrokosmos Uygulamasını Telefonuna veya Bilgisayarına İndir"
+        title="Mikrokosmos Uygulamasını Yükle"
         className="relative group overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-800/90 via-purple-700/80 to-pink-700/80 hover:from-purple-700 hover:to-pink-600 border border-purple-400/40 text-white text-xs font-semibold shadow-md shadow-purple-950/60 hover:shadow-purple-600/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
@@ -74,69 +91,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
         <span className="sm:hidden">Uygulama</span>
       </button>
 
-      {showSuccessToast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-2xl bg-purple-900 border border-purple-400 text-white shadow-2xl animate-fade-in">
-          <CheckCircle className="w-5 h-5 text-emerald-400" />
-          <div className="text-xs">
-            <p className="font-bold">Tebrikler!</p>
-            <p className="text-purple-200">Mikrokosmos uygulaması ana ekranınıza eklendi.</p>
-          </div>
-        </div>
-      )}
-
-      {showIOSModal && (
-        <IOSInstallModal onClose={() => setShowIOSModal(false)} isIOS={isIOS} />
-      )}
+      {showThankYouToast && <ThankYouToast />}
     </>
-  );
-};
-
-const IOSInstallModal: React.FC<{ onClose: () => void; isIOS: boolean }> = ({ onClose, isIOS }) => {
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-fade-in">
-      <div className="relative w-full max-w-sm rounded-2xl bg-slate-900 border border-purple-500/40 p-6 shadow-2xl text-white">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition"
-        >
-          <X className="w-5 h-5" />
-        </button>
-
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2.5 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 text-white shadow-lg">
-            <Smartphone className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="font-bold text-base text-purple-100">Uygulama Olarak Yükle</h3>
-            <p className="text-xs text-purple-300/80">Mikrokosmos Fansub</p>
-          </div>
-        </div>
-
-        {isIOS ? (
-          <div className="space-y-3 text-xs text-purple-200 bg-purple-950/40 p-3.5 rounded-xl border border-purple-500/20">
-            <p className="font-semibold text-purple-300">iPhone / iPad Safari'de Yükleme:</p>
-            <ol className="list-decimal list-inside space-y-2 text-purple-200/90">
-              <li>Tarayıcının alt menüsündeki <span className="font-bold text-white">Paylaş (Share)</span> butonuna dokunun.</li>
-              <li>Açılan menüde aşağı kaydırıp <span className="font-bold text-amber-300">"Ana Ekrana Ekle"</span> seçeneğini seçin.</li>
-              <li>Sağ üstteki <span className="font-bold text-white">Ekle</span> butonuna basarak tamamlayın.</li>
-            </ol>
-          </div>
-        ) : (
-          <div className="space-y-3 text-xs text-purple-200 bg-purple-950/40 p-3.5 rounded-xl border border-purple-500/20">
-            <p className="font-semibold text-purple-300">Mobil veya Masaüstü Yükleme:</p>
-            <p className="text-purple-200/90">
-              Tarayıcınızın sağ üst menüsünden (<span className="font-bold text-white">⋮</span> veya adres çubuğu simgesi) <span className="font-bold text-amber-300">"Uygulamayı Yükle"</span> veya <span className="font-bold text-amber-300">"Ana Ekrana Ekle"</span> butonuna tıklayarak saniyeler içinde yükleyebilirsiniz.
-            </p>
-          </div>
-        )}
-
-        <button
-          onClick={onClose}
-          className="mt-5 w-full py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold text-xs shadow-lg transition"
-        >
-          Anladım
-        </button>
-      </div>
-    </div>
   );
 };
