@@ -9,6 +9,7 @@ export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isInIframe, setIsInIframe] = useState(false);
 
   useEffect(() => {
     // Detect standalone mode (already installed as PWA)
@@ -16,6 +17,13 @@ export function usePWAInstall() {
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as unknown as { standalone?: boolean }).standalone === true;
     setIsInstalled(isStandalone);
+
+    // Detect if running inside iframe
+    try {
+      setIsInIframe(window.self !== window.top);
+    } catch {
+      setIsInIframe(true);
+    }
 
     // Detect iOS devices
     const userAgent = window.navigator.userAgent.toLowerCase();
@@ -41,22 +49,29 @@ export function usePWAInstall() {
     };
   }, []);
 
-  const install = async () => {
-    if (!deferredPrompt) return false;
-    await deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
-      setDeferredPrompt(null);
-      return true;
+  const install = async (): Promise<'installed' | 'dismissed' | 'manual'> => {
+    if (deferredPrompt) {
+      try {
+        await deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+          setDeferredPrompt(null);
+          return 'installed';
+        }
+        return 'dismissed';
+      } catch (err) {
+        console.error('Install prompt error:', err);
+      }
     }
-    return false;
+    return 'manual';
   };
 
   return {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isIOS,
+    isInIframe,
     install,
   };
 }
