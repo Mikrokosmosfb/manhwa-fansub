@@ -22,6 +22,7 @@ import {
 import { INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
+import { sendDeviceNotification } from '../utils/pushNotifications';
 
 type ViewState =
   | { type: 'home' }
@@ -1768,6 +1769,15 @@ const deleteShopItemAndStyle = (itemId: string) => {
     };
     setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
     
+    // Trigger native browser/device push notification if permission is granted
+    if (notif.type === 'chapter') {
+      if (!notif.seriesId || followedSeriesIds.includes(notif.seriesId)) {
+        sendDeviceNotification(notif.title, notif.message, notif.coverImage);
+      }
+    } else {
+      sendDeviceNotification(notif.title, notif.message, notif.coverImage);
+    }
+
     // Broadcast to global database if user is admin
     if (isAdminLoggedIn || user?.email === 'aseleliyeva77@gmail.com' || user?.email === 'mikrokosmosfansub@gmail.com') {
       safeFetchJson('/api/admin/global_notifications', {

@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppNotification } from '../types';
 import {
+  checkNotificationPermission,
+  requestDeviceNotificationPermission
+} from '../utils/pushNotifications';
+import {
   Bell,
   CheckCheck,
   Trash2,
@@ -30,11 +34,23 @@ export const NotificationsView: React.FC = () => {
     followedSeriesIds,
     bookmarks,
     setView,
-    user
+    user,
+    showToast
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'all' | 'followed' | 'chapters' | 'system' | 'unread'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [pushPermissionStatus, setPushPermissionStatus] = useState<string>(() => checkNotificationPermission());
+
+  const handleRequestPushPermission = async () => {
+    const result = await requestDeviceNotificationPermission();
+    setPushPermissionStatus(result.status);
+    showToast({
+      title: result.granted ? 'Cihaz Bildirimleri Açıldı 🔔' : 'Bildirim İzni Statusu',
+      message: result.message,
+      type: result.granted ? 'success' : 'info'
+    });
+  };
 
   const isSeriesFollowed = (seriesId?: string) => {
     if (!seriesId) return false;
@@ -172,6 +188,43 @@ export const NotificationsView: React.FC = () => {
               <span className="text-[10px] text-amber-300">Okunmamış</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Native Device Push Notifications Banner */}
+      <div className={`rounded-2xl p-4 border transition-all duration-300 shadow-lg ${
+        pushPermissionStatus === 'granted'
+          ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
+          : 'bg-gradient-to-r from-purple-900/60 via-purple-950/80 to-indigo-950/70 border-purple-500/40 text-purple-100'
+      }`}>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 font-bold ${
+              pushPermissionStatus === 'granted' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-purple-600/30 text-purple-300 border border-purple-400/30'
+            }`}>
+              <Bell size={20} className={pushPermissionStatus === 'granted' ? '' : 'animate-bounce'} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                {pushPermissionStatus === 'granted' ? 'Cihaz Bildirimleri Aktif 🔔' : 'Anlık Cihaz Bildirimlerini Etkinleştir 📱'}
+              </h3>
+              <p className="text-xs opacity-80 mt-0.5">
+                {pushPermissionStatus === 'granted'
+                  ? 'Takip ettiğiniz serilere yeni bölüm yüklendiğinde anında telefonunuza/cihazınıza push bildirim gönderilir.'
+                  : 'Sitede olmasanız bile yeni bölümler yayınlandığında telefonunuza veya bilgisayarınıza anında anlık ekran bildirimi gelsin.'}
+              </p>
+            </div>
+          </div>
+
+          {pushPermissionStatus !== 'granted' && (
+            <button
+              onClick={handleRequestPushPermission}
+              className="w-full sm:w-auto px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl text-xs font-black shadow-md hover:shadow-purple-500/20 transition-all flex items-center justify-center gap-2 flex-shrink-0 active:scale-95"
+            >
+              <Sparkles size={15} />
+              <span>Bildirimleri Aç</span>
+            </button>
+          )}
         </div>
       </div>
 
