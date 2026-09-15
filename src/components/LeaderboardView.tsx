@@ -77,10 +77,13 @@ export const LeaderboardView: React.FC = () => {
             coins: ku.coins || 0,
             equippedBadge: ku.equippedBadge,
             equippedBadges: ku.equippedBadges,
+            equippedFrame: ku.equippedFrame,
           };
         } else {
           userStatsMap[key].email = ku.email || userStatsMap[key].email;
           userStatsMap[key].coins = ku.coins || userStatsMap[key].coins;
+          userStatsMap[key].equippedFrame = userStatsMap[key].equippedFrame || ku.equippedFrame;
+          userStatsMap[key].equippedBadge = userStatsMap[key].equippedBadge || ku.equippedBadge;
         }
       });
     }
@@ -215,12 +218,12 @@ export const LeaderboardView: React.FC = () => {
           <div className="flex items-center gap-4 min-w-0 w-full sm:w-auto">
             <div className="relative flex-shrink-0">
               <UserAvatar
-                avatarUrl={user.avatar}
-                userName={user.name}
-                equippedFrame={user.equippedFrame}
-                className="w-14 h-14 rounded-full border-2 border-amber-400 shadow-md"
+                avatar={user.avatar}
+                name={user.name}
+                frameId={user.equippedFrame}
+                size="lg"
               />
-              <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[11px] font-black shadow">
+              <span className="absolute -bottom-1 -right-1 px-2 py-0.5 rounded-full bg-amber-500 text-black text-[11px] font-black shadow z-20">
                 #{currentUserRankInfo.userRank.rank}
               </span>
             </div>
@@ -289,10 +292,10 @@ export const LeaderboardView: React.FC = () => {
             <div className="relative mt-4 mb-3">
               <div className="absolute inset-0 rounded-full bg-slate-400/20 blur-xl group-hover:bg-slate-400/40 transition-all" />
               <UserAvatar
-                avatarUrl={top2.avatar}
-                userName={top2.name}
-                equippedFrame={top2.equippedFrame}
-                className="w-20 h-20 rounded-full border-4 border-slate-300 shadow-2xl relative z-10"
+                avatar={top2.avatar}
+                name={top2.name}
+                frameId={top2.equippedFrame}
+                size="xl"
               />
             </div>
 
@@ -343,10 +346,10 @@ export const LeaderboardView: React.FC = () => {
             <div className="relative mt-5 mb-3">
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 blur-2xl opacity-60 group-hover:opacity-100 transition-all animate-pulse" />
               <UserAvatar
-                avatarUrl={top1.avatar}
-                userName={top1.name}
-                equippedFrame={top1.equippedFrame}
-                className="w-24 h-24 rounded-full border-4 border-amber-400 shadow-2xl relative z-10"
+                avatar={top1.avatar}
+                name={top1.name}
+                frameId={top1.equippedFrame}
+                size="2xl"
               />
             </div>
 
@@ -397,10 +400,10 @@ export const LeaderboardView: React.FC = () => {
             <div className="relative mt-4 mb-3">
               <div className="absolute inset-0 rounded-full bg-amber-700/20 blur-xl group-hover:bg-amber-700/40 transition-all" />
               <UserAvatar
-                avatarUrl={top3.avatar}
-                userName={top3.name}
-                equippedFrame={top3.equippedFrame}
-                className="w-20 h-20 rounded-full border-4 border-amber-600 shadow-2xl relative z-10"
+                avatar={top3.avatar}
+                name={top3.name}
+                frameId={top3.equippedFrame}
+                size="xl"
               />
             </div>
 
@@ -506,10 +509,10 @@ export const LeaderboardView: React.FC = () => {
                     </span>
 
                     <UserAvatar
-                      avatarUrl={item.avatar}
-                      userName={item.name}
-                      equippedFrame={item.equippedFrame}
-                      className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-purple-500/30 flex-shrink-0"
+                      avatar={item.avatar}
+                      name={item.name}
+                      frameId={item.equippedFrame}
+                      size="md"
                     />
 
                     <div className="min-w-0">
