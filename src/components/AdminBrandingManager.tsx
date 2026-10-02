@@ -172,8 +172,8 @@ export const AdminBrandingManager: React.FC = () => {
                     <span className="font-black text-lg text-white leading-none">
                       {siteTitle || 'Mikrokosmos'}
                     </span>
-                    <span className="text-[9px] tracking-[0.16em] text-pink-300 font-extrabold mt-1 leading-none">
-                      {siteSlogan || 'Shine, Dream, Smile'}
+                    <span className="text-[9px] uppercase tracking-[0.25em] text-pink-300 font-extrabold mt-1 leading-none">
+                      FANSUB
                     </span>
                   </div>
                 </div>
