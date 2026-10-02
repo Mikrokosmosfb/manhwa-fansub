@@ -23,7 +23,7 @@ export const AdminBrandingManager: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState<string>(siteBranding.logoUrl || '');
   const [faviconUrl, setFaviconUrl] = useState<string>(siteBranding.faviconUrl || '');
   const [siteTitle, setSiteTitle] = useState<string>(siteBranding.siteTitle || 'Mikrokosmos');
-  const [siteSlogan, setSiteSlogan] = useState<string>(siteBranding.siteSlogan || 'FANSUB');
+  const [siteSlogan, setSiteSlogan] = useState<string>(siteBranding.siteSlogan || 'Shine, Dream, Smile');
   const [isSaved, setIsSaved] = useState(false);
 
   const handleSave = (e: React.FormEvent) => {
@@ -32,7 +32,7 @@ export const AdminBrandingManager: React.FC = () => {
       logoUrl: logoUrl.trim(),
       faviconUrl: faviconUrl.trim(),
       siteTitle: siteTitle.trim() || 'Mikrokosmos',
-      siteSlogan: siteSlogan.trim() || 'FANSUB'
+      siteSlogan: siteSlogan.trim() || 'Shine, Dream, Smile'
     });
 
     setIsSaved(true);
@@ -51,7 +51,7 @@ export const AdminBrandingManager: React.FC = () => {
       setLogoUrl('');
       setFaviconUrl('');
       setSiteTitle('Mikrokosmos');
-      setSiteSlogan('FANSUB');
+      setSiteSlogan('Shine, Dream, Smile');
 
       showToast({
         title: 'Varsayılana Sıfırlandı 🔄',
@@ -172,8 +172,8 @@ export const AdminBrandingManager: React.FC = () => {
                     <span className="font-black text-lg text-white leading-none">
                       {siteTitle || 'Mikrokosmos'}
                     </span>
-                    <span className="text-[9px] uppercase tracking-[0.25em] text-pink-300 font-extrabold mt-1 leading-none">
-                      {siteSlogan || 'FANSUB'}
+                    <span className="text-[9px] tracking-[0.16em] text-pink-300 font-extrabold mt-1 leading-none">
+                      {siteSlogan || 'Shine, Dream, Smile'}
                     </span>
                   </div>
                 </div>
@@ -315,7 +315,7 @@ export const AdminBrandingManager: React.FC = () => {
                 type="text"
                 value={siteSlogan}
                 onChange={(e) => setSiteSlogan(e.target.value)}
-                placeholder="FANSUB"
+                placeholder="Shine, Dream, Smile"
                 className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white font-bold focus:outline-none focus:border-purple-500 transition"
               />
             </div>

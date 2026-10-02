@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { viewToHash } from '../context/AppContext';
 
 export const SeoManager: React.FC = () => {
-  const { view, seriesList } = useApp();
+  const { view, seriesList, siteBranding } = useApp();
 
   useEffect(() => {
     // Helper to safely set or create meta tags in <head>
@@ -42,20 +42,23 @@ export const SeoManager: React.FC = () => {
     const currentHash = viewToHash(view);
     const fullUrl = `${baseUrl}/${currentHash}`;
 
+    const brandTitle = siteBranding.siteTitle || 'Mikrokosmos';
+    const brandSlogan = siteBranding.siteSlogan || 'Shine, Dream, Smile';
+
     // Base defaults
-    let pageTitle = 'Mikrokosmos Fansub - Türkçe Webtoon, Manga ve Web Novel Oku';
-    let pageDescription = 'Mikrokosmos Fansub ile en popüler Türkçe Webtoon, Manga ve Web Novel serilerini ücretsiz, güncel ve yüksek kalitede oku.';
+    let pageTitle = `${brandTitle} Fansub - ${brandSlogan} | Türkçe Webtoon, Manga ve Web Novel Oku`;
+    let pageDescription = `${brandTitle} Fansub (${brandSlogan}) ile en popüler Türkçe Webtoon, Manga ve Web Novel serilerini ücretsiz, güncel ve yüksek kalitede oku.`;
     let ogImage = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?w=1200&auto=format&fit=crop&q=80';
     let isReaderMode = false;
     let schemaData: any = null;
 
     if (view.type === 'home') {
-      pageTitle = 'Mikrokosmos Fansub - Türkçe Webtoon, Manga ve Web Novel Oku';
-      pageDescription = 'En güncel Türkçe Manhwa, Manga, Webtoon ve Web Novel bölümlerini kesintisiz oku. Aktif topluluk ve zengin arşiv.';
+      pageTitle = `${brandTitle} Fansub - ${brandSlogan} | Türkçe Webtoon, Manga ve Web Novel Oku`;
+      pageDescription = `En güncel Türkçe Manhwa, Manga, Webtoon ve Web Novel bölümlerini kesintisiz oku. ${brandTitle} (${brandSlogan}) aktif topluluk ve zengin arşiv.`;
       schemaData = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Mikrokosmos Fansub',
+        name: `${brandTitle} Fansub`,
         url: baseUrl,
         description: pageDescription,
         inLanguage: 'tr-TR'

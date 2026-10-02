@@ -157,8 +157,8 @@ export const Header: React.FC = () => {
                 <span className="font-black text-lg sm:text-xl lg:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-pink-200 whitespace-nowrap leading-none drop-shadow-sm">
                   {siteBranding.siteTitle || 'Mikrokosmos'}
                 </span>
-                <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.25em] text-pink-300 font-extrabold whitespace-nowrap mt-1 leading-none">
-                  {siteBranding.siteSlogan || 'FANSUB'}
+                <span className="text-[9px] sm:text-[10px] tracking-[0.16em] sm:tracking-[0.2em] text-pink-300 font-extrabold whitespace-nowrap mt-1 leading-none">
+                  {siteBranding.siteSlogan || 'Shine, Dream, Smile'}
                 </span>
               </div>
             </button>

@@ -257,14 +257,14 @@ export interface SiteBrandingSettings {
   logoUrl?: string; // Custom uploaded image or URL for header & footer logo
   faviconUrl?: string; // Custom uploaded image or URL for browser tab icon (favicon)
   siteTitle?: string; // e.g. "Mikrokosmos"
-  siteSlogan?: string; // e.g. "FANSUB"
+  siteSlogan?: string; // e.g. "Shine, Dream, Smile"
 }
 
 export const DEFAULT_SITE_BRANDING: SiteBrandingSettings = {
   logoUrl: '',
   faviconUrl: '',
   siteTitle: 'Mikrokosmos',
-  siteSlogan: 'FANSUB'
+  siteSlogan: 'Shine, Dream, Smile'
 };
 
 export interface ReadingList {

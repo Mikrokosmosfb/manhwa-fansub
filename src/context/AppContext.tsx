@@ -502,7 +502,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const saved = localStorage.getItem('mk_site_branding');
     if (saved) {
       try {
-        return { ...DEFAULT_SITE_BRANDING, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (!parsed.siteSlogan || parsed.siteSlogan === 'FANSUB' || parsed.siteSlogan === 'Fansub') {
+          parsed.siteSlogan = 'Shine, Dream, Smile';
+        }
+        return { ...DEFAULT_SITE_BRANDING, ...parsed };
       } catch (e) {
         return DEFAULT_SITE_BRANDING;
       }

@@ -85,8 +85,8 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-pink-200 drop-shadow-md">
           MIKROKOSMOS
         </h1>
-        <p className="text-[11px] sm:text-xs font-black uppercase tracking-[0.35em] text-pink-400 mt-1.5 drop-shadow-sm">
-          FANSUB
+        <p className="text-[11px] sm:text-xs font-black uppercase tracking-[0.25em] text-pink-400 mt-1.5 drop-shadow-sm">
+          Shine, Dream, Smile
         </p>
 
         {/* Progress Bar & Status Text */}

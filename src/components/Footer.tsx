@@ -38,7 +38,10 @@ export const Footer: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="font-extrabold text-base text-white tracking-tight group-hover:text-pink-300 transition-colors">
-                {siteBranding.siteTitle || 'Mikrokosmos'} {siteBranding.siteSlogan || 'Fansub'}
+                {siteBranding.siteTitle || 'Mikrokosmos'} Fansub
+              </span>
+              <span className="text-[11px] text-pink-400 font-bold tracking-wide">
+                {siteBranding.siteSlogan || 'Shine, Dream, Smile'}
               </span>
             </div>
           </button>
@@ -85,8 +88,10 @@ export const Footer: React.FC = () => {
         </div>
 
         {/* Bottom copyright line */}
-        <div className="text-center text-gray-500 pt-4 flex items-center justify-center gap-1 text-[11px]">
-          <span>© {new Date().getFullYear()} Mikrokosmos Fansub. Tüm Hakları Saklıdır.</span>
+        <div className="text-center text-gray-500 pt-4 flex items-center justify-center gap-2 text-[11px] flex-wrap">
+          <span>© {new Date().getFullYear()} {siteBranding.siteTitle || 'Mikrokosmos'} Fansub.</span>
+          <span className="text-pink-400 font-semibold">• {siteBranding.siteSlogan || 'Shine, Dream, Smile'} •</span>
+          <span>Tüm Hakları Saklıdır.</span>
         </div>
 
       </div>
