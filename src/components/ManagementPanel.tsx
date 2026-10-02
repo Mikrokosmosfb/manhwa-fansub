@@ -39,12 +39,14 @@ import {
   Bell,
   Palette,
   Smile,
-  Coins
+  Coins,
+  DollarSign
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { downloadProjectZip } from '../utils/exportZip';
 import { AdminNotificationsManager } from './AdminNotificationsManager';
 import { AdminBrandingManager } from './AdminBrandingManager';
+import { AdminAdManager } from './AdminAdManager';
 import { AdminEmojiManager } from './AdminEmojiManager';
 import { AdminPointsManager } from './AdminPointsManager';
 
@@ -54,6 +56,7 @@ export type ManagementNavTab =
   | 'add-chapter'
   | 'points-management'
   | 'branding-settings'
+  | 'ad-management'
   | 'emoji-management'
   | 'announcements-notifications'
   | 'blogger-import'
@@ -258,6 +261,14 @@ export const ManagementPanel: React.FC = () => {
           icon: Palette,
           badge: 'Görünüm',
           badgeColor: 'bg-pink-950 text-pink-300 border-pink-500/40'
+        },
+        {
+          id: 'ad-management' as ManagementNavTab,
+          label: 'Reklam Ayarları',
+          desc: 'PopAds, Popunder & Banner yönetimi',
+          icon: DollarSign,
+          badge: 'Reklamlar',
+          badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
         },
         {
           id: 'emoji-management' as ManagementNavTab,
@@ -665,6 +676,11 @@ export const ManagementPanel: React.FC = () => {
             {/* BRANDING & LOGO / FAVICON SETTINGS TAB */}
             {activeNav === 'branding-settings' && (
               <AdminBrandingManager />
+            )}
+
+            {/* AD MANAGEMENT (POPADS & BANNERS) TAB */}
+            {activeNav === 'ad-management' && (
+              <AdminAdManager />
             )}
 
             {/* CHIBI EMOJI MANAGER TAB */}

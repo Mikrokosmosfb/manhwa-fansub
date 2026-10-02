@@ -16,6 +16,8 @@ import {
   DAILY_STARTER_REWARDS,
   SiteBrandingSettings,
   DEFAULT_SITE_BRANDING,
+  AdSettings,
+  DEFAULT_AD_SETTINGS,
   PointGrantLog,
   KnownUserRecord
 } from '../types';
@@ -310,6 +312,11 @@ interface AppContextType {
   siteBranding: SiteBrandingSettings;
   updateSiteBranding: (newSettings: Partial<SiteBrandingSettings>) => void;
   resetSiteBranding: () => void;
+
+  // Ad Management (PopAds, Popunder & Banners)
+  adSettings: AdSettings;
+  updateAdSettings: (newSettings: Partial<AdSettings>) => void;
+  resetAdSettings: () => void;
 }
 
 const defaultNovelSettings: NovelSettings = {
@@ -543,6 +550,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resetSiteBranding = () => {
     setSiteBranding(DEFAULT_SITE_BRANDING);
     localStorage.removeItem('mk_site_branding');
+  };
+
+  // Ad Settings State (PopAds, Banners, Reader Ads)
+  const [adSettings, setAdSettings] = useState<AdSettings>(() => {
+    const saved = localStorage.getItem('mk_ad_settings');
+    if (saved) {
+      try {
+        return { ...DEFAULT_AD_SETTINGS, ...JSON.parse(saved) };
+      } catch (e) {
+        return DEFAULT_AD_SETTINGS;
+      }
+    }
+    return DEFAULT_AD_SETTINGS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mk_ad_settings', JSON.stringify(adSettings));
+    } catch (e) {
+      console.warn('Ad settings persist error:', e);
+    }
+  }, [adSettings]);
+
+  const updateAdSettings = (newSettings: Partial<AdSettings>) => {
+    setAdSettings(prev => ({
+      ...prev,
+      ...newSettings
+    }));
+  };
+
+  const resetAdSettings = () => {
+    setAdSettings(DEFAULT_AD_SETTINGS);
+    localStorage.removeItem('mk_ad_settings');
   };
 
   // Novel Settings
@@ -2904,7 +2944,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
         dismissToast,
         siteBranding,
         updateSiteBranding,
-        resetSiteBranding
+        resetSiteBranding,
+        adSettings,
+        updateAdSettings,
+        resetAdSettings
       }}
     >
       {children}

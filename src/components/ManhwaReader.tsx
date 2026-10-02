@@ -31,6 +31,7 @@ import { CommentsSection } from './CommentsSection';
 import { RecruitmentBanner } from './RecruitmentBanner';
 
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
+import { AdBannerBlock } from './AdScriptRunner';
 import { sortChapters, formatChapterDate, cleanNoticeText } from '../utils/chapterUtils';
 import { getOptimizedImageUrl } from '../utils/imageUtils';
 
@@ -40,7 +41,17 @@ interface ManhwaReaderProps {
 }
 
 export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId }) => {
-  const { seriesList, setView, updateReadingProgress, markChapterCompleted, readingHistory, user, openAuthModal, loginWithGoogle } = useApp();
+  const {
+    seriesList,
+    setView,
+    updateReadingProgress,
+    markChapterCompleted,
+    readingHistory,
+    user,
+    openAuthModal,
+    loginWithGoogle,
+    adSettings
+  } = useApp();
   const series = seriesList.find(s => s.id === seriesId);
 
   const sortedChapters = useMemo(() => {
@@ -749,6 +760,16 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
               </div>
             )}
           </div>
+        )}
+
+        {/* Reader Ad (If enabled in Admin) */}
+        {adSettings?.readerAdEnabled && (
+          <AdBannerBlock
+            placementName="reader-manhwa"
+            enabled={adSettings.readerAdEnabled}
+            code={adSettings.readerAdCode}
+            className="my-4"
+          />
         )}
 
         {/* Bottom Chapter Navigation */}

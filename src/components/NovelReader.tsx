@@ -30,6 +30,7 @@ import {
 import { CommentsSection } from './CommentsSection';
 import { RecruitmentBanner } from './RecruitmentBanner';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
+import { AdBannerBlock } from './AdScriptRunner';
 import { sortChapters, formatChapterDate, cleanNoticeText } from '../utils/chapterUtils';
 
 interface NovelReaderProps {
@@ -49,7 +50,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     resetNovelSettings,
     user,
     openAuthModal,
-    loginWithGoogle
+    loginWithGoogle,
+    adSettings
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -821,6 +823,16 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             </p>
           )}
         </div>
+
+        {/* Reader Ad (If enabled in Admin) */}
+        {adSettings?.readerAdEnabled && (
+          <AdBannerBlock
+            placementName="reader-novel"
+            enabled={adSettings.readerAdEnabled}
+            code={adSettings.readerAdCode}
+            className="my-6"
+          />
+        )}
 
         {/* Bottom Navigation */}
         <div className="border-t border-purple-500/20 pt-6 mt-12 flex items-center justify-between gap-4">

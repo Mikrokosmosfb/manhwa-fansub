@@ -267,6 +267,30 @@ export const DEFAULT_SITE_BRANDING: SiteBrandingSettings = {
   siteSlogan: 'Shine, Dream, Smile'
 };
 
+export interface AdSettings {
+  popadsEnabled: boolean;
+  popadsCode: string; // Popunder / PopAds / PopCash JS snippet or script tag
+  readerAdEnabled: boolean;
+  readerAdCode: string; // Ad code shown in chapter reader (Manhwa & Novel)
+  topBannerEnabled: boolean;
+  topBannerCode: string; // Ad banner under header
+  bottomBannerEnabled: boolean;
+  bottomBannerCode: string; // Ad banner above footer
+  customHeadScript: string; // Optional custom script for <head> (e.g. ad network verification or analytics)
+}
+
+export const DEFAULT_AD_SETTINGS: AdSettings = {
+  popadsEnabled: false,
+  popadsCode: '',
+  readerAdEnabled: false,
+  readerAdCode: '',
+  topBannerEnabled: false,
+  topBannerCode: '',
+  bottomBannerEnabled: false,
+  bottomBannerCode: '',
+  customHeadScript: ''
+};
+
 export interface ReadingList {
   id: string;
   name: string;

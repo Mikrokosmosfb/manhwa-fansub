@@ -21,6 +21,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { ScrollToTopBottom } from './components/ScrollToTopBottom';
 import { Footer } from './components/Footer';
 import { SeoManager } from './components/SeoManager';
+import { AdScriptRunner, AdBannerBlock } from './components/AdScriptRunner';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
 import { AppSplashScreen } from './components/AppSplashScreen';
 import { sortSeriesByLatestRelease } from './utils/dateUtils';
@@ -480,7 +481,18 @@ const MainContent: React.FC = () => {
 };
 
 const AppLayout: React.FC = () => {
-  const { theme, view, isAuthModalOpen, closeAuthModal, authModalInitialTab, isDailyRewardOpen, closeDailyReward, publicProfileUserId, closePublicProfile } = useApp();
+  const {
+    theme,
+    view,
+    isAuthModalOpen,
+    closeAuthModal,
+    authModalInitialTab,
+    isDailyRewardOpen,
+    closeDailyReward,
+    publicProfileUserId,
+    closePublicProfile,
+    adSettings
+  } = useApp();
   const [showSplash, setShowSplash] = useState(true);
 
   return (
@@ -491,11 +503,36 @@ const AppLayout: React.FC = () => {
       {showSplash && <AppSplashScreen onFinished={() => setShowSplash(false)} />}
 
       <SeoManager />
+      <AdScriptRunner />
       <Header />
       <QuickNav />
+
+      {/* Top Banner Ad (If enabled in Admin) */}
+      {adSettings?.topBannerEnabled && (
+        <div className="max-w-7xl mx-auto px-4 w-full">
+          <AdBannerBlock
+            placementName="top-banner"
+            enabled={adSettings.topBannerEnabled}
+            code={adSettings.topBannerCode}
+          />
+        </div>
+      )}
+
       <main className="flex-1 w-full max-w-full overflow-hidden">
         <MainContent />
       </main>
+
+      {/* Bottom Banner Ad (If enabled in Admin) */}
+      {adSettings?.bottomBannerEnabled && (
+        <div className="max-w-7xl mx-auto px-4 w-full">
+          <AdBannerBlock
+            placementName="bottom-banner"
+            enabled={adSettings.bottomBannerEnabled}
+            code={adSettings.bottomBannerCode}
+          />
+        </div>
+      )}
+
       <Footer />
       <MobileBottomNav />
       <ScrollToTopBottom />
