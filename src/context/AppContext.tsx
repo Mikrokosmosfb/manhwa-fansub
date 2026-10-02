@@ -503,7 +503,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (!parsed.siteSlogan || parsed.siteSlogan === 'FANSUB' || parsed.siteSlogan === 'Fansub') {
+        if (!parsed.siteSlogan || parsed.siteSlogan.trim().toLowerCase() === 'fansub') {
           parsed.siteSlogan = 'Shine, Dream, Smile';
         }
         return { ...DEFAULT_SITE_BRANDING, ...parsed };
