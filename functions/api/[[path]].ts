@@ -1,3 +1,5 @@
+let d1PagesInitPromise: Promise<void> | null = null;
+
 export async function onRequest(context: any) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -19,139 +21,135 @@ export async function onRequest(context: any) {
   }
 
   if (db) {
-    try {
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS series (
-          id TEXT PRIMARY KEY,
-          slug TEXT,
-          title TEXT NOT NULL,
-          type TEXT NOT NULL,
-          cover_image TEXT NOT NULL,
-          banner_image TEXT,
-          synopsis TEXT,
-          genres_json TEXT,
-          rating REAL DEFAULT 5.0,
-          status TEXT DEFAULT 'Devam Ediyor',
-          author TEXT,
-          artist TEXT,
-          translator TEXT,
-          release_day TEXT,
-          release_time TEXT,
-          is_hot INTEGER DEFAULT 0,
-          is_new INTEGER DEFAULT 0,
-          is_guncel INTEGER DEFAULT 0,
-          is_18_plus INTEGER DEFAULT 0,
-          updated_at TEXT
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS chapters (
-          id TEXT PRIMARY KEY,
-          series_id TEXT NOT NULL,
-          chapter_number REAL NOT NULL,
-          title TEXT,
-          published_date TEXT,
-          special_tag TEXT,
-          images_json TEXT,
-          content TEXT,
-          notice TEXT,
-          created_at INTEGER
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS comments (
-          id TEXT PRIMARY KEY,
-          series_id TEXT NOT NULL,
-          chapter_id TEXT,
-          user_id TEXT NOT NULL,
-          user_name TEXT NOT NULL,
-          user_avatar TEXT,
-          text TEXT NOT NULL,
-          image_url TEXT,
-          parent_id TEXT,
-          is_spoiler INTEGER DEFAULT 0,
-          likes_json TEXT,
-          dislikes_json TEXT,
-          created_at TEXT
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS shop_items (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          category TEXT NOT NULL,
-          theme_type TEXT,
-          price INTEGER NOT NULL,
-          description TEXT,
-          icon TEXT,
-          rarity TEXT,
-          badge_text TEXT
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS theme_styles (
-          id TEXT PRIMARY KEY,
-          name TEXT NOT NULL,
-          card_class TEXT,
-          avatar_border_class TEXT,
-          name_class TEXT,
-          badge_bg_class TEXT,
-          glow_color TEXT,
-          accent_text TEXT,
-          card_bg_image_url TEXT,
-          effect_overlay TEXT,
-          theme_type TEXT
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS point_grants (
-          id TEXT PRIMARY KEY,
-          target_email TEXT NOT NULL,
-          amount INTEGER NOT NULL,
-          mode TEXT NOT NULL,
-          note TEXT,
-          admin_email TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          previous_balance INTEGER DEFAULT 0,
-          new_balance INTEGER DEFAULT 0
-        );
-      `).run();
-
-      await db.prepare(`
-        CREATE TABLE IF NOT EXISTS users (
-          uid TEXT PRIMARY KEY,
-          email TEXT UNIQUE NOT NULL,
-          name TEXT NOT NULL,
-          avatar TEXT,
-          role TEXT DEFAULT 'user',
-          cosmo_points INTEGER DEFAULT 10,
-          inventory_json TEXT,
-          equipped_theme TEXT,
-          equipped_badge TEXT,
-          equipped_badges_json TEXT,
-          equipped_frame TEXT,
-          created_at TEXT,
-          updated_at TEXT
-        );
-      `).run();
-
-      
-      try { await db.prepare("ALTER TABLE users ADD COLUMN bookmarks_json TEXT DEFAULT '{}'").run(); } catch (e) {}
-      try { await db.prepare("ALTER TABLE users ADD COLUMN followed_series_json TEXT DEFAULT '[]'").run(); } catch (e) {}
-      try { await db.prepare("ALTER TABLE users ADD COLUMN reading_history_json TEXT DEFAULT '{}'").run(); } catch (e) {}
-      try { await db.prepare("ALTER TABLE users ADD COLUMN notifications_json TEXT DEFAULT '[]'").run(); } catch (e) {}
-      try { await db.prepare("ALTER TABLE users ADD COLUMN reading_lists_json TEXT DEFAULT '[]'").run(); } catch (e) {}
-      try {
-        await db.prepare("ALTER TABLE series ADD COLUMN slug TEXT").run();
-      } catch (e) {}
-    } catch (e) {
-      console.error('Error initializing tables:', e);
+    if (!d1PagesInitPromise) {
+      d1PagesInitPromise = (async () => {
+        try {
+          await db.batch([
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS series (
+                id TEXT PRIMARY KEY,
+                slug TEXT,
+                title TEXT NOT NULL,
+                type TEXT NOT NULL,
+                cover_image TEXT NOT NULL,
+                banner_image TEXT,
+                synopsis TEXT,
+                genres_json TEXT,
+                rating REAL DEFAULT 5.0,
+                status TEXT DEFAULT 'Devam Ediyor',
+                author TEXT,
+                artist TEXT,
+                translator TEXT,
+                release_day TEXT,
+                release_time TEXT,
+                is_hot INTEGER DEFAULT 0,
+                is_new INTEGER DEFAULT 0,
+                is_guncel INTEGER DEFAULT 0,
+                is_18_plus INTEGER DEFAULT 0,
+                updated_at TEXT
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS chapters (
+                id TEXT PRIMARY KEY,
+                series_id TEXT NOT NULL,
+                chapter_number REAL NOT NULL,
+                title TEXT,
+                published_date TEXT,
+                special_tag TEXT,
+                images_json TEXT,
+                content TEXT,
+                notice TEXT,
+                created_at INTEGER
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS comments (
+                id TEXT PRIMARY KEY,
+                series_id TEXT NOT NULL,
+                chapter_id TEXT,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                user_avatar TEXT,
+                text TEXT NOT NULL,
+                image_url TEXT,
+                parent_id TEXT,
+                is_spoiler INTEGER DEFAULT 0,
+                likes_json TEXT,
+                dislikes_json TEXT,
+                created_at TEXT
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS shop_items (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                category TEXT NOT NULL,
+                theme_type TEXT,
+                price INTEGER NOT NULL,
+                description TEXT,
+                icon TEXT,
+                rarity TEXT,
+                badge_text TEXT
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS theme_styles (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                card_class TEXT,
+                avatar_border_class TEXT,
+                name_class TEXT,
+                badge_bg_class TEXT,
+                glow_color TEXT,
+                accent_text TEXT,
+                card_bg_image_url TEXT,
+                effect_overlay TEXT,
+                theme_type TEXT
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS point_grants (
+                id TEXT PRIMARY KEY,
+                target_email TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                mode TEXT NOT NULL,
+                note TEXT,
+                admin_email TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                previous_balance INTEGER DEFAULT 0,
+                new_balance INTEGER DEFAULT 0
+              );
+            `),
+            db.prepare(`
+              CREATE TABLE IF NOT EXISTS users (
+                uid TEXT PRIMARY KEY,
+                email TEXT UNIQUE NOT NULL,
+                name TEXT NOT NULL,
+                avatar TEXT,
+                role TEXT DEFAULT 'user',
+                cosmo_points INTEGER DEFAULT 10,
+                inventory_json TEXT,
+                equipped_theme TEXT,
+                equipped_badge TEXT,
+                equipped_badges_json TEXT,
+                equipped_frame TEXT,
+                bookmarks_json TEXT DEFAULT '{}',
+                followed_series_json TEXT DEFAULT '[]',
+                reading_history_json TEXT DEFAULT '{}',
+                notifications_json TEXT DEFAULT '[]',
+                reading_lists_json TEXT DEFAULT '[]',
+                created_at TEXT,
+                updated_at TEXT
+              );
+            `),
+          ]);
+        } catch (e) {
+          console.error('Error initializing tables:', e);
+        }
+      })();
     }
+    await d1PagesInitPromise;
   }
 
   try {

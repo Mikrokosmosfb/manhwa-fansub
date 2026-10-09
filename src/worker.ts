@@ -51,7 +51,7 @@ function getUsersDB(env: Env) {
 const MEMORY_RATE_LIMIT = new Map<string, { count: number; resetAt: number }>();
 const ACTIVE_SESSIONS = new Map<string, number>();
 const OTP_STORE = new Map<string, { code: string; expiresAt: number; name?: string; password?: string }>();
-let isD1SchemaInitialized = false;
+let d1SchemaInitPromise: Promise<void> | null = null;
 
 // Disposable / Fake Email domains blocklist
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -742,296 +742,261 @@ ${seriesXml}
         const onlineCount = Math.max(18, ACTIVE_SESSIONS.size + 14);
         return new Response(JSON.stringify({ success: true, onlineCount }), { headers });
       }
-      // Auto-initialize D1 SQLite tables once per isolate if D1 binding exists
-      if (!isD1SchemaInitialized) {
-        isD1SchemaInitialized = true;
-      if (db) {
-        try {
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS series (
-              id TEXT PRIMARY KEY,
-              slug TEXT,
-              title TEXT NOT NULL,
-              type TEXT NOT NULL,
-              cover_image TEXT NOT NULL,
-              banner_image TEXT,
-              synopsis TEXT,
-              genres_json TEXT,
-              rating REAL DEFAULT 5.0,
-              status TEXT DEFAULT 'Devam Ediyor',
-              author TEXT,
-              artist TEXT,
-              translator TEXT,
-              release_day TEXT,
-              release_time TEXT,
-              is_hot INTEGER DEFAULT 0,
-              is_new INTEGER DEFAULT 0,
-              is_guncel INTEGER DEFAULT 0,
-              is_18_plus INTEGER DEFAULT 0,
-              updated_at TEXT
+      // Auto-initialize D1 SQLite tables once per isolate using a shared Promise + batching (only 3 subrequests total)
+      if (!d1SchemaInitPromise) {
+        d1SchemaInitPromise = (async () => {
+          const initTasks: Promise<any>[] = [];
+
+          if (db) {
+            initTasks.push(
+              db.batch([
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS series (
+                    id TEXT PRIMARY KEY,
+                    slug TEXT,
+                    title TEXT NOT NULL,
+                    type TEXT NOT NULL,
+                    cover_image TEXT NOT NULL,
+                    banner_image TEXT,
+                    synopsis TEXT,
+                    genres_json TEXT,
+                    rating REAL DEFAULT 5.0,
+                    status TEXT DEFAULT 'Devam Ediyor',
+                    author TEXT,
+                    artist TEXT,
+                    translator TEXT,
+                    release_day TEXT,
+                    release_time TEXT,
+                    is_hot INTEGER DEFAULT 0,
+                    is_new INTEGER DEFAULT 0,
+                    is_guncel INTEGER DEFAULT 0,
+                    is_18_plus INTEGER DEFAULT 0,
+                    updated_at TEXT
+                  );
+                `),
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS chapters (
+                    id TEXT PRIMARY KEY,
+                    series_id TEXT NOT NULL,
+                    chapter_number REAL NOT NULL,
+                    title TEXT,
+                    published_date TEXT,
+                    special_tag TEXT,
+                    images_json TEXT,
+                    content TEXT,
+                    notice TEXT,
+                    created_at INTEGER
+                  );
+                `),
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS point_grants (
+                    id TEXT PRIMARY KEY,
+                    target_email TEXT NOT NULL,
+                    amount INTEGER NOT NULL,
+                    mode TEXT NOT NULL,
+                    note TEXT,
+                    admin_email TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    previous_balance INTEGER DEFAULT 0,
+                    new_balance INTEGER DEFAULT 0
+                  );
+                `),
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS users (
+                    uid TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT,
+                    name TEXT NOT NULL,
+                    avatar TEXT,
+                    provider TEXT DEFAULT 'email',
+                    created_at TEXT,
+                    last_login TEXT,
+                    bio TEXT,
+                    role TEXT DEFAULT 'user'
+                  );
+                `),
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS user_library (
+                    uid TEXT PRIMARY KEY,
+                    name TEXT,
+                    email TEXT,
+                    followed_series TEXT,
+                    bookmarks TEXT,
+                    reading_history TEXT,
+                    notifications TEXT,
+                    cosmo_points INTEGER DEFAULT 0,
+                    shop_items TEXT,
+                    equipped_theme TEXT,
+                    equipped_badge TEXT,
+                    equipped_badges TEXT,
+                    equipped_frame TEXT,
+                    reading_lists TEXT,
+                    daily_checkin_day INTEGER DEFAULT 0,
+                    last_daily_checkin TEXT,
+                    claimed_checkin_days TEXT DEFAULT '[]'
+                  );
+                `),
+              ]).catch((e: any) => console.error('Error initializing main DB tables:', e))
             );
-          `).run();
+          }
 
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS chapters (
-              id TEXT PRIMARY KEY,
-              series_id TEXT NOT NULL,
-              chapter_number REAL NOT NULL,
-              title TEXT,
-              published_date TEXT,
-              special_tag TEXT,
-              images_json TEXT,
-              content TEXT,
-              notice TEXT,
-              created_at INTEGER
+          if (commentsDb) {
+            initTasks.push(
+              commentsDb.prepare(`
+                CREATE TABLE IF NOT EXISTS comments (
+                  id TEXT PRIMARY KEY,
+                  series_id TEXT NOT NULL,
+                  chapter_id TEXT,
+                  user_id TEXT NOT NULL,
+                  user_name TEXT NOT NULL,
+                  user_avatar TEXT,
+                  text TEXT NOT NULL,
+                  image_url TEXT,
+                  parent_id TEXT,
+                  is_spoiler INTEGER DEFAULT 0,
+                  likes_json TEXT,
+                  dislikes_json TEXT,
+                  created_at TEXT,
+                  equipped_theme TEXT,
+                  equipped_badge TEXT,
+                  equipped_badges_json TEXT,
+                  equipped_frame TEXT,
+                  reading_lists TEXT
+                );
+              `).run().catch((e: any) => console.error('Error initializing Comments DB table:', e))
             );
-          `).run();
+          }
 
-          
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS point_grants (
-              id TEXT PRIMARY KEY,
-              target_email TEXT NOT NULL,
-              amount INTEGER NOT NULL,
-              mode TEXT NOT NULL,
-              note TEXT,
-              admin_email TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              previous_balance INTEGER DEFAULT 0,
-              new_balance INTEGER DEFAULT 0
+          if (usersDb) {
+            initTasks.push(
+              usersDb.batch([
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS point_grants (
+                    id TEXT PRIMARY KEY,
+                    target_email TEXT NOT NULL,
+                    amount INTEGER NOT NULL,
+                    mode TEXT NOT NULL,
+                    note TEXT,
+                    admin_email TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    previous_balance INTEGER DEFAULT 0,
+                    new_balance INTEGER DEFAULT 0
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS users (
+                    uid TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    password_hash TEXT,
+                    name TEXT NOT NULL,
+                    avatar TEXT,
+                    provider TEXT DEFAULT 'email',
+                    created_at TEXT,
+                    last_login TEXT,
+                    bio TEXT,
+                    role TEXT DEFAULT 'user'
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS email_verifications (
+                    email TEXT PRIMARY KEY,
+                    code TEXT NOT NULL,
+                    name TEXT,
+                    password_hash TEXT,
+                    expires_at INTEGER NOT NULL,
+                    created_at TEXT
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS global_notifications (
+                    id TEXT PRIMARY KEY,
+                    title TEXT,
+                    message TEXT,
+                    type TEXT,
+                    series_id TEXT,
+                    series_title TEXT,
+                    chapter_title TEXT,
+                    chapter_number REAL,
+                    cover_image TEXT,
+                    created_at TEXT
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS site_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS user_library (
+                    uid TEXT PRIMARY KEY,
+                    name TEXT,
+                    email TEXT,
+                    followed_series TEXT,
+                    bookmarks TEXT,
+                    reading_history TEXT,
+                    notifications TEXT,
+                    cosmo_points INTEGER DEFAULT 0,
+                    shop_items TEXT,
+                    equipped_theme TEXT,
+                    equipped_badge TEXT,
+                    equipped_badges TEXT,
+                    equipped_frame TEXT,
+                    reading_lists TEXT,
+                    daily_checkin_day INTEGER DEFAULT 0,
+                    last_daily_checkin TEXT,
+                    claimed_checkin_days TEXT DEFAULT '[]'
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS shop_items (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    theme_type TEXT,
+                    price INTEGER NOT NULL,
+                    description TEXT,
+                    icon TEXT,
+                    rarity TEXT,
+                    badge_text TEXT,
+                    badge_style TEXT,
+                    frame_style TEXT,
+                    frame_image_url TEXT,
+                    frame_scale REAL,
+                    frame_offset_y REAL,
+                    frame_offset_x REAL,
+                    frame_hide_border INTEGER DEFAULT 0,
+                    emojis TEXT
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS theme_styles (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    card_class TEXT,
+                    avatar_border_class TEXT,
+                    name_class TEXT,
+                    badge_bg_class TEXT,
+                    glow_color TEXT,
+                    accent_text TEXT,
+                    card_bg_image_url TEXT,
+                    effect_overlay TEXT,
+                    theme_type TEXT,
+                    corner_mascot_url TEXT,
+                    corner_mascot_position TEXT,
+                    avatar_companion_url TEXT,
+                    decorations TEXT,
+                    profile_decorations TEXT
+                  );
+                `),
+              ]).catch((e: any) => console.error('Error initializing Users DB table:', e))
             );
-          `).run();
+          }
 
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS users (
-              uid TEXT PRIMARY KEY,
-              email TEXT UNIQUE NOT NULL,
-              password_hash TEXT,
-              name TEXT NOT NULL,
-              avatar TEXT,
-              provider TEXT DEFAULT 'email',
-              created_at TEXT,
-              last_login TEXT
-            );
-          `).run();
-          try { await db.prepare(`ALTER TABLE users ADD COLUMN last_login TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user';`).run(); } catch(e){}
-
-          await db.prepare(`
-            CREATE TABLE IF NOT EXISTS user_library (
-              uid TEXT PRIMARY KEY,
-              name TEXT,
-              email TEXT,
-              followed_series TEXT,
-              bookmarks TEXT
-            );
-          `).run();
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN notifications TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN cosmo_points INTEGER DEFAULT 0;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN shop_items TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_theme TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_badge TEXT;`).run(); } catch(e){}
-
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN notifications TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN cosmo_points INTEGER DEFAULT 0;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN shop_items TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN equipped_theme TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN equipped_badge TEXT;`).run(); } catch(e){} try { await db.prepare(`ALTER TABLE user_library ADD COLUMN equipped_badges TEXT;`).run(); } catch(e){} try { await db.prepare(`ALTER TABLE user_library ADD COLUMN equipped_frame TEXT;`).run(); } catch(e){} try { await db.prepare(`ALTER TABLE user_library ADD COLUMN reading_lists TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN name TEXT;`).run(); } catch(e){}
-          try { await db.prepare(`ALTER TABLE user_library ADD COLUMN email TEXT;`).run(); } catch(e){}
-
-
-          try {
-            await db.prepare("ALTER TABLE series ADD COLUMN slug TEXT").run();
-          } catch (e) {}
-        } catch (e) {
-          console.error('Error initializing main DB tables:', e);
-        }
+          await Promise.all(initTasks);
+        })();
       }
-
-      if (commentsDb) {
-        try {
-          await commentsDb.prepare(`
-            CREATE TABLE IF NOT EXISTS comments (
-              id TEXT PRIMARY KEY,
-              series_id TEXT NOT NULL,
-              chapter_id TEXT,
-              user_id TEXT NOT NULL,
-              user_name TEXT NOT NULL,
-              user_avatar TEXT,
-              text TEXT NOT NULL,
-              image_url TEXT,
-              parent_id TEXT,
-              is_spoiler INTEGER DEFAULT 0,
-              likes_json TEXT,
-              dislikes_json TEXT,
-              created_at TEXT
-            );
-          `).run();
-          try { await commentsDb.prepare(`ALTER TABLE comments ADD COLUMN equipped_theme TEXT;`).run(); } catch(e){}
-          try { await commentsDb.prepare(`ALTER TABLE comments ADD COLUMN equipped_badge TEXT;`).run(); } catch(e){}
-          try { await commentsDb.prepare(`ALTER TABLE comments ADD COLUMN equipped_badges_json TEXT;`).run(); } catch(e){}
-          try { await commentsDb.prepare(`ALTER TABLE comments ADD COLUMN equipped_frame TEXT;`).run(); } catch(e){} try { await commentsDb.prepare(`ALTER TABLE comments ADD COLUMN reading_lists TEXT;`).run(); } catch(e){}
-        } catch (e) {
-          console.error('Error initializing Comments DB table:', e);
-        }
-      }
-
-      if (usersDb) {
-        try {
-          
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS point_grants (
-              id TEXT PRIMARY KEY,
-              target_email TEXT NOT NULL,
-              amount INTEGER NOT NULL,
-              mode TEXT NOT NULL,
-              note TEXT,
-              admin_email TEXT NOT NULL,
-              created_at TEXT NOT NULL,
-              previous_balance INTEGER DEFAULT 0,
-              new_balance INTEGER DEFAULT 0
-            );
-          `).run();
-  
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS users (
-              uid TEXT PRIMARY KEY,
-              email TEXT UNIQUE NOT NULL,
-              password_hash TEXT,
-              name TEXT NOT NULL,
-              avatar TEXT,
-              provider TEXT DEFAULT 'email',
-              created_at TEXT,
-              last_login TEXT
-            );
-          `).run();
-          try { await usersDb.prepare(`ALTER TABLE users ADD COLUMN last_login TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE users ADD COLUMN bio TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user';`).run(); } catch(e){}
-
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS email_verifications (
-              email TEXT PRIMARY KEY,
-              code TEXT NOT NULL,
-              name TEXT,
-              password_hash TEXT,
-              expires_at INTEGER NOT NULL,
-              created_at TEXT
-            );
-          `).run();
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS global_notifications (
-              id TEXT PRIMARY KEY,
-              title TEXT,
-              message TEXT,
-              type TEXT,
-              series_id TEXT,
-              series_title TEXT,
-              chapter_title TEXT,
-              chapter_number REAL,
-              cover_image TEXT,
-              created_at TEXT
-            );
-          `).run();
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS site_settings (
-              key TEXT PRIMARY KEY,
-              value TEXT
-            );
-          `).run();
-
-
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS user_library (
-              uid TEXT PRIMARY KEY,
-              name TEXT,
-              email TEXT,
-              followed_series TEXT,
-              bookmarks TEXT,
-              reading_history TEXT,
-              notifications TEXT,
-              cosmo_points INTEGER DEFAULT 0,
-              shop_items TEXT,
-              equipped_theme TEXT,
-              equipped_badge TEXT,
-              equipped_badges TEXT,
-              equipped_frame TEXT,
-              reading_lists TEXT
-            );
-          `).run();
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN reading_history TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN notifications TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN cosmo_points INTEGER DEFAULT 0;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN shop_items TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_theme TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_badge TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_badges TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN equipped_frame TEXT;`).run(); } catch(e){}          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN reading_lists TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN name TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN email TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN daily_checkin_day INTEGER DEFAULT 0;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN last_daily_checkin TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE user_library ADD COLUMN claimed_checkin_days TEXT DEFAULT '[]';`).run(); } catch(e){}
-
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS shop_items (
-              id TEXT PRIMARY KEY,
-              name TEXT NOT NULL,
-              category TEXT NOT NULL,
-              theme_type TEXT,
-              price INTEGER NOT NULL,
-              description TEXT,
-              icon TEXT,
-              rarity TEXT,
-              badge_text TEXT,
-              badge_style TEXT,
-              frame_style TEXT,
-              frame_image_url TEXT,
-              frame_scale REAL,
-              frame_offset_y REAL,
-              frame_offset_x REAL,
-              frame_hide_border INTEGER DEFAULT 0,
-              emojis TEXT
-            );
-          `).run();
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN badge_style TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_style TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_image_url TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_scale REAL;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_offset_y REAL;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_offset_x REAL;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN frame_hide_border INTEGER;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE shop_items ADD COLUMN emojis TEXT;`).run(); } catch(e){}
-
-          await usersDb.prepare(`
-            CREATE TABLE IF NOT EXISTS theme_styles (
-              id TEXT PRIMARY KEY,
-              name TEXT NOT NULL,
-              card_class TEXT,
-              avatar_border_class TEXT,
-              name_class TEXT,
-              badge_bg_class TEXT,
-              glow_color TEXT,
-              accent_text TEXT,
-              card_bg_image_url TEXT,
-              effect_overlay TEXT,
-              theme_type TEXT,
-              corner_mascot_url TEXT,
-              corner_mascot_position TEXT,
-              avatar_companion_url TEXT
-            );
-          `).run();
-          try { await usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN corner_mascot_url TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN corner_mascot_position TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN avatar_companion_url TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN decorations TEXT;`).run(); } catch(e){}
-          try { await usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN profile_decorations TEXT;`).run(); } catch(e){}
-        } catch (e) {
-          console.error('Error initializing Users DB table:', e);
-        }
-      }
-      }
+      await d1SchemaInitPromise;
 
 
       try {
