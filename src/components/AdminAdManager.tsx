@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   DollarSign,
@@ -33,6 +33,20 @@ export const AdminAdManager: React.FC = () => {
     bottomBannerCode: adSettings.bottomBannerCode || '',
     customHeadScript: adSettings.customHeadScript || ''
   });
+
+  useEffect(() => {
+    setForm({
+      popadsEnabled: adSettings.popadsEnabled || false,
+      popadsCode: adSettings.popadsCode || '',
+      readerAdEnabled: adSettings.readerAdEnabled || false,
+      readerAdCode: adSettings.readerAdCode || '',
+      topBannerEnabled: adSettings.topBannerEnabled || false,
+      topBannerCode: adSettings.topBannerCode || '',
+      bottomBannerEnabled: adSettings.bottomBannerEnabled || false,
+      bottomBannerCode: adSettings.bottomBannerCode || '',
+      customHeadScript: adSettings.customHeadScript || ''
+    });
+  }, [adSettings]);
 
   const [isSaved, setIsSaved] = useState(false);
 

@@ -541,15 +541,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [siteBranding]);
 
   const updateSiteBranding = (newSettings: Partial<SiteBrandingSettings>) => {
-    setSiteBranding(prev => ({
-      ...prev,
-      ...newSettings
-    }));
+    setSiteBranding(prev => {
+      const updated = { ...prev, ...newSettings };
+      fetch('/api/admin/site-branding', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      }).catch(() => {});
+      return updated;
+    });
   };
 
   const resetSiteBranding = () => {
     setSiteBranding(DEFAULT_SITE_BRANDING);
     localStorage.removeItem('mk_site_branding');
+    fetch('/api/admin/site-branding', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(DEFAULT_SITE_BRANDING)
+    }).catch(() => {});
   };
 
   // Ad Settings State (PopAds, Banners, Reader Ads)
@@ -574,15 +584,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [adSettings]);
 
   const updateAdSettings = (newSettings: Partial<AdSettings>) => {
-    setAdSettings(prev => ({
-      ...prev,
-      ...newSettings
-    }));
+    setAdSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      fetch('/api/admin/ad-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      }).catch(() => {});
+      return updated;
+    });
   };
 
   const resetAdSettings = () => {
     setAdSettings(DEFAULT_AD_SETTINGS);
     localStorage.removeItem('mk_ad_settings');
+    fetch('/api/admin/ad-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(DEFAULT_AD_SETTINGS)
+    }).catch(() => {});
   };
 
   // Novel Settings
@@ -1506,7 +1526,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   // Attempt to fetch live Cloudflare R2/KV data on mount
   useEffect(() => {
-    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; globalNotifications?: any[] }>('/api/series')
+    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; adSettings?: any; siteBranding?: any; globalNotifications?: any[] }>('/api/series')
       .then(data => {
         setIsLoadingSeries(false);
         if (data && data.success && Array.isArray(data.data)) {
@@ -1515,6 +1535,23 @@ const deleteShopItemAndStyle = (itemId: string) => {
             setAnnouncementState(data.announcement);
             try {
               localStorage.setItem('mk_announcement', JSON.stringify(data.announcement));
+            } catch (e) {}
+          }
+          if (data.adSettings) {
+            const mergedAds = { ...DEFAULT_AD_SETTINGS, ...data.adSettings };
+            setAdSettings(mergedAds);
+            try {
+              localStorage.setItem('mk_ad_settings', JSON.stringify(mergedAds));
+            } catch (e) {}
+          }
+          if (data.siteBranding) {
+            const mergedBranding = { ...DEFAULT_SITE_BRANDING, ...data.siteBranding };
+            if (!mergedBranding.siteSlogan || mergedBranding.siteSlogan.trim().toLowerCase() === 'fansub') {
+              mergedBranding.siteSlogan = 'Shine, Dream, Smile';
+            }
+            setSiteBranding(mergedBranding);
+            try {
+              localStorage.setItem('mk_site_branding', JSON.stringify(mergedBranding));
             } catch (e) {}
           }
           if (data.globalNotifications && Array.isArray(data.globalNotifications)) {

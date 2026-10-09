@@ -1076,12 +1076,20 @@ ${seriesXml}
                 }))
               }));
 
-                            let announcement = null;
+              let announcement = null;
+              let adSettings = null;
+              let siteBranding = null;
               let globalNotifications = [];
               try {
                 const activeDb = usersDb || db;
-                const { results: setRes } = await activeDb.prepare("SELECT * FROM site_settings WHERE key = 'announcement'").all();
-                if (setRes && setRes.length > 0) announcement = JSON.parse(setRes[0].value);
+                const { results: setRes } = await activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding')").all();
+                if (setRes && setRes.length > 0) {
+                  for (const row of setRes) {
+                    if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
+                    if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
+                    if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
+                  }
+                }
                 const { results: notifRes } = await activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 500").all();
                 globalNotifications = (notifRes || []).map((n: any) => ({
                   id: n.id, title: n.title, message: n.message, type: n.type,
@@ -1089,7 +1097,7 @@ ${seriesXml}
                   chapterNumber: n.chapter_number, coverImage: n.cover_image, createdAt: n.created_at
                 }));
               } catch(e) {}
-              return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries, announcement, globalNotifications }), { headers });
+              return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries, announcement, adSettings, siteBranding, globalNotifications }), { headers });
             }
 
             return new Response(JSON.stringify({
@@ -1567,6 +1575,30 @@ ${seriesXml}
             const ann = await request.json();
             if (activeDb) {
               await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('announcement', JSON.stringify(ann)).run();
+              return new Response(JSON.stringify({ success: true }), { headers });
+            }
+          }
+          return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
+        if (path.startsWith('/api/admin/ad-settings')) {
+          const activeDb = usersDb || db;
+          if (request.method === 'POST') {
+            const ads = await request.json();
+            if (activeDb) {
+              await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('ad_settings', JSON.stringify(ads)).run();
+              return new Response(JSON.stringify({ success: true }), { headers });
+            }
+          }
+          return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
+        if (path.startsWith('/api/admin/site-branding')) {
+          const activeDb = usersDb || db;
+          if (request.method === 'POST') {
+            const branding = await request.json();
+            if (activeDb) {
+              await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('site_branding', JSON.stringify(branding)).run();
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
