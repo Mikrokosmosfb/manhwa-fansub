@@ -1,5 +1,4 @@
-import React
-, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { THEME_STYLES, SHOP_ITEMS, ShopItem, ChibiEmoji } from '../data/shopData';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
@@ -28,6 +27,14 @@ import {
 import { Comment, isAuthorizedAdmin } from '../types';
 
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
+
+const REACTION_OPTIONS = [
+  { id: 'love', emoji: '😍', label: 'Muhteşem' },
+  { id: 'fire', emoji: '🔥', label: 'Heyecanlı' },
+  { id: 'funny', emoji: '😂', label: 'Komik' },
+  { id: 'shock', emoji: '😱', label: 'Şaşırtıcı' },
+  { id: 'sad', emoji: '😢', label: 'Üzücü' }
+] as const;
 
 
 interface CommentsSectionProps {
@@ -68,6 +75,95 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
   const [reportReason, setReportReason] = useState('Küfür / Hakaret / Zorbalık');
   const [reportDetails, setReportDetails] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  // Series / Chapter 5-Emoji Reactions State
+  const reactionTargetKey = chapterId ? `${seriesId}:${chapterId}` : `${seriesId}:series`;
+  const [reactionsMap, setReactionsMap] = useState<Record<string, Record<string, number>>>(() => {
+    try {
+      const saved = localStorage.getItem('mk_reactions_map');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+  const [userReactions, setUserReactions] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('mk_user_reactions');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    fetch('/api/reactions', { cache: 'no-store' })
+      .then(res => res.json())
+      .then(resData => {
+        if (resData && resData.success && resData.data && typeof resData.data === 'object') {
+          setReactionsMap(prev => {
+            const merged = { ...prev, ...resData.data };
+            try {
+              localStorage.setItem('mk_reactions_map', JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, [reactionTargetKey]);
+
+  const currentReactions = reactionsMap[reactionTargetKey] || {};
+  const selectedReactionId = userReactions[reactionTargetKey] || null;
+  const totalReactionVotes = REACTION_OPTIONS.reduce(
+    (sum, opt) => sum + (Number(currentReactions[opt.id]) || 0),
+    0
+  );
+
+  const handleToggleReaction = (reactionId: string) => {
+    const prevSelected = userReactions[reactionTargetKey] || null;
+    const currentTargetCounts = { ...(reactionsMap[reactionTargetKey] || {}) };
+
+    let nextSelected: string | null = reactionId;
+    if (prevSelected === reactionId) {
+      // Unselect existing reaction
+      nextSelected = null;
+      currentTargetCounts[reactionId] = Math.max(0, (Number(currentTargetCounts[reactionId]) || 1) - 1);
+    } else {
+      if (prevSelected) {
+        currentTargetCounts[prevSelected] = Math.max(0, (Number(currentTargetCounts[prevSelected]) || 1) - 1);
+      }
+      currentTargetCounts[reactionId] = (Number(currentTargetCounts[reactionId]) || 0) + 1;
+    }
+
+    const nextMap = {
+      ...reactionsMap,
+      [reactionTargetKey]: currentTargetCounts
+    };
+    const nextUserReactions = { ...userReactions };
+    if (nextSelected) {
+      nextUserReactions[reactionTargetKey] = nextSelected;
+    } else {
+      delete nextUserReactions[reactionTargetKey];
+    }
+
+    setReactionsMap(nextMap);
+    setUserReactions(nextUserReactions);
+
+    try {
+      localStorage.setItem('mk_reactions_map', JSON.stringify(nextMap));
+      localStorage.setItem('mk_user_reactions', JSON.stringify(nextUserReactions));
+    } catch (e) {}
+
+    fetch('/api/reactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        targetKey: reactionTargetKey,
+        targetCounts: currentTargetCounts
+      }),
+      keepalive: true
+    }).catch(() => {});
+  };
 
   const handleConfirmReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -548,6 +644,66 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
   return (
     <div className="bg-gray-900/95 border border-purple-500/20 rounded-3xl p-5 sm:p-8 shadow-xl space-y-6">
       
+      {/* 5-Emoji Reaction Bar (Chapter vs Series) */}
+      <div className="bg-gradient-to-br from-purple-950/60 via-gray-950/90 to-indigo-950/60 border border-purple-500/30 rounded-2xl p-4 sm:p-5 shadow-lg">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <div>
+            <h4 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+              <Sparkles size={17} className="text-amber-400" />
+              {chapterId ? 'Sizce bu bölüm nasıldı?' : 'Sizce bu seri nasıl?'}
+            </h4>
+            <p className="text-[11px] text-purple-300/80 mt-0.5">
+              {chapterId
+                ? 'Bölüm hakkındaki hislerinizi tek tıkla tepki bırakarak paylaşın!'
+                : 'Bu seri hakkındaki genel düşüncenizi tepki bırakarak gösterin!'}
+            </p>
+          </div>
+          <span className="text-[11px] font-bold text-purple-200 bg-purple-900/50 border border-purple-500/30 px-3 py-1 rounded-full self-start sm:self-auto">
+            Toplam {totalReactionVotes} Tepki
+          </span>
+        </div>
+
+        <div className="grid grid-cols-5 gap-2 sm:gap-3">
+          {REACTION_OPTIONS.map(item => {
+            const count = Number(currentReactions[item.id]) || 0;
+            const isSelected = selectedReactionId === item.id;
+            const percent = totalReactionVotes > 0 ? Math.round((count / totalReactionVotes) * 100) : 0;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handleToggleReaction(item.id)}
+                className={`group relative flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none overflow-hidden ${
+                  isSelected
+                    ? 'bg-purple-600/30 border-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.3)] scale-[1.03]'
+                    : 'bg-gray-900/80 hover:bg-purple-900/40 border-purple-500/20 hover:border-purple-400/50 hover:scale-[1.02]'
+                }`}
+              >
+                <span className="text-2xl sm:text-3xl mb-1.5 transform group-hover:scale-125 transition-transform duration-200">
+                  {item.emoji}
+                </span>
+                <span className={`text-[10px] sm:text-xs font-extrabold tracking-tight truncate max-w-full ${
+                  isSelected ? 'text-amber-300' : 'text-gray-200'
+                }`}>
+                  {item.label}
+                </span>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className={`text-[11px] font-black ${isSelected ? 'text-white' : 'text-purple-300'}`}>
+                    {count}
+                  </span>
+                  {totalReactionVotes > 0 && (
+                    <span className="text-[9px] text-gray-400 font-semibold">
+                      ({percent}%)
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Title & Auth Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
         <h3 className="text-lg font-bold text-white flex items-center gap-2">

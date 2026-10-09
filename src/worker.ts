@@ -1151,15 +1151,17 @@ ${seriesXml}
               let announcement = null;
               let adSettings = null;
               let siteBranding = null;
+              let reactions = null;
               let globalNotifications = [];
               try {
                 const activeDb = usersDb || db;
-                const { results: setRes } = await activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding')").all();
+                const { results: setRes } = await activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions')").all();
                 if (setRes && setRes.length > 0) {
                   for (const row of setRes) {
                     if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
                     if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
                     if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
+                    if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
                   }
                 }
                 const { results: notifRes } = await activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 500").all();
@@ -1169,7 +1171,7 @@ ${seriesXml}
                   chapterNumber: n.chapter_number, coverImage: n.cover_image, createdAt: n.created_at
                 }));
               } catch(e) {}
-              return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries, announcement, adSettings, siteBranding, globalNotifications }), { headers });
+              return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries, announcement, adSettings, siteBranding, reactions, globalNotifications }), { headers });
             }
 
             return new Response(JSON.stringify({
@@ -1587,6 +1589,44 @@ ${seriesXml}
               }), { headers });
             }
 
+            return new Response(JSON.stringify({ success: true }), { headers });
+          }
+        }
+
+        // REACTIONS API (Series & Chapter Emoji Reactions)
+        if (path.startsWith('/api/reactions')) {
+          const activeDb = usersDb || db || commentsDb;
+          if (request.method === 'GET') {
+            if (activeDb) {
+              try {
+                const row: any = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'reactions'").first();
+                const data = row && row.value ? JSON.parse(row.value) : {};
+                return new Response(JSON.stringify({ success: true, data }), { headers });
+              } catch (e) {}
+            }
+            return new Response(JSON.stringify({ success: true, data: {} }), { headers });
+          }
+
+          if (request.method === 'POST') {
+            try {
+              const body: any = await request.json();
+              const { targetKey, targetCounts } = body || {};
+              if (activeDb && targetKey && targetCounts) {
+                let allReactions: Record<string, Record<string, number>> = {};
+                try {
+                  const row: any = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'reactions'").first();
+                  if (row && row.value) allReactions = JSON.parse(row.value);
+                } catch (e) {}
+
+                allReactions[targetKey] = targetCounts;
+                await activeDb
+                  .prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('reactions', ?)")
+                  .bind(JSON.stringify(allReactions))
+                  .run();
+
+                return new Response(JSON.stringify({ success: true, data: allReactions[targetKey] }), { headers });
+              }
+            } catch (e) {}
             return new Response(JSON.stringify({ success: true }), { headers });
           }
         }
