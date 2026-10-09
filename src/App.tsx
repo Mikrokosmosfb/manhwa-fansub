@@ -25,7 +25,7 @@ import { AdScriptRunner, AdBannerBlock } from './components/AdScriptRunner';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
 import { AppSplashScreen } from './components/AppSplashScreen';
 import { sortSeriesByLatestRelease } from './utils/dateUtils';
-import { getOptimizedImageUrl } from './utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from './utils/imageUtils';
 
 // Lazy-loaded secondary views and modals to minimize initial bundle size and maximize PageSpeed
 const SeriesDetail = React.lazy(() => import('./components/SeriesDetail').then(m => ({ default: m.SeriesDetail })));
@@ -443,6 +443,8 @@ const MainContent: React.FC = () => {
                     height="56"
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, s.coverImage, s.title)}
                     className="w-10 h-14 object-cover rounded-lg flex-shrink-0 border border-purple-500/20"
                   />
                   <div className="min-w-0 flex-1">

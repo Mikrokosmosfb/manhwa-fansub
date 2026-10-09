@@ -5,7 +5,7 @@ import { Star, Bell, Bookmark, Flame, Sparkles, RefreshCw } from 'lucide-react';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface SeriesCardProps {
   series: Series;
@@ -59,6 +59,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
             height="144"
             decoding="async"
             loading="lazy"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleImageError(e, series.coverImage, series.title)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
           <span className={`absolute bottom-1 right-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${getTypeStyle(series.type)}`}>
@@ -122,6 +124,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
           height="240"
           decoding="async"
           loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={(e) => handleImageError(e, series.coverImage, series.title)}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
 

@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { SeriesType, isSeries18Plus } from '../types';
 import { Calendar, Clock, ChevronRight, Star, Filter, Megaphone } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 const DAYS_OF_WEEK = [
   { day: 'Pazartesi', dayShort: 'Pzt' },
@@ -172,8 +173,12 @@ export const ScheduleView: React.FC = () => {
                 >
                   <DiagonalStatusRibbon status={series.status} size="sm" />
                   <img
-                    src={series.coverImage}
+                    src={getOptimizedImageUrl(series.coverImage, { width: 120, height: 160, quality: 75 })}
                     alt={series.title}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, series.coverImage, series.title)}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
                   {series.is18Plus && (

@@ -6,7 +6,7 @@ import { Sparkles, Calendar, Star, ChevronDown, ChevronUp } from 'lucide-react';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface HorizontalReleaseCardProps {
   series: Series;
@@ -76,6 +76,8 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
             width="112"
             height="168"
             decoding="async"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleImageError(e, series.coverImage, series.title)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             loading="lazy"
           />

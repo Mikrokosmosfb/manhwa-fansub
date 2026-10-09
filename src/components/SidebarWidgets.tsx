@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Dices, Tags, MessageSquare, Sparkles, BookOpen, Star, ChevronRight, Users, Layers, Award } from 'lucide-react';
 import { Series } from '../types';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';
 
 export const RandomSeriesWidget: React.FC = () => {
@@ -83,6 +83,8 @@ export const RandomSeriesWidget: React.FC = () => {
               height="107"
               loading="lazy"
               decoding="async"
+              referrerPolicy="no-referrer"
+              onError={(e) => handleImageError(e, randomSeries.coverImage, randomSeries.title)}
               className="w-full h-full object-cover group-hover/card:scale-110 transition duration-500"
             />
             {/* Rating badge on image */}

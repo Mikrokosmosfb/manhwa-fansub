@@ -46,10 +46,10 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
         return;
       }
 
-      // Optimize large images to prevent excessive memory/storage usage
+      // Optimize uploaded images to WebP so cover/banner payloads remain lightweight and fast
       const img = new Image();
       img.onload = () => {
-        const MAX_DIM = aspectRatio === 'banner' ? 1600 : 1200;
+        const MAX_DIM = aspectRatio === 'banner' ? 1280 : 720;
         let width = img.width;
         let height = img.height;
 
@@ -61,13 +61,16 @@ export const ImageUploadField: React.FC<ImageUploadFieldProps> = ({
             width = Math.round((width * MAX_DIM) / height);
             height = MAX_DIM;
           }
+        }
+
+        if (file.type !== 'image/gif') {
           const canvas = document.createElement('canvas');
           canvas.width = width;
           canvas.height = height;
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            const optimized = canvas.toDataURL('image/webp', 0.88);
+            const optimized = canvas.toDataURL('image/webp', 0.82);
             onChange(optimized);
             setIsProcessing(false);
             return;

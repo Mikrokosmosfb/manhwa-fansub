@@ -261,7 +261,7 @@ export async function onRequest(context: any) {
 
     if (path.startsWith('/api/series')) {
       if (request.method === 'GET') {
-        if (r2) {
+        if (false && r2) {
           try {
             const item = await r2.get('data/series.json');
             const data = item ? await item.json() : [];
@@ -271,7 +271,7 @@ export async function onRequest(context: any) {
           }
         }
 
-        if (kv) {
+        if (false && kv) {
           try {
             const data = (await kv.get('data/series.json', 'json')) || [];
             return new Response(JSON.stringify({ success: true, storage: 'KV', data }), { headers });
@@ -281,10 +281,35 @@ export async function onRequest(context: any) {
         }
 
         if (db) {
-          const { results: series } = await db.prepare("SELECT * FROM series").all();
-          const { results: chapters } = await db.prepare("SELECT * FROM chapters").all();
+          const [seriesRes, chaptersRes] = await Promise.all([
+            db.prepare("SELECT * FROM series").all(),
+            db.prepare("SELECT * FROM chapters").all()
+          ]);
+          const series = seriesRes?.results || [];
+          const chapters = chaptersRes?.results || [];
 
-          const fullSeries = (series || []).map((s: any) => ({
+          const chaptersBySeries = new Map<string, any[]>();
+          for (const ch of chapters as any[]) {
+            const sid = ch.series_id;
+            let list = chaptersBySeries.get(sid);
+            if (!list) {
+              list = [];
+              chaptersBySeries.set(sid, list);
+            }
+            list.push({
+              id: ch.id,
+              number: ch.chapter_number,
+              title: ch.title,
+              publishedDate: ch.published_date,
+              specialTag: ch.special_tag,
+              images: ch.images_json ? JSON.parse(ch.images_json) : [],
+              content: ch.content,
+              notice: ch.notice,
+              createdAt: ch.created_at
+            });
+          }
+
+          const fullSeries = (series as any[]).map((s: any) => ({
             id: s.id,
             slug: s.slug || s.id,
             title: s.title,
@@ -305,17 +330,7 @@ export async function onRequest(context: any) {
             isGuncel: Boolean(s.is_guncel),
             is18Plus: Boolean(s.is_18_plus),
             updatedAt: s.updated_at,
-            chapters: (chapters || []).filter((c: any) => c.series_id === s.id).map((ch: any) => ({
-              id: ch.id,
-              number: ch.chapter_number,
-              title: ch.title,
-              publishedDate: ch.published_date,
-              specialTag: ch.special_tag,
-              images: ch.images_json ? JSON.parse(ch.images_json) : [],
-              content: ch.content,
-              notice: ch.notice,
-              createdAt: ch.created_at
-            }))
+            chapters: chaptersBySeries.get(s.id) || []
           }));
 
           return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries }), { headers });

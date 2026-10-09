@@ -16,7 +16,7 @@ import {
   BellRing
 } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface LibraryViewProps {
   onCloseModal?: () => void;
@@ -390,6 +390,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
                     height="267"
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, s.coverImage, s.title)}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
 

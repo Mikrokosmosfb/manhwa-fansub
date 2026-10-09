@@ -2,7 +2,7 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingProgress } from '../types';
 import { Clock, BookOpen, Trash2, ArrowRight } from 'lucide-react';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 export const HistoryView: React.FC = () => {
   const { readingHistory, seriesList, setView } = useApp();
@@ -54,6 +54,8 @@ export const HistoryView: React.FC = () => {
                     height="64"
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, series.coverImage, series.title)}
                     className="w-12 h-16 object-cover rounded-xl border border-purple-500/30 flex-shrink-0"
                   />
                   <div className="min-w-0">

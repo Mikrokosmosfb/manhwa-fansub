@@ -38,7 +38,7 @@ import { checkIsChapterNew } from '../utils/dateUtils';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { sortChapters } from '../utils/chapterUtils';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface SeriesDetailProps {
   seriesId: string;
@@ -237,6 +237,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
             src={getOptimizedImageUrl(heroBanner, { width: 1200, quality: 80 })}
             alt={`${series.title} Arka Plan`}
             referrerPolicy="no-referrer"
+            onError={(e) => handleImageError(e, heroBanner, series.title)}
             width="1200"
             height="384"
             fetchPriority="high"
@@ -265,6 +266,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   width="208"
                   height="277"
                   decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, series.coverImage, series.title)}
                   className="w-full aspect-[3/4] object-cover"
                 />
                 {series.ageRating && series.ageRating !== 'Genel' && (

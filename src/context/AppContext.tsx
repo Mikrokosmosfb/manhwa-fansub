@@ -1728,19 +1728,46 @@ const deleteShopItemAndStyle = (itemId: string) => {
   };
 
   useEffect(() => {
-    localStorage.setItem('mk_series_requests', JSON.stringify(seriesRequests));
+    try {
+      localStorage.setItem('mk_series_requests', JSON.stringify(seriesRequests));
+    } catch (e) {}
   }, [seriesRequests]);
 
   useEffect(() => {
-    localStorage.setItem('mk_series_list', JSON.stringify(seriesList));
+    if (!seriesList || seriesList.length === 0) return;
+    const timer = setTimeout(() => {
+      try {
+        // Store a lightweight catalog snapshot in localStorage (without chapter page arrays or full novel texts)
+        // so JSON serialization is <1ms and never hits the 5MB localStorage quota.
+        const lightweightCatalog = seriesList.map(s => ({
+          ...s,
+          chapters: (s.chapters || []).map(ch => ({
+            id: ch.id,
+            number: ch.number,
+            title: ch.title,
+            publishedDate: ch.publishedDate,
+            specialTag: ch.specialTag,
+            createdAt: ch.createdAt,
+            images: [],
+            content: undefined
+          }))
+        }));
+        localStorage.setItem('mk_series_list', JSON.stringify(lightweightCatalog));
+      } catch (e) {}
+    }, 250);
+    return () => clearTimeout(timer);
   }, [seriesList]);
 
   useEffect(() => {
-    localStorage.setItem('mk_reading_history', JSON.stringify(trimReadingHistory(readingHistory, 500)));
+    try {
+      localStorage.setItem('mk_reading_history', JSON.stringify(trimReadingHistory(readingHistory, 500)));
+    } catch (e) {}
   }, [readingHistory]);
 
   useEffect(() => {
-    localStorage.setItem('mk_bookmark_folders', JSON.stringify(bookmarkFolders));
+    try {
+      localStorage.setItem('mk_bookmark_folders', JSON.stringify(bookmarkFolders));
+    } catch (e) {}
   }, [bookmarkFolders]);
 
   const isLibraryFetchedRef = useRef(false);
@@ -1954,23 +1981,31 @@ const deleteShopItemAndStyle = (itemId: string) => {
   }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists]);
 
   useEffect(() => {
-    localStorage.setItem('mk_notifications_list', JSON.stringify(notifications));
+    try {
+      localStorage.setItem('mk_notifications_list', JSON.stringify(notifications));
+    } catch (e) {}
   }, [notifications]);
 
   useEffect(() => {
-    localStorage.setItem('mk_novel_settings', JSON.stringify(novelSettings));
+    try {
+      localStorage.setItem('mk_novel_settings', JSON.stringify(novelSettings));
+    } catch (e) {}
   }, [novelSettings]);
 
   useEffect(() => {
-    localStorage.setItem('mk_comments', JSON.stringify(comments));
+    try {
+      localStorage.setItem('mk_comments', JSON.stringify(comments));
+    } catch (e) {}
   }, [comments]);
 
   useEffect(() => {
-    if (user) {
-      localStorage.setItem('mk_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('mk_user');
-    }
+    try {
+      if (user) {
+        localStorage.setItem('mk_user', JSON.stringify(user));
+      } else {
+        localStorage.removeItem('mk_user');
+      }
+    } catch (e) {}
   }, [user]);
 
   const unreadNotificationsCount = !user ? 0 : notifications.filter(n => {

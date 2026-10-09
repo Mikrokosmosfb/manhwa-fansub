@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { isSeries18Plus } from '../types';
 import { getSeriesLatestActivityTime } from '../utils/dateUtils';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 export const HeroSlider: React.FC = () => {
   const { seriesList, setView, showNsfw } = useApp();
@@ -131,17 +131,13 @@ export const HeroSlider: React.FC = () => {
           {/* Tek Arka Plan Görseli */}
           <img
             src={getOptimizedImageUrl(current.bannerImage || current.heroImage || current.coverImage, { width: 720, quality: 65 })}
-            srcSet={`
-              ${getOptimizedImageUrl(current.bannerImage || current.heroImage || current.coverImage, { width: 420, quality: 60 })} 420w,
-              ${getOptimizedImageUrl(current.bannerImage || current.heroImage || current.coverImage, { width: 720, quality: 65 })} 720w,
-              ${getOptimizedImageUrl(current.bannerImage || current.heroImage || current.coverImage, { width: 1200, quality: 70 })} 1200w
-            `}
-            sizes="(max-width: 640px) 420px, (max-width: 1024px) 720px, 1200px"
             alt=""
             width="1200"
             height="420"
             fetchPriority="high"
             decoding="async"
+            referrerPolicy="no-referrer"
+            onError={(e) => handleImageError(e, current.bannerImage || current.heroImage || current.coverImage, current.title)}
             className="absolute inset-0 w-full h-full object-cover object-center filter brightness-[0.42] contrast-105"
           />
 
@@ -183,6 +179,8 @@ export const HeroSlider: React.FC = () => {
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, current.coverImage, current.title)}
                 />
 
                 {/* Shimmer Light */}
@@ -309,6 +307,8 @@ export const HeroSlider: React.FC = () => {
                   loading="eager"
                   fetchPriority="high"
                   decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, current.coverImage, current.title)}
                 />
 
                 {/* Shimmer / Gloss Light Sweep */}
@@ -360,6 +360,8 @@ export const HeroSlider: React.FC = () => {
                     height="32"
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, s.coverImage, s.title)}
                     className="w-5 sm:w-6 h-7 sm:h-8 object-cover rounded shrink-0 border border-white/10"
                   />
                   <div className="max-w-[100px] sm:max-w-[150px] truncate">

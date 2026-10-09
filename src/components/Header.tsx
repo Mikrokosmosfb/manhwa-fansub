@@ -523,6 +523,7 @@ export const Header: React.FC = () => {
                     <img
                       src={s.coverImage}
                       alt={s.title}
+                      referrerPolicy="no-referrer"
                       className="w-10 h-14 sm:w-12 sm:h-16 object-cover rounded-xl flex-shrink-0 border border-purple-500/30 shadow"
                     />
                     <div className="min-w-0 flex-1">

@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { ArrowDownAZ, Star, Bookmark } from 'lucide-react';
 import { isSeries18Plus } from '../types';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 const ALPHABET = [
   'Tümü',
@@ -86,6 +86,8 @@ export const AZListView: React.FC = () => {
                   height="168"
                   loading="lazy"
                   decoding="async"
+                  referrerPolicy="no-referrer"
+                  onError={(e) => handleImageError(e, s.coverImage, s.title)}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                 />
               </div>

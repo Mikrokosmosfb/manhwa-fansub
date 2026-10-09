@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Series, isSeries18Plus } from '../types';
 import { Triangle, Star } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { WeeklyPopularSliderSkeleton } from './SkeletonLoader';
 
 export const WeeklyPopularSlider: React.FC = () => {
@@ -94,6 +94,8 @@ export const WeeklyPopularSlider: React.FC = () => {
                     width="128"
                     height="192"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => handleImageError(e, s.coverImage, s.title)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
