@@ -1353,7 +1353,7 @@ ${seriesXml}
           if (request.method === 'DELETE') {
             const commentId = url.searchParams.get('id');
 
-            if (r2 && commentId) {
+            if (false && r2 && commentId) {
               const item = await r2.get('data/comments.json');
               let existing: any[] = item ? await item.json() : [];
               existing = existing.filter((x: any) => x.id !== commentId);
@@ -1363,7 +1363,7 @@ ${seriesXml}
               return new Response(JSON.stringify({ success: true, storage: 'R2' }), { headers });
             }
 
-            if (kv && commentId) {
+            if (false && kv && commentId) {
               let existing: any[] = (await kv.get('data/comments.json', 'json')) || [];
               existing = existing.filter((x: any) => x.id !== commentId);
               await kv.put('data/comments.json', JSON.stringify(existing));
@@ -1371,7 +1371,18 @@ ${seriesXml}
             }
 
             if (commentsDb && commentId) {
-              await commentsDb.prepare("DELETE FROM comments WHERE id = ?").bind(commentId).run();
+              try {
+                await commentsDb.prepare(`
+                  WITH RECURSIVE to_delete(id) AS (
+                    SELECT ?
+                    UNION ALL
+                    SELECT c.id FROM comments c JOIN to_delete td ON c.parent_id = td.id
+                  )
+                  DELETE FROM comments WHERE id IN (SELECT id FROM to_delete)
+                `).bind(commentId).run();
+              } catch (e) {
+                await commentsDb.prepare("DELETE FROM comments WHERE id = ? OR parent_id = ?").bind(commentId, commentId).run();
+              }
               return new Response(JSON.stringify({
                 success: true,
                 storage: (env.COMMENTS_DB || env.COMMENTS_D1 || env.DB_COMMENTS) ? 'D1 (Ayrı Yorumlar DB)' : 'D1'

@@ -231,8 +231,17 @@ export const QuickCategoriesWidget: React.FC = () => {
 export const RecentCommentsWidget: React.FC = () => {
   const { seriesList, comments, setView } = useApp();
 
-  // Get the latest 4 real comments from site state
-  const recentComments = [...(comments || [])].reverse().slice(0, 4);
+  // Get the latest 4 real comments from site state sorted newest-first
+  const recentComments = [...(comments || [])]
+    .sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (isNaN(timeA) && isNaN(timeB)) return 0;
+      if (isNaN(timeA)) return 1;
+      if (isNaN(timeB)) return -1;
+      return timeB - timeA;
+    })
+    .slice(0, 4);
 
   return (
     <div className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-4 shadow-xl space-y-3">

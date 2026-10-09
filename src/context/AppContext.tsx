@@ -613,8 +613,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Comments State
   const [comments, setComments] = useState<Comment[]>(() => {
-    const saved = localStorage.getItem('mk_comments');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('mk_comments');
+      const deletedStr = localStorage.getItem('mk_deleted_comments');
+      const deletedIds = new Set<string>(deletedStr ? JSON.parse(deletedStr) : []);
+      if (saved) {
+        const parsed: Comment[] = JSON.parse(saved);
+        return Array.isArray(parsed) ? parsed.filter(c => !deletedIds.has(c.id)) : [];
+      }
+    } catch (e) {}
     return [];
   });
 
@@ -1588,10 +1595,39 @@ const deleteShopItemAndStyle = (itemId: string) => {
       })
       .catch(() => {});
 
-    safeFetchJson<{ success: boolean; data: any[] }>('/api/comments')
+    safeFetchJson<{ success: boolean; data: any[] }>('/api/comments', { cache: 'no-store' })
       .then(data => {
         if (data && data.success && Array.isArray(data.data)) {
-          setComments(data.data);
+          let deletedIds: string[] = [];
+          try {
+            const delStr = localStorage.getItem('mk_deleted_comments');
+            if (delStr) deletedIds = JSON.parse(delStr);
+          } catch (e) {}
+
+          const deletedSet = new Set(deletedIds);
+          const stillOnServer = data.data.filter(c => deletedSet.has(c.id));
+
+          // If any locally deleted comments still exist on D1 (e.g. previous delete was interrupted before refresh), purge them now
+          if (stillOnServer.length > 0) {
+            stillOnServer.forEach(c => {
+              fetch(`/api/comments?id=${encodeURIComponent(c.id)}`, {
+                method: 'DELETE',
+                cache: 'no-store',
+                keepalive: true
+              }).catch(() => {});
+            });
+          } else if (deletedIds.length > 0) {
+            // Server confirmed all deleted comments are gone
+            try {
+              localStorage.removeItem('mk_deleted_comments');
+            } catch (e) {}
+          }
+
+          const cleanComments = data.data.filter(c => !deletedSet.has(c.id) && (!c.parentId || !deletedSet.has(c.parentId)));
+          setComments(cleanComments);
+          try {
+            localStorage.setItem('mk_comments', JSON.stringify(cleanComments));
+          } catch (e) {}
         }
       })
       .catch(() => {});
@@ -2452,7 +2488,13 @@ const deleteShopItemAndStyle = (itemId: string) => {
       equippedBadges: userBadges,
       equippedFrame: user?.equippedFrame || null
     };
-    setComments(prev => [newCm, ...prev]);
+    setComments(prev => {
+      const next = [newCm, ...prev];
+      try {
+        localStorage.setItem('mk_comments', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
 
     // Award +10 Cosmo-Puan for posting a comment
     if (user) {
@@ -2462,42 +2504,119 @@ const deleteShopItemAndStyle = (itemId: string) => {
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCm)
+      body: JSON.stringify(newCm),
+      keepalive: true
     }).catch(() => {});
   };
 
   const toggleLikeComment = (commentId: string, userId: string) => {
-    setComments(prev =>
-      prev.map(c => {
+    setComments(prev => {
+      let updatedComment: Comment | null = null;
+      const next = prev.map(c => {
         if (c.id !== commentId) return c;
         const hasLiked = c.likes.includes(userId);
         const newLikes = hasLiked ? c.likes.filter(id => id !== userId) : [...c.likes, userId];
         const newDislikes = c.dislikes.filter(id => id !== userId);
-        return { ...c, likes: newLikes, dislikes: newDislikes };
-      })
-    );
+        updatedComment = { ...c, likes: newLikes, dislikes: newDislikes };
+        return updatedComment;
+      });
+      try {
+        localStorage.setItem('mk_comments', JSON.stringify(next));
+      } catch (e) {}
+      if (updatedComment) {
+        fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedComment),
+          keepalive: true
+        }).catch(() => {});
+      }
+      return next;
+    });
   };
 
   const toggleDislikeComment = (commentId: string, userId: string) => {
-    setComments(prev =>
-      prev.map(c => {
+    setComments(prev => {
+      let updatedComment: Comment | null = null;
+      const next = prev.map(c => {
         if (c.id !== commentId) return c;
         const hasDisliked = c.dislikes.includes(userId);
         const newDislikes = hasDisliked
           ? c.dislikes.filter(id => id !== userId)
           : [...c.dislikes, userId];
         const newLikes = c.likes.filter(id => id !== userId);
-        return { ...c, likes: newLikes, dislikes: newDislikes };
-      })
-    );
+        updatedComment = { ...c, likes: newLikes, dislikes: newDislikes };
+        return updatedComment;
+      });
+      try {
+        localStorage.setItem('mk_comments', JSON.stringify(next));
+      } catch (e) {}
+      if (updatedComment) {
+        fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedComment),
+          keepalive: true
+        }).catch(() => {});
+      }
+      return next;
+    });
   };
 
   const deleteComment = (commentId: string) => {
-    setComments(prev => prev.filter(c => c.id !== commentId));
+    setComments(prev => {
+      // Collect target comment and all nested replies recursively
+      const toDelete = new Set<string>([commentId]);
+      let added = true;
+      while (added) {
+        added = false;
+        for (const item of prev) {
+          if (item.parentId && toDelete.has(item.parentId) && !toDelete.has(item.id)) {
+            toDelete.add(item.id);
+            added = true;
+          }
+        }
+      }
 
-    fetch(`/api/comments?id=${encodeURIComponent(commentId)}`, {
-      method: 'DELETE'
-    }).catch(() => {});
+      const next = prev.filter(c => !toDelete.has(c.id));
+
+      try {
+        localStorage.setItem('mk_comments', JSON.stringify(next));
+        const existingDelStr = localStorage.getItem('mk_deleted_comments');
+        const existingDel: string[] = existingDelStr ? JSON.parse(existingDelStr) : [];
+        const mergedDel = Array.from(new Set([...existingDel, ...Array.from(toDelete)]));
+        localStorage.setItem('mk_deleted_comments', JSON.stringify(mergedDel));
+      } catch (e) {}
+
+      // Immediately sync deletion with Cloudflare D1 (keepalive ensures completion even if user refreshes right away)
+      Array.from(toDelete).forEach(delId => {
+        fetch(`/api/comments?id=${encodeURIComponent(delId)}`, {
+          method: 'DELETE',
+          cache: 'no-store',
+          keepalive: true
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data && data.success) {
+              try {
+                const curStr = localStorage.getItem('mk_deleted_comments');
+                if (curStr) {
+                  const cur: string[] = JSON.parse(curStr);
+                  const remaining = cur.filter(id => id !== delId);
+                  if (remaining.length > 0) {
+                    localStorage.setItem('mk_deleted_comments', JSON.stringify(remaining));
+                  } else {
+                    localStorage.removeItem('mk_deleted_comments');
+                  }
+                }
+              } catch (e) {}
+            }
+          })
+          .catch(() => {});
+      });
+
+      return next;
+    });
   };
 
   const reportComment = (commentId: string) => {

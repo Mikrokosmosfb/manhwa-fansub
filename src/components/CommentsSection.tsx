@@ -25,7 +25,7 @@ import {
   Check,
   Zap
 } from 'lucide-react';
-import { Comment } from '../types';
+import { Comment, isAuthorizedAdmin } from '../types';
 
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
@@ -44,6 +44,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
     deleteComment,
     reportComment,
     user,
+    isAdminLoggedIn,
     openAuthModal,
     logout,
     openShop,
@@ -246,7 +247,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
   const renderSingleCard = (c: Comment, isReply = false, replyTargetName?: string, replyTargetId?: string) => {
     const isLiked = user ? c.likes.includes(user.uid) : false;
     const isDisliked = user ? c.dislikes.includes(user.uid) : false;
-    const isOwner = user?.uid === c.userId;
+    const isOwner = Boolean(
+      (user && (user.uid === c.userId || isAuthorizedAdmin(user.email))) || isAdminLoggedIn
+    );
     const isRevealed = revealedSpoilers[c.id];
 
     // Theme & Badge Styling Resolution
@@ -358,7 +361,15 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
             {isOwner && (
               <button
                 type="button"
-                onClick={() => deleteComment(c.id)}
+                onClick={() => {
+                  if (replyTo?.id === c.id) setReplyTo(null);
+                  deleteComment(c.id);
+                  showToast?.({
+                    title: 'Yorum Silindi 🗑️',
+                    message: 'Yorum hem ekrandan hem de veritabanından kalıcı olarak kaldırıldı.',
+                    type: 'info'
+                  });
+                }}
                 className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
                 title="Sil"
               >
