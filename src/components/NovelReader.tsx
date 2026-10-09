@@ -288,79 +288,96 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       }}
     >
       {/* Top Header Bar */}
-      <div className="bg-white/95 dark:bg-gray-900/90 border-b border-purple-200 dark:border-purple-500/20 sticky top-0 z-40 backdrop-blur-md px-4 py-3 shadow-md dark:shadow-lg">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-2">
+      <div className="bg-white/95 dark:bg-gray-900/95 border-b border-purple-200 dark:border-purple-500/20 sticky top-0 z-40 backdrop-blur-md px-2.5 sm:px-4 py-2 shadow-md dark:shadow-lg">
+        <div className="max-w-3xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
           
           {/* Back button */}
           <button
+            type="button"
             onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
-            className="flex items-center gap-1 text-xs sm:text-sm font-semibold text-purple-700 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white transition bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900 border border-purple-200 dark:border-purple-500/30 px-3 py-1.5 rounded-xl"
+            className="h-9 sm:h-10 px-2.5 sm:px-3.5 rounded-xl flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-purple-700 dark:text-purple-200 hover:text-purple-900 dark:hover:text-white transition bg-purple-50 dark:bg-purple-950/70 hover:bg-purple-100 dark:hover:bg-purple-900/80 border border-purple-200 dark:border-purple-500/30 shrink-0 cursor-pointer"
+            title={series.title}
           >
-            <ArrowLeft size={16} />
-            <span className="hidden sm:inline">{series.title}</span>
-            <span className="sm:hidden">Seri</span>
+            <ArrowLeft size={15} className="shrink-0" />
+            <span className="hidden md:inline max-w-[140px] lg:max-w-[180px] truncate">{series.title}</span>
+            <span className="md:hidden">Seri</span>
           </button>
 
           {/* Chapter Selector Dropdown Trigger */}
-          <div className="relative flex-1 max-w-sm text-center" ref={dropdownRef}>
+          <div className="relative flex-1 min-w-0" ref={dropdownRef}>
             <button
               type="button"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full bg-slate-100 dark:bg-gray-950/90 border border-purple-300 dark:border-purple-500/40 hover:border-purple-500 text-slate-900 dark:text-gray-100 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl flex items-center justify-between gap-1.5 transition shadow-inner group cursor-pointer"
+              className="w-full h-9 sm:h-10 bg-slate-100 dark:bg-gray-950/90 border border-purple-300 dark:border-purple-500/40 hover:border-purple-500 text-slate-900 dark:text-gray-100 text-xs sm:text-sm font-bold px-2.5 sm:px-3.5 rounded-xl flex items-center justify-between gap-1.5 transition shadow-inner group cursor-pointer"
             >
-              <div className="flex items-center gap-1.5 truncate min-w-0 pr-1">
+              <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <Layers size={14} className="text-purple-500 dark:text-purple-400 shrink-0" />
                 <span className="truncate">{currentChapter.title}</span>
                 {currentChapter.specialTag && (
-                  <ChapterSpecialBadge tag={currentChapter.specialTag} size="xs" />
+                  <span className="hidden xs:inline-flex shrink-0">
+                    <ChapterSpecialBadge tag={currentChapter.specialTag} size="xs" />
+                  </span>
                 )}
               </div>
-              <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 flex-shrink-0">
+              <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 shrink-0">
                 <span className="text-[10px] bg-purple-500/15 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
                   {chapterIndex + 1}/{sortedChapters.length}
                 </span>
-                <ChevronDown size={14} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-purple-600 dark:text-purple-300' : ''}`} />
+                <ChevronDown size={14} className={`transition-transform duration-200 shrink-0 ${isDropdownOpen ? 'rotate-180 text-purple-600 dark:text-purple-300' : ''}`} />
               </div>
             </button>
           </div>
 
           {/* Settings & Nav */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 shrink-0">
             <button
+              type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-              className={`p-2 rounded-xl border transition ${
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl border flex items-center justify-center transition cursor-pointer ${
                 isSettingsOpen
                   ? 'bg-purple-600 border-purple-400 text-white'
                   : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
               }`}
               title="Okuma Ayarları"
             >
-              <Settings size={18} />
+              <Settings size={17} />
             </button>
 
-            {prevChapter && (
-              <button
-                onClick={() =>
-                  setView({ type: 'reader', seriesId: series.id, chapterId: prevChapter.id })
+            <button
+              type="button"
+              disabled={!prevChapter}
+              onClick={() => {
+                if (prevChapter) {
+                  setView({ type: 'reader', seriesId: series.id, chapterId: prevChapter.id });
                 }
-                className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-800 dark:hover:bg-purple-700 text-white p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition shadow-sm"
-                title="Önceki Bölüm"
-              >
-                <ChevronLeft size={16} />
-              </button>
-            )}
+              }}
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition shadow-sm ${
+                prevChapter
+                  ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-800 dark:hover:bg-purple-700 text-white cursor-pointer'
+                  : 'bg-slate-200/70 dark:bg-gray-800/50 text-slate-400 dark:text-gray-600 cursor-not-allowed'
+              }`}
+              title="Önceki Bölüm"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-            {nextChapter && (
-              <button
-                onClick={() =>
-                  setView({ type: 'reader', seriesId: series.id, chapterId: nextChapter.id })
+            <button
+              type="button"
+              disabled={!nextChapter}
+              onClick={() => {
+                if (nextChapter) {
+                  setView({ type: 'reader', seriesId: series.id, chapterId: nextChapter.id });
                 }
-                className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-800 dark:hover:bg-purple-700 text-white p-2 rounded-xl text-xs font-semibold flex items-center gap-1 transition shadow-sm"
-                title="Sonraki Bölüm"
-              >
-                <ChevronRight size={16} />
-              </button>
-            )}
+              }}
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition shadow-sm ${
+                nextChapter
+                  ? 'bg-purple-600 hover:bg-purple-700 dark:bg-purple-800 dark:hover:bg-purple-700 text-white cursor-pointer'
+                  : 'bg-slate-200/70 dark:bg-gray-800/50 text-slate-400 dark:text-gray-600 cursor-not-allowed'
+              }`}
+              title="Sonraki Bölüm"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
 
         </div>
