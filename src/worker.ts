@@ -51,6 +51,7 @@ function getUsersDB(env: Env) {
 const MEMORY_RATE_LIMIT = new Map<string, { count: number; resetAt: number }>();
 const ACTIVE_SESSIONS = new Map<string, number>();
 const OTP_STORE = new Map<string, { code: string; expiresAt: number; name?: string; password?: string }>();
+let isD1SchemaInitialized = false;
 
 // Disposable / Fake Email domains blocklist
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -741,7 +742,9 @@ ${seriesXml}
         const onlineCount = Math.max(18, ACTIVE_SESSIONS.size + 14);
         return new Response(JSON.stringify({ success: true, onlineCount }), { headers });
       }
-      // Auto-initialize D1 SQLite tables if D1 binding exists
+      // Auto-initialize D1 SQLite tables once per isolate if D1 binding exists
+      if (!isD1SchemaInitialized) {
+        isD1SchemaInitialized = true;
       if (db) {
         try {
           await db.prepare(`
@@ -1027,6 +1030,7 @@ ${seriesXml}
         } catch (e) {
           console.error('Error initializing Users DB table:', e);
         }
+      }
       }
 
 
@@ -2683,24 +2687,25 @@ ${seriesXml}
             }
             if (userDb) {
               try {
-                const { results } = await userDb.prepare("SELECT followed_series, bookmarks, reading_history, notifications, cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges, equipped_frame, reading_lists, daily_checkin_day, last_daily_checkin, claimed_checkin_days FROM user_library WHERE uid = ?").bind(uid).all();
+                const { results } = await userDb.prepare("SELECT * FROM user_library WHERE uid = ?").bind(uid).all();
                 if (results && results.length > 0) {
+                  const row: any = results[0];
                   return new Response(JSON.stringify({
                     success: true,
-                    followed_series: results[0].followed_series,
-                    bookmarks: results[0].bookmarks,
-                    reading_history: results[0].reading_history || '{}',
-                    notifications: results[0].notifications,
-                    cosmo_points: results[0].cosmo_points,
-                    shop_items: results[0].shop_items,
-                    equipped_theme: results[0].equipped_theme,
-                    equipped_badge: results[0].equipped_badge,
-                    equipped_badges: results[0].equipped_badges,
-                    equipped_frame: results[0].equipped_frame,
-                    reading_lists: results[0].reading_lists || '[]',
-                    daily_checkin_day: results[0].daily_checkin_day || 0,
-                    last_daily_checkin: results[0].last_daily_checkin || null,
-                    claimed_checkin_days: results[0].claimed_checkin_days || '[]'
+                    followed_series: row.followed_series || '[]',
+                    bookmarks: row.bookmarks || '{}',
+                    reading_history: row.reading_history || '{}',
+                    notifications: row.notifications || '[]',
+                    cosmo_points: row.cosmo_points || 0,
+                    shop_items: row.shop_items || '[]',
+                    equipped_theme: row.equipped_theme || null,
+                    equipped_badge: row.equipped_badge || null,
+                    equipped_badges: row.equipped_badges || '[]',
+                    equipped_frame: row.equipped_frame || '',
+                    reading_lists: row.reading_lists || '[]',
+                    daily_checkin_day: row.daily_checkin_day || 0,
+                    last_daily_checkin: row.last_daily_checkin || null,
+                    claimed_checkin_days: row.claimed_checkin_days || '[]'
                   }), { headers });
                 }
                 return new Response(JSON.stringify({ success: true, followed_series: '[]', bookmarks: '{}', reading_history: '{}', notifications: '[]', cosmo_points: 0, shop_items: '[]', equipped_theme: '', equipped_badge: '', equipped_badges: '[]', equipped_frame: '', reading_lists: '[]', daily_checkin_day: 0, last_daily_checkin: null, claimed_checkin_days: '[]' }), { headers });
@@ -2722,9 +2727,25 @@ ${seriesXml}
               return new Response(JSON.stringify({ success: false, message: 'UID required' }), { status: 400, headers });
             }
             if (userDb) {
-              try {
-                // Fetch name/email from users table for reference
-                const userRow = await userDb.prepare("SELECT name, email FROM users WHERE uid = ?").bind(uid).first() as any;
+              const saveLibrary = async () => {
+                const userRow = await userDb.prepare("SELECT name, email FROM users WHERE uid = ?").bind(uid).first().catch(() => null) as any;
+                const existingLib = await userDb.prepare("SELECT * FROM user_library WHERE uid = ?").bind(uid).first().catch(() => null) as any;
+
+                const finalFollowed = followed_series !== undefined ? followed_series : (existingLib?.followed_series || '[]');
+                const finalBookmarks = bookmarks !== undefined ? bookmarks : (existingLib?.bookmarks || '{}');
+                const finalHistory = reading_history !== undefined ? reading_history : (existingLib?.reading_history || '{}');
+                const finalNotifs = notifications !== undefined ? notifications : (existingLib?.notifications || '[]');
+                const finalPoints = cosmo_points !== undefined ? Number(cosmo_points) : (existingLib?.cosmo_points || 0);
+                const finalShop = shop_items !== undefined ? shop_items : (existingLib?.shop_items || '[]');
+                const finalTheme = equipped_theme !== undefined ? equipped_theme : (existingLib?.equipped_theme || null);
+                const finalBadge = equipped_badge !== undefined ? equipped_badge : (existingLib?.equipped_badge || null);
+                const finalBadges = equipped_badges !== undefined ? equipped_badges : (existingLib?.equipped_badges || '[]');
+                const finalFrame = equipped_frame !== undefined ? equipped_frame : (existingLib?.equipped_frame || '');
+                const finalReadingLists = reading_lists !== undefined ? reading_lists : (existingLib?.reading_lists || '[]');
+                const finalCheckinDay = daily_checkin_day !== undefined ? Number(daily_checkin_day) : (existingLib?.daily_checkin_day || 0);
+                const finalLastCheckin = last_daily_checkin !== undefined ? last_daily_checkin : (existingLib?.last_daily_checkin || null);
+                const finalClaimedDays = claimed_checkin_days !== undefined ? claimed_checkin_days : (existingLib?.claimed_checkin_days || '[]');
+
                 await userDb.prepare(`
                   INSERT INTO user_library (uid, name, email, followed_series, bookmarks, reading_history, notifications, cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges, equipped_frame, reading_lists, daily_checkin_day, last_daily_checkin, claimed_checkin_days)
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -2745,10 +2766,42 @@ ${seriesXml}
                   daily_checkin_day = excluded.daily_checkin_day,
                   last_daily_checkin = excluded.last_daily_checkin,
                   claimed_checkin_days = excluded.claimed_checkin_days
-                `).bind(uid, userRow?.name || null, userRow?.email || null, followed_series, bookmarks, reading_history || '{}', notifications, cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges || '[]', equipped_frame || '', reading_lists || '[]', daily_checkin_day || 0, last_daily_checkin || null, claimed_checkin_days || '[]').run();
+                `).bind(
+                  uid,
+                  userRow?.name ?? existingLib?.name ?? null,
+                  userRow?.email ?? existingLib?.email ?? null,
+                  finalFollowed,
+                  finalBookmarks,
+                  finalHistory,
+                  finalNotifs,
+                  finalPoints,
+                  finalShop,
+                  finalTheme,
+                  finalBadge,
+                  finalBadges,
+                  finalFrame,
+                  finalReadingLists,
+                  finalCheckinDay,
+                  finalLastCheckin,
+                  finalClaimedDays
+                ).run();
+              };
+
+              try {
+                await saveLibrary();
                 return new Response(JSON.stringify({ success: true }), { headers });
               } catch (e: any) {
-                return new Response(JSON.stringify({ success: false, message: e.message }), { status: 500, headers });
+                try {
+                  await userDb.prepare(`ALTER TABLE user_library ADD COLUMN reading_lists TEXT DEFAULT '[]'`).run().catch(() => {});
+                  await userDb.prepare(`ALTER TABLE user_library ADD COLUMN reading_history TEXT DEFAULT '{}'`).run().catch(() => {});
+                  await userDb.prepare(`ALTER TABLE user_library ADD COLUMN daily_checkin_day INTEGER DEFAULT 0`).run().catch(() => {});
+                  await userDb.prepare(`ALTER TABLE user_library ADD COLUMN last_daily_checkin TEXT`).run().catch(() => {});
+                  await userDb.prepare(`ALTER TABLE user_library ADD COLUMN claimed_checkin_days TEXT DEFAULT '[]'`).run().catch(() => {});
+                  await saveLibrary();
+                  return new Response(JSON.stringify({ success: true }), { headers });
+                } catch (retryErr: any) {
+                  return new Response(JSON.stringify({ success: false, message: retryErr.message }), { status: 500, headers });
+                }
               }
             }
             

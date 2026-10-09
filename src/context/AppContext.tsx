@@ -466,7 +466,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Bookmarks Map (seriesId -> BookmarkItem)
-  const [readingLists, setReadingLists] = useState<import('../types').ReadingList[]>(() => {
+  const [readingLists, setReadingListsState] = useState<import('../types').ReadingList[]>(() => {
     const saved = localStorage.getItem('mk_reading_lists');
     if (saved) {
       try { return JSON.parse(saved); } catch (e) {}
@@ -1742,16 +1742,102 @@ const deleteShopItemAndStyle = (itemId: string) => {
   const isLibraryFetchedRef = useRef(false);
   const syncTimeoutRef = useRef<any>(null);
 
+  const setReadingLists: React.Dispatch<React.SetStateAction<import('../types').ReadingList[]>> = (updater) => {
+    setReadingListsState(prev => {
+      const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
+      try {
+        localStorage.setItem('mk_reading_lists', JSON.stringify(next));
+        localStorage.setItem('mk_reading_lists_dirty', String(Date.now()));
+        if (user?.uid) {
+          localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(next));
+        }
+      } catch (e) {}
+
+      if (user && user.uid) {
+        fetch('/api/auth/library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            uid: user.uid,
+            bookmarks: JSON.stringify(bookmarks),
+            reading_lists: JSON.stringify(next),
+            followed_series: JSON.stringify(followedSeriesIds),
+            reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
+            notifications: JSON.stringify(notifications),
+            cosmo_points: user.coins || 0,
+            shop_items: JSON.stringify(user.inventory || []),
+            equipped_theme: user.equippedTheme || null,
+            equipped_badge: user.equippedBadge || null,
+            equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
+            equipped_frame: user.equippedFrame || null,
+            daily_checkin_day: user.dailyCheckinDay || 0,
+            last_daily_checkin: user.lastDailyCheckin || null,
+            claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
+          })
+        })
+          .then(res => res.json())
+          .then(resData => {
+            if (resData && resData.success) {
+              try {
+                localStorage.removeItem('mk_reading_lists_dirty');
+              } catch (e) {}
+            }
+          })
+          .catch(() => {});
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (user && user.uid) {
       isLibraryFetchedRef.current = false;
-      safeFetchJson<any>(`/api/auth/library?uid=${encodeURIComponent(user.uid)}`)
+      safeFetchJson<any>(`/api/auth/library?uid=${encodeURIComponent(user.uid)}`, { cache: 'no-store' })
         .then(data => {
           if (data && data.success) {
             try {
               const fetchedBookmarks = typeof data.bookmarks === 'string' ? JSON.parse(data.bookmarks) : data.bookmarks;
               const fetchedReadingLists = data.reading_lists ? (typeof data.reading_lists === 'string' ? JSON.parse(data.reading_lists) : data.reading_lists) : [];
-              setReadingLists(fetchedReadingLists);
+
+              const isLocalDirty = Boolean(localStorage.getItem('mk_reading_lists_dirty'));
+              const savedLocalStr = localStorage.getItem(`mk_reading_lists_${user.uid}`) || localStorage.getItem('mk_reading_lists');
+              let localLists: any[] | null = null;
+              try {
+                if (savedLocalStr) localLists = JSON.parse(savedLocalStr);
+              } catch (e) {}
+
+              if (isLocalDirty && Array.isArray(localLists)) {
+                setReadingListsState(localLists);
+                localStorage.setItem('mk_reading_lists', JSON.stringify(localLists));
+                fetch('/api/auth/library', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  keepalive: true,
+                  body: JSON.stringify({
+                    uid: user.uid,
+                    reading_lists: JSON.stringify(localLists)
+                  })
+                })
+                  .then(r => r.json())
+                  .then(resData => {
+                    if (resData && resData.success) {
+                      try {
+                        localStorage.removeItem('mk_reading_lists_dirty');
+                      } catch (e) {}
+                    }
+                  })
+                  .catch(() => {});
+              } else if (Array.isArray(fetchedReadingLists) && (fetchedReadingLists.length > 0 || !Array.isArray(localLists) || localLists.length === 0)) {
+                setReadingListsState(fetchedReadingLists);
+                try {
+                  localStorage.setItem('mk_reading_lists', JSON.stringify(fetchedReadingLists));
+                  localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(fetchedReadingLists));
+                } catch (e) {}
+              } else if (Array.isArray(localLists) && localLists.length > 0) {
+                setReadingListsState(localLists);
+              }
+
               const fetchedFollowed = typeof data.followed_series === 'string' ? JSON.parse(data.followed_series) : data.followed_series;
               if (fetchedBookmarks && typeof fetchedBookmarks === 'object' && !Array.isArray(fetchedBookmarks)) {
                 setBookmarks(fetchedBookmarks);
@@ -1804,10 +1890,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
             isLibraryFetchedRef.current = true;
           } else {
             console.warn("Library sync fetch failed or returned false success", data);
+            isLibraryFetchedRef.current = true;
           }
         })
         .catch(err => {
           console.warn("Library sync fetch error", err);
+          isLibraryFetchedRef.current = true;
         });
     } else {
       isLibraryFetchedRef.current = false;
@@ -1819,6 +1907,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
   useEffect(() => {
     localStorage.setItem('mk_bookmarks_v2', JSON.stringify(bookmarks));
     localStorage.setItem('mk_reading_lists', JSON.stringify(readingLists));
+    if (user?.uid) {
+      localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(readingLists));
+    }
     localStorage.setItem('mk_followed_series', JSON.stringify(followedSeriesIds));
 
     if (user && user.uid && isLibraryFetchedRef.current) {
@@ -1827,6 +1918,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
         safeFetchJson('/api/auth/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
           body: JSON.stringify({
             uid: user.uid,
             bookmarks: JSON.stringify(bookmarks),
@@ -1844,8 +1936,16 @@ const deleteShopItemAndStyle = (itemId: string) => {
             last_daily_checkin: user.lastDailyCheckin || null,
             claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
           })
-        }).catch(() => {});
-      }, 1500);
+        })
+          .then(resData => {
+            if (resData && resData.success) {
+              try {
+                localStorage.removeItem('mk_reading_lists_dirty');
+              } catch (e) {}
+            }
+          })
+          .catch(() => {});
+      }, 300);
     }
   }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists]);
 

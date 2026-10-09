@@ -145,6 +145,7 @@ export async function onRequest(context: any) {
       try { await db.prepare("ALTER TABLE users ADD COLUMN followed_series_json TEXT DEFAULT '[]'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE users ADD COLUMN reading_history_json TEXT DEFAULT '{}'").run(); } catch (e) {}
       try { await db.prepare("ALTER TABLE users ADD COLUMN notifications_json TEXT DEFAULT '[]'").run(); } catch (e) {}
+      try { await db.prepare("ALTER TABLE users ADD COLUMN reading_lists_json TEXT DEFAULT '[]'").run(); } catch (e) {}
       try {
         await db.prepare("ALTER TABLE series ADD COLUMN slug TEXT").run();
       } catch (e) {}
@@ -231,6 +232,7 @@ export async function onRequest(context: any) {
           bookmarks: user.bookmarks_json || '{}',
           followed_series: user.followed_series_json || '[]',
           reading_history: user.reading_history_json || '{}',
+          reading_lists: user.reading_lists_json || '[]',
           notifications: user.notifications_json || '[]',
           cosmo_points: user.cosmo_points || 0,
           shop_items: user.inventory_json || '[]',
@@ -245,12 +247,12 @@ export async function onRequest(context: any) {
         const body = await request.json();
         await db.prepare(`
           UPDATE users SET 
-            bookmarks_json = ?, followed_series_json = ?, reading_history_json = ?, 
+            bookmarks_json = ?, followed_series_json = ?, reading_history_json = ?, reading_lists_json = ?,
             notifications_json = ?, cosmo_points = ?, inventory_json = ?, 
             equipped_theme = ?, equipped_badge = ?, equipped_badges_json = ?, equipped_frame = ?, updated_at = ?
           WHERE uid = ?
         `).bind(
-          body.bookmarks || '{}', body.followed_series || '[]', body.reading_history || '{}',
+          body.bookmarks || '{}', body.followed_series || '[]', body.reading_history || '{}', body.reading_lists || '[]',
           body.notifications || '[]', body.cosmo_points || 0, body.shop_items || '[]',
           body.equipped_theme || null, body.equipped_badge || null, body.equipped_badges || '[]', body.equipped_frame || null,
           new Date().toLocaleString('tr-TR'), body.uid
