@@ -236,7 +236,7 @@ interface AppContextType {
   toggleLikeComment: (commentId: string, userId: string) => void;
   toggleDislikeComment: (commentId: string, userId: string) => void;
   deleteComment: (commentId: string) => void;
-  reportComment: (commentId: string) => void;
+  reportComment: (commentId: string, reason?: string, details?: string) => Promise<boolean>;
 
   // Series Requests Board
   seriesRequests: SeriesRequest[];
@@ -2619,10 +2619,48 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
   };
 
-  const reportComment = (commentId: string) => {
+  const reportComment = async (commentId: string, reason?: string, details?: string): Promise<boolean> => {
+    const target = comments.find(c => c.id === commentId);
     setComments(prev =>
       prev.map(c => (c.id === commentId ? { ...c, reported: true } : c))
     );
+
+    if (!target) return false;
+
+    const matchedSeries = seriesList.find(s => s.id === target.seriesId);
+    const matchedChapter = matchedSeries?.chapters?.find(ch => ch.id === target.chapterId);
+    const chapterLabel = matchedChapter
+      ? `Bölüm ${matchedChapter.number}${matchedChapter.title ? ' - ' + matchedChapter.title : ''}`
+      : target.chapterId || '';
+
+    try {
+      const res = await fetch('/api/comments/report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commentId: target.id,
+          commentText: target.text,
+          commentAuthorName: target.userName,
+          commentAuthorId: target.userId,
+          commentDate: target.date,
+          commentImageUrl: target.imageUrl || '',
+          seriesId: target.seriesId,
+          seriesTitle: matchedSeries?.title || target.seriesId,
+          chapterId: target.chapterId || '',
+          chapterTitle: chapterLabel,
+          reason: reason || 'Okuyucu Bildirimi / Uygunsuz Yorum',
+          details: details || '',
+          reporterName: user?.name || 'Ziyaretçi Okuyucu',
+          reporterEmail: user?.email || '',
+          pageUrl: typeof window !== 'undefined' ? window.location.href : ''
+        }),
+        keepalive: true
+      });
+      const data = await res.json().catch(() => null);
+      return Boolean(data && data.success);
+    } catch (e) {
+      return false;
+    }
   };
 
   const voteSeriesRequest = (requestId: string) => {

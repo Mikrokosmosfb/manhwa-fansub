@@ -368,6 +368,78 @@ async function sendOtpEmailWithCloudflare(
   return { sent: true, provider: 'gmail_smtp_queued' };
 }
 
+async function sendAdminNotificationEmail(
+  env: Env,
+  subject: string,
+  htmlContent: string
+): Promise<{ sent: boolean; provider: string; error?: string }> {
+  const targetAdminEmail = 'mikrokosmosfansub@gmail.com';
+  const gmailUser = env.GMAIL_USER || 'mikrokosmosfansub@gmail.com';
+  const gmailPass = env.GMAIL_APP_PASSWORD || 'gxrq mqep wuee tywy';
+  const fromEmail = env.MAIL_FROM || gmailUser;
+
+  // 1. PRIMARY: GMAIL SMTP DIRECT DELIVERY (mikrokosmosfansub@gmail.com)
+  if (gmailUser && gmailPass) {
+    try {
+      const gmailResult = await sendGmailSmtpDirect(gmailUser, gmailPass, targetAdminEmail, subject, htmlContent);
+      if (gmailResult.success) {
+        return { sent: true, provider: 'gmail_smtp' };
+      }
+    } catch (e: any) {
+      console.warn('Admin report Gmail SMTP attempt failed, falling back:', e);
+    }
+  }
+
+  // 2. CLOUDFLARE EMAIL ROUTING FALLBACK
+  const emailBinding = env.EMAIL || env.SEB;
+  if (emailBinding && typeof emailBinding.send === 'function') {
+    try {
+      const rawEmail = [
+        `From: "Mikrokosmos Fansub Bildirim" <${fromEmail}>`,
+        `To: <${targetAdminEmail}>`,
+        `Subject: ${subject}`,
+        `MIME-Version: 1.0`,
+        `Content-Type: text/html; charset=UTF-8`,
+        ``,
+        htmlContent
+      ].join('\r\n');
+
+      await emailBinding.send({
+        from: fromEmail,
+        to: targetAdminEmail,
+        raw: rawEmail
+      });
+      return { sent: true, provider: 'cloudflare_email_routing' };
+    } catch (e: any) {
+      console.warn('Cloudflare Email Binding fallback failed:', e);
+    }
+  }
+
+  // 3. RESEND API FALLBACK
+  if (env.RESEND_API_KEY) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: `Mikrokosmos Fansub <${fromEmail}>`,
+          to: [targetAdminEmail],
+          subject,
+          html: htmlContent
+        })
+      });
+      if (res.ok) {
+        return { sent: true, provider: 'resend_api' };
+      }
+    } catch (e) {}
+  }
+
+  return { sent: false, provider: 'none', error: 'No email provider succeeded' };
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx: any): Promise<Response> {
     const url = new URL(request.url);
@@ -1265,6 +1337,132 @@ ${seriesXml}
 
         // COMMENTS API
         if (path.startsWith('/api/comments')) {
+          if (path === '/api/comments/report' && request.method === 'POST') {
+            try {
+              const payload: any = await request.json();
+              const {
+                commentId,
+                commentText,
+                commentAuthorName,
+                commentAuthorId,
+                commentDate,
+                commentImageUrl,
+                seriesId,
+                seriesTitle,
+                chapterId,
+                chapterTitle,
+                reason,
+                details,
+                reporterName,
+                reporterEmail,
+                pageUrl
+              } = payload || {};
+
+              const escapeHtml = (str: any) =>
+                String(str ?? '')
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;');
+
+              const subject = `🚨 [Yorum Şikayeti] ${seriesTitle || seriesId || 'Mikrokosmos'} - ${commentAuthorName || 'Kullanıcı'}`;
+              const directLink = pageUrl || (chapterId
+                ? `https://mikrokosmosfansub.com/#/oku/${encodeURIComponent(seriesId || '')}/${encodeURIComponent(chapterId)}`
+                : `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(seriesId || '')}`);
+
+              const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#090614;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#090614;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:600px;background:linear-gradient(180deg, #1b0e34 0%, #0d0722 100%);border:1px solid #ef444460;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px rgba(0,0,0,0.85);" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="padding:28px 24px;">
+              <div style="display:inline-block;padding:6px 14px;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);border-radius:999px;font-size:12px;font-weight:bold;color:#fca5a5;margin-bottom:14px;">
+                🚨 YORUM ŞİKAYET BİLDİRİMİ
+              </div>
+              <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#ffffff;">
+                Sitede Bir Yorum Rapor Edildi
+              </h2>
+              <p style="margin:0 0 20px;font-size:13px;color:#c4b5fd;">
+                Aşağıdaki yorum bir okuyucu tarafından incelenmesi için <strong>mikrokosmosfansub@gmail.com</strong> adresine bildirildi:
+              </p>
+
+              <!-- REPORTED COMMENT BOX -->
+              <div style="background:#120924;border-left:4px solid #ef4444;border-radius:12px;padding:16px;margin-bottom:18px;">
+                <div style="font-size:11px;color:#f87171;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+                  💬 Şikayet Edilen Yorum Metni:
+                </div>
+                <div style="font-size:15px;line-height:1.6;color:#f3f4f6;white-space:pre-wrap;word-break:break-word;background:#090514;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                  ${escapeHtml(commentText || '(Metin yok)')}
+                </div>
+                ${commentImageUrl ? `<div style="margin-top:10px;font-size:12px;color:#93c5fd;">📎 Ekli Görsel: <a href="${escapeHtml(commentImageUrl)}" style="color:#60a5fa;">${escapeHtml(commentImageUrl)}</a></div>` : ''}
+              </div>
+
+              <!-- DETAILS TABLE -->
+              <table width="100%" cellspacing="0" cellpadding="8" style="background:#0d071b;border:1px solid rgba(168,85,247,0.25);border-radius:12px;font-size:13px;color:#e5e7eb;margin-bottom:20px;">
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;width:150px;border-bottom:1px solid rgba(255,255,255,0.06);">Şikayet Nedeni:</td>
+                  <td style="color:#fca5a5;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(reason || 'Belirtilmedi')}</td>
+                </tr>
+                ${details ? `
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Ek Açıklama:</td>
+                  <td style="color:#f3f4f6;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(details)}</td>
+                </tr>` : ''}
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Yorum Sahibi:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);"><strong>${escapeHtml(commentAuthorName || 'Bilinmiyor')}</strong> <span style="color:#9ca3af;font-size:11px;">(ID: ${escapeHtml(commentAuthorId || '-')})</span></td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Seri / Bölüm:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(seriesTitle || seriesId || '-')} ${chapterTitle ? `— <strong>${escapeHtml(chapterTitle)}</strong>` : '(Seri Ana Sayfası)'}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Yorum ID & Tarih:</td>
+                  <td style="font-family:monospace;font-size:12px;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(commentId || '-')} • ${escapeHtml(commentDate || '-')}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;">Bildiren Okuyucu:</td>
+                  <td>${escapeHtml(reporterName || 'Ziyaretçi / Misafir')} ${reporterEmail ? `(${escapeHtml(reporterEmail)})` : ''}</td>
+                </tr>
+              </table>
+
+              <div style="text-align:center;margin-top:18px;">
+                <a href="${escapeHtml(directLink)}" style="display:inline-block;padding:12px 24px;background:linear-gradient(90deg,#9333ea,#db2777);color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;border-radius:12px;">
+                  🔗 İlgili Sayfaya Git ve Yorumu Gör
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+
+              const emailRes = await sendAdminNotificationEmail(env, subject, htmlContent);
+              return new Response(JSON.stringify({
+                success: true,
+                emailSent: emailRes.sent,
+                provider: emailRes.provider,
+                target: 'mikrokosmosfansub@gmail.com'
+              }), { headers });
+            } catch (err: any) {
+              return new Response(JSON.stringify({
+                success: false,
+                error: err?.message || 'Report error'
+              }), { status: 500, headers });
+            }
+          }
+
           if (request.method === 'GET') {
             if (false && r2) {
               const item = await r2.get('data/comments.json');

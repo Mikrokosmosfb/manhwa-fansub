@@ -64,6 +64,25 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<string, boolean>>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [reportingComment, setReportingComment] = useState<Comment | null>(null);
+  const [reportReason, setReportReason] = useState('Küfür / Hakaret / Zorbalık');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  const handleConfirmReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reportingComment || isSubmittingReport) return;
+    setIsSubmittingReport(true);
+    await reportComment(reportingComment.id, reportReason, reportDetails.trim());
+    setIsSubmittingReport(false);
+    setReportingComment(null);
+    setReportDetails('');
+    showToast?.({
+      title: 'Yorum Bildirildi 🚨',
+      message: 'Şikayetiniz ilgili yorum detayıyla birlikte mikrokosmosfansub@gmail.com adresine iletildi.',
+      type: 'success'
+    });
+  };
 
   const formatTimeAgo = (isoString?: string) => {
     if (!isoString || isoString === 'Az önce') return 'Az önce';
@@ -351,9 +370,15 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           }`}>
             <button
               type="button"
-              onClick={() => reportComment(c.id)}
-              className="text-gray-400 hover:text-amber-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
-              title="Şikayet Et"
+              onClick={() => {
+                setReportingComment(c);
+                setReportReason('Küfür / Hakaret / Zorbalık');
+                setReportDetails('');
+              }}
+              className={`p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer flex items-center gap-1 ${
+                c.reported ? 'text-amber-400' : 'text-gray-400 hover:text-amber-400'
+              }`}
+              title="Yorumu Bildir / Şikayet Et"
             >
               <AlertOctagon size={15} />
             </button>
@@ -802,6 +827,99 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           })
         )}
       </div>
+
+      {/* Comment Report Modal */}
+      {reportingComment && (
+        <div
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => !isSubmittingReport && setReportingComment(null)}
+        >
+          <div
+            className="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400">
+                  <AlertOctagon size={18} />
+                </div>
+                <div>
+                  <h4 className="text-sm sm:text-base font-extrabold text-white">Yorumu Bildir</h4>
+                  <p className="text-[11px] text-gray-400">Bildirim doğrudan yönetici ekibine iletilir</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReportingComment(null)}
+                className="text-gray-400 hover:text-white text-xs font-bold px-2 py-1 rounded-lg hover:bg-gray-800"
+              >
+                Kapat
+              </button>
+            </div>
+
+            {/* Preview of Which Comment is Being Reported */}
+            <div className="bg-gray-950/90 border-l-4 border-red-500 rounded-xl p-3 space-y-1">
+              <div className="flex items-center justify-between text-[11px] text-gray-400">
+                <span className="font-bold text-purple-300">@{reportingComment.userName}</span>
+                <span>{formatTimeAgo(reportingComment.date)}</span>
+              </div>
+              <p className="text-xs text-gray-200 line-clamp-3 break-words whitespace-pre-wrap">
+                {reportingComment.text}
+              </p>
+            </div>
+
+            <form onSubmit={handleConfirmReport} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-purple-300 mb-1.5">
+                  Bildirim Nedeni
+                </label>
+                <select
+                  value={reportReason}
+                  onChange={e => setReportReason(e.target.value)}
+                  className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-purple-500"
+                >
+                  <option value="Küfür / Hakaret / Zorbalık">Küfür / Hakaret / Zorbalık</option>
+                  <option value="İşaretlenmemiş Spoiler">İşaretlenmemiş Spoiler</option>
+                  <option value="Spam / Reklam / Link">Spam / Reklam / Link</option>
+                  <option value="Uygunsuz / Rahatsız Edici İçerik">Uygunsuz / Rahatsız Edici İçerik</option>
+                  <option value="Diğer">Diğer</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-purple-300 mb-1.5">
+                  Ek Açıklama <span className="text-gray-500 font-normal">(İsteğe bağlı)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={reportDetails}
+                  onChange={e => setReportDetails(e.target.value)}
+                  placeholder="Eklemek istediğiniz bir not varsa yazabilirsiniz..."
+                  className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-2.5 focus:outline-none focus:border-purple-500 resize-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReportingComment(null)}
+                  className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold transition"
+                >
+                  İptal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReport}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 disabled:opacity-50 text-white text-xs font-bold shadow-lg flex items-center gap-1.5 transition"
+                >
+                  <Send size={13} />
+                  {isSubmittingReport ? 'Gönderiliyor...' : 'Bildirimi Gönder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

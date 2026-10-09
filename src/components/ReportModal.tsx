@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Bug, Send, CheckCircle2 } from 'lucide-react';
 
 export const ReportModal: React.FC = () => {
-  const { setView, seriesList } = useApp();
+  const { setView, seriesList, user } = useApp();
   const [selectedSeries, setSelectedSeries] = useState('');
   const [chapterInfo, setChapterInfo] = useState('');
   const [reportType, setReportType] = useState('Hasarlı / Yüklenmeyen Resim');
@@ -14,6 +14,26 @@ export const ReportModal: React.FC = () => {
     e.preventDefault();
     if (!message.trim()) return;
     setSubmitted(true);
+
+    fetch('/api/comments/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commentId: 'GENEL-SORUN-' + Date.now(),
+        commentText: message.trim(),
+        commentAuthorName: user?.name || 'Ziyaretçi Bildirimi',
+        commentAuthorId: user?.uid || '-',
+        commentDate: new Date().toLocaleString('tr-TR'),
+        seriesTitle: selectedSeries || 'Genel Site Bildirimi',
+        chapterTitle: chapterInfo || '',
+        reason: reportType,
+        details: message.trim(),
+        reporterName: user?.name || 'Ziyaretçi',
+        reporterEmail: user?.email || '',
+        pageUrl: typeof window !== 'undefined' ? window.location.href : ''
+      }),
+      keepalive: true
+    }).catch(() => {});
   };
 
   return (
