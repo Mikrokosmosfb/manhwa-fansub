@@ -866,52 +866,57 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         )}
 
         {/* Bottom Navigation */}
-        <div className="border-t border-purple-500/20 pt-6 mt-12 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 sm:gap-3">
-          <div className="flex items-center gap-2.5 flex-1">
-            {prevChapter ? (
-              <button
-                type="button"
-                onClick={() =>
-                  setView({ type: 'reader', seriesId: series.id, chapterId: prevChapter.id })
-                }
-                className="flex-1 bg-purple-800 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
-              >
-                <ChevronLeft size={18} />
-                <span>Önceki Bölüm</span>
-              </button>
-            ) : (
-              <div className="flex-1 text-xs opacity-60 text-center font-medium py-3 bg-purple-950/20 rounded-xl border border-purple-500/20">
-                İlk Bölümdesiniz
-              </div>
-            )}
-
-            {/* Bottom Chapter List Trigger Button */}
+        <div className="bg-white/5 dark:bg-gray-900/90 border border-purple-500/30 p-2.5 sm:p-3.5 rounded-2xl grid grid-cols-3 items-center gap-2 sm:gap-3 mt-10 shadow-md">
+          {/* Left: Previous Chapter */}
+          {prevChapter ? (
             <button
               type="button"
-              onClick={() => setIsDropdownOpen(true)}
-              className="flex-1 sm:flex-initial bg-gray-900 hover:bg-purple-950/80 border border-purple-500/40 text-white font-bold py-3 px-4 sm:px-5 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer"
-              title="Bölüm Listesini Aç"
+              onClick={() =>
+                setView({ type: 'reader', seriesId: series.id, chapterId: prevChapter.id })
+              }
+              className="h-11 sm:h-12 w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg transition cursor-pointer whitespace-nowrap"
             >
-              <Layers size={16} className="text-purple-400 shrink-0" />
-              <span className="truncate">Bölüm Listesi</span>
-              <span className="text-[10px] bg-purple-500/25 text-purple-200 px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0">
-                {chapterIndex + 1}/{sortedChapters.length}
-              </span>
+              <ChevronLeft size={17} className="shrink-0" />
+              <span className="sm:hidden">Önceki</span>
+              <span className="hidden sm:inline">Önceki Bölüm</span>
             </button>
-          </div>
+          ) : (
+            <div className="h-11 sm:h-12 w-full text-[11px] sm:text-xs opacity-60 font-medium px-2 bg-purple-950/20 rounded-xl border border-purple-500/20 flex items-center justify-center whitespace-nowrap">
+              <span className="sm:hidden">İlk Bölüm</span>
+              <span className="hidden sm:inline">İlk Bölümdesiniz</span>
+            </div>
+          )}
 
+          {/* Center: Chapter List Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsDropdownOpen(true)}
+            className="h-11 sm:h-12 w-full bg-gray-900 hover:bg-purple-950/80 border border-purple-500/40 text-white font-bold px-2 sm:px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 sm:gap-2 shadow-lg transition cursor-pointer whitespace-nowrap"
+            title="Bölüm Listesini Aç"
+          >
+            <Layers size={15} className="text-purple-400 shrink-0" />
+            <span className="sm:hidden">Bölümler</span>
+            <span className="hidden sm:inline">Bölüm Listesi</span>
+            <span className="text-[10px] bg-purple-500/25 text-purple-200 px-1.5 py-0.5 rounded-md font-mono font-bold shrink-0">
+              {chapterIndex + 1}/{sortedChapters.length}
+            </span>
+          </button>
+
+          {/* Right: Next Chapter */}
           {nextChapter ? (
             <button
               type="button"
               onClick={handleGoToNextChapter}
-              className="sm:flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-lg transition cursor-pointer"
+              className="h-11 sm:h-12 w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold px-2.5 sm:px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-1 sm:gap-1.5 shadow-lg transition cursor-pointer whitespace-nowrap"
             >
-              <span>Sonraki Bölüm</span>
-              <ChevronRight size={18} />
+              <span className="sm:hidden">Sonraki</span>
+              <span className="hidden sm:inline">Sonraki Bölüm</span>
+              <ChevronRight size={17} className="shrink-0" />
             </button>
           ) : (
-            <div className="sm:flex-1 text-xs opacity-60 text-center font-medium py-3 bg-purple-950/20 rounded-xl border border-purple-500/20">
-              Son Bölümdesiniz
+            <div className="h-11 sm:h-12 w-full text-[11px] sm:text-xs opacity-60 font-medium px-2 bg-purple-950/20 rounded-xl border border-purple-500/20 flex items-center justify-center whitespace-nowrap">
+              <span className="sm:hidden">Son Bölüm</span>
+              <span className="hidden sm:inline">Son Bölümdesiniz</span>
             </div>
           )}
         </div>
