@@ -13,27 +13,32 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
 
   useEffect(() => {
     const timer1 = setTimeout(() => {
-      setProgress(45);
+      setProgress(38);
       setStatusText('Kozmik kütüphane taranıyor...');
-    }, 120);
-
-    const timer2 = setTimeout(() => {
-      setProgress(85);
-      setStatusText('Son güncel bölümler hazırlanıyor...');
     }, 280);
 
+    const timer2 = setTimeout(() => {
+      setProgress(68);
+      setStatusText('Son güncel bölümler hazırlanıyor...');
+    }, 620);
+
     const timer3 = setTimeout(() => {
-      setProgress(100);
-      setStatusText('Hoş Geldiniz!');
-    }, 450);
+      setProgress(92);
+      setStatusText('Mikrokosmos dünyasına bağlanılıyor...');
+    }, 960);
 
     const timer4 = setTimeout(() => {
-      setIsFadingOut(true);
-    }, 520);
+      setProgress(100);
+      setStatusText('Hoş Geldiniz!');
+    }, 1250);
 
     const timer5 = setTimeout(() => {
+      setIsFadingOut(true);
+    }, 1450);
+
+    const timer6 = setTimeout(() => {
       if (onFinished) onFinished();
-    }, 750);
+    }, 1800);
 
     return () => {
       clearTimeout(timer1);
@@ -41,6 +46,7 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
       clearTimeout(timer3);
       clearTimeout(timer4);
       clearTimeout(timer5);
+      clearTimeout(timer6);
     };
   }, [onFinished]);
 

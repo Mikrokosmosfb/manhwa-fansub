@@ -495,29 +495,14 @@ const AppLayout: React.FC = () => {
     closePublicProfile,
     adSettings
   } = useApp();
-  const [showSplash, setShowSplash] = useState<boolean>(() => {
-    try {
-      return !sessionStorage.getItem('mk_splash_shown');
-    } catch {
-      return false;
-    }
-  });
+  const [showSplash, setShowSplash] = useState(true);
 
   return (
     <div className={`min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0 transition-colors duration-200 ${
       theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-950 text-gray-100'
     }`}>
-      {/* Cosmic Entrance Loading Splash Screen (once per session) */}
-      {showSplash && (
-        <AppSplashScreen
-          onFinished={() => {
-            try {
-              sessionStorage.setItem('mk_splash_shown', '1');
-            } catch {}
-            setShowSplash(false);
-          }}
-        />
-      )}
+      {/* Cosmic Entrance Loading Splash Screen */}
+      {showSplash && <AppSplashScreen onFinished={() => setShowSplash(false)} />}
 
       <SeoManager />
       <AdScriptRunner />
