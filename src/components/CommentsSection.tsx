@@ -29,11 +29,11 @@ import { Comment, isAuthorizedAdmin } from '../types';
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
 const REACTION_OPTIONS = [
-  { id: 'love', emoji: '😍', label: 'Muhteşem' },
-  { id: 'fire', emoji: '🔥', label: 'Heyecanlı' },
-  { id: 'funny', emoji: '😂', label: 'Komik' },
-  { id: 'shock', emoji: '😱', label: 'Şaşırtıcı' },
-  { id: 'sad', emoji: '😢', label: 'Üzücü' }
+  { id: 'love', emoji: '🧎‍♀️', label: 'Kalbim Çıktı', sub: 'Düştüm kaldırın' },
+  { id: 'fire', emoji: '🛐', label: 'Tam Şaheser', sub: 'Saygıyla eğildim' },
+  { id: 'funny', emoji: '💀', label: 'Haykırdım', sub: 'Gülmekten öldüm' },
+  { id: 'shock', emoji: '🤯', label: 'Beynim Yandı', sub: 'Kaos & Şoktayım' },
+  { id: 'sad', emoji: '😭', label: 'Mendil Getirin', sub: 'Gözyaşı sel oldu' }
 ] as const;
 
 
@@ -663,8 +663,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
           </span>
         </div>
 
-        <div className="grid grid-cols-5 gap-2 sm:gap-3">
-          {REACTION_OPTIONS.map(item => {
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+          {REACTION_OPTIONS.map((item, idx) => {
             const count = Number(currentReactions[item.id]) || 0;
             const isSelected = selectedReactionId === item.id;
             const percent = totalReactionVotes > 0 ? Math.round((count / totalReactionVotes) * 100) : 0;
@@ -675,21 +675,26 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
                 type="button"
                 onClick={() => handleToggleReaction(item.id)}
                 className={`group relative flex flex-col items-center justify-center p-2.5 sm:p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none overflow-hidden ${
+                  idx === 4 ? 'col-span-2 sm:col-span-1' : ''
+                } ${
                   isSelected
                     ? 'bg-purple-600/30 border-amber-400 shadow-[0_0_18px_rgba(251,191,36,0.3)] scale-[1.03]'
                     : 'bg-gray-900/80 hover:bg-purple-900/40 border-purple-500/20 hover:border-purple-400/50 hover:scale-[1.02]'
                 }`}
               >
-                <span className="text-2xl sm:text-3xl mb-1.5 transform group-hover:scale-125 transition-transform duration-200">
+                <span className="text-2xl sm:text-3xl mb-1 transform group-hover:scale-125 transition-transform duration-200">
                   {item.emoji}
                 </span>
-                <span className={`text-[10px] sm:text-xs font-extrabold tracking-tight truncate max-w-full ${
-                  isSelected ? 'text-amber-300' : 'text-gray-200'
+                <span className={`text-[11px] sm:text-xs font-extrabold tracking-tight text-center leading-tight ${
+                  isSelected ? 'text-amber-300' : 'text-gray-100'
                 }`}>
                   {item.label}
                 </span>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className={`text-[11px] font-black ${isSelected ? 'text-white' : 'text-purple-300'}`}>
+                <span className="text-[9px] text-purple-300/75 font-medium text-center leading-tight mt-0.5">
+                  {item.sub}
+                </span>
+                <div className="flex items-center gap-1 mt-1.5 bg-black/40 px-2.5 py-0.5 rounded-full border border-white/10">
+                  <span className={`text-[11px] font-black ${isSelected ? 'text-amber-300' : 'text-purple-200'}`}>
                     {count}
                   </span>
                   {totalReactionVotes > 0 && (
