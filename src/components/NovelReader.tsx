@@ -310,13 +310,14 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               className="w-full bg-slate-100 dark:bg-gray-950/90 border border-purple-300 dark:border-purple-500/40 hover:border-purple-500 text-slate-900 dark:text-gray-100 text-xs sm:text-sm font-bold px-3 py-1.5 rounded-xl flex items-center justify-between gap-1.5 transition shadow-inner group"
             >
               <div className="flex items-center gap-1.5 truncate min-w-0 pr-1">
+                <Layers size={14} className="text-purple-500 dark:text-purple-400 shrink-0" />
                 <span className="truncate">{currentChapter.title}</span>
                 {currentChapter.specialTag && (
                   <ChapterSpecialBadge tag={currentChapter.specialTag} size="xs" />
                 )}
               </div>
               <div className="flex items-center gap-1 text-purple-600 dark:text-purple-400 flex-shrink-0">
-                <span className="text-[10px] text-slate-500 dark:text-gray-400 hidden sm:inline font-mono">
+                <span className="text-[10px] bg-purple-500/15 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded-md font-mono font-bold">
                   {chapterIndex + 1}/{sortedChapters.length}
                 </span>
                 <ChevronDown size={14} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180 text-purple-600 dark:text-purple-300' : ''}`} />
@@ -324,92 +325,121 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             </button>
 
             {isDropdownOpen && (
-              <div className="chapter-select-dropdown absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900/98 border border-purple-300 dark:border-purple-500/50 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-100 dark:divide-gray-800 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
-                
-                {/* Dropdown Header: Search & Order */}
-                <div className="p-2.5 bg-slate-50 dark:bg-gray-950/90 border-b border-purple-200 dark:border-purple-500/20 space-y-2">
-                  <div className="flex items-center justify-between gap-2 text-[11px] text-slate-600 dark:text-gray-400 font-semibold px-1">
-                    <span className="flex items-center gap-1 text-purple-700 dark:text-purple-300">
-                      <Layers size={13} />
-                      Bölüm Listesi ({sortedChapters.length})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setDropdownOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                      className="flex items-center gap-1 text-purple-700 dark:text-purple-400 hover:text-purple-950 dark:hover:text-white bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-500/30 px-2 py-0.5 rounded-lg transition"
-                    >
-                      <ArrowUpDown size={11} />
-                      <span>{dropdownOrder === 'asc' ? '1 → Son' : 'Son → 1'}</span>
-                    </button>
-                  </div>
+              <>
+                {/* Mobile Backdrop so tapping outside easily closes the drawer */}
+                <div
+                  className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 sm:hidden"
+                  onClick={() => setIsDropdownOpen(false)}
+                />
 
-                  <div className="relative">
-                    <Search size={13} className="absolute left-2.5 top-2 text-slate-400 dark:text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Bölüm no veya isim ara..."
-                      value={dropdownSearch}
-                      onChange={(e) => setDropdownSearch(e.target.value)}
-                      className="w-full bg-white dark:bg-gray-900 border border-purple-300 dark:border-purple-500/30 focus:border-purple-500 rounded-xl pl-8 pr-3 py-1 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 outline-none transition"
-                      autoFocus
-                    />
-                  </div>
-                </div>
+                <div className="chapter-select-dropdown fixed left-3 right-3 top-14 sm:absolute sm:top-full sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-[440px] mt-1 sm:mt-2 bg-white dark:bg-gray-900 border border-purple-300 dark:border-purple-500/50 rounded-2xl shadow-2xl overflow-hidden z-50 divide-y divide-slate-100 dark:divide-gray-800 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+                  
+                  {/* Dropdown Header: Title, Sort Order & Search */}
+                  <div className="p-3.5 bg-slate-50 dark:bg-gray-950/95 border-b border-purple-200 dark:border-purple-500/20 space-y-2.5 text-left">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <span className="flex items-center gap-1.5 text-xs sm:text-sm font-extrabold text-purple-700 dark:text-purple-300">
+                          <Layers size={15} className="shrink-0" />
+                          <span>Bölüm Listesi ({sortedChapters.length})</span>
+                        </span>
+                        <p className="text-[11px] text-slate-500 dark:text-gray-400 truncate mt-0.5">
+                          {series.title}
+                        </p>
+                      </div>
 
-                {/* Dropdown List */}
-                <div className="max-h-72 overflow-y-auto divide-y divide-slate-100 dark:divide-gray-800/60 custom-scrollbar">
-                  {dropdownFilteredChapters.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-500 dark:text-gray-400">
-                      Eşleşen bölüm bulunamadı.
-                    </div>
-                  ) : (
-                    dropdownFilteredChapters.map(ch => {
-                      const isCurrent = ch.id === currentChapter.id;
-                      const isRead = Boolean(readingHistory[series.id]?.readChapterIds?.includes(ch.id));
-
-                      return (
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
-                          key={ch.id}
-                          ref={isCurrent ? currentChapterItemRef : null}
-                          onClick={() => {
-                            setView({ type: 'reader', seriesId: series.id, chapterId: ch.id });
-                            setIsDropdownOpen(false);
-                          }}
-                          className={`w-full text-left px-3 py-2.5 text-xs sm:text-sm flex items-center justify-between transition group ${
-                            isCurrent
-                              ? 'bg-purple-100 dark:bg-purple-900/90 text-purple-900 dark:text-white font-bold border-l-4 border-purple-600 dark:border-purple-400 shadow-inner'
-                              : 'hover:bg-purple-50 dark:hover:bg-purple-950/50 text-slate-700 dark:text-gray-200'
-                          }`}
+                          type="button"
+                          onClick={() => setDropdownOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                          className="flex items-center gap-1 text-[11px] font-bold text-purple-700 dark:text-purple-300 hover:text-purple-950 dark:hover:text-white bg-purple-100 dark:bg-purple-950/80 hover:bg-purple-200 dark:hover:bg-purple-900 border border-purple-300 dark:border-purple-500/40 px-2.5 py-1.5 rounded-xl transition"
                         >
-                          <div className="flex items-center gap-2 min-w-0 pr-2">
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                              isCurrent ? 'bg-purple-600 dark:bg-purple-300 animate-ping' : isRead ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-gray-600'
-                            }`} />
-                            <span className="truncate">{ch.title}</span>
-                            {ch.specialTag && (
-                              <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {formatChapterDate(ch) && (
-                              <span className="text-[10px] text-slate-400 dark:text-gray-500 hidden sm:inline">
-                                {formatChapterDate(ch)}
-                              </span>
-                            )}
-                            {isRead ? (
-                              <CheckCircle2 size={14} className="text-emerald-500 dark:text-emerald-400" title="Okundu" />
-                            ) : (
-                              <span className="text-[10px] text-slate-400 dark:text-gray-500 font-normal">
-                                {isCurrent ? 'Okunuyor' : ''}
-                              </span>
-                            )}
-                          </div>
+                          <ArrowUpDown size={12} />
+                          <span>{dropdownOrder === 'asc' ? '1 → Son' : 'Son → 1'}</span>
                         </button>
-                      );
-                    })
-                  )}
+                        <button
+                          type="button"
+                          onClick={() => setIsDropdownOpen(false)}
+                          className="sm:hidden px-2.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <Search size={14} className="absolute left-3 top-2.5 text-slate-400 dark:text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Bölüm numarası veya başlık ara..."
+                        value={dropdownSearch}
+                        onChange={(e) => setDropdownSearch(e.target.value)}
+                        className="w-full bg-white dark:bg-gray-900 border border-purple-300 dark:border-purple-500/30 focus:border-purple-500 rounded-xl pl-9 pr-3 py-2 text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 outline-none transition"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dropdown Chapter List */}
+                  <div className="max-h-[60vh] sm:max-h-80 overflow-y-auto divide-y divide-slate-100 dark:divide-gray-800/70 custom-scrollbar">
+                    {dropdownFilteredChapters.length === 0 ? (
+                      <div className="p-6 text-center text-xs sm:text-sm text-slate-500 dark:text-gray-400">
+                        Eşleşen bölüm bulunamadı.
+                      </div>
+                    ) : (
+                      dropdownFilteredChapters.map(ch => {
+                        const isCurrent = ch.id === currentChapter.id;
+                        const isRead = Boolean(readingHistory[series.id]?.readChapterIds?.includes(ch.id));
+
+                        return (
+                          <button
+                            key={ch.id}
+                            ref={isCurrent ? currentChapterItemRef : null}
+                            onClick={() => {
+                              setView({ type: 'reader', seriesId: series.id, chapterId: ch.id });
+                              setIsDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3.5 py-3 text-xs sm:text-sm flex items-center justify-between gap-3 transition group ${
+                              isCurrent
+                                ? 'bg-purple-100 dark:bg-purple-900/90 text-purple-900 dark:text-white font-bold border-l-4 border-purple-600 dark:border-purple-400 shadow-inner'
+                                : 'hover:bg-purple-50 dark:hover:bg-purple-950/50 text-slate-700 dark:text-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                              <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                isCurrent ? 'bg-purple-600 dark:bg-amber-400 animate-pulse' : isRead ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-gray-600'
+                              }`} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="truncate font-semibold">{ch.title}</span>
+                                  {ch.specialTag && (
+                                    <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                                  )}
+                                </div>
+                                {formatChapterDate(ch) && (
+                                  <span className="block text-[10px] text-slate-400 dark:text-gray-400 mt-0.5">
+                                    {formatChapterDate(ch)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {isCurrent ? (
+                                <span className="text-[10px] bg-purple-600 text-white px-2 py-0.5 rounded-full font-bold">
+                                  Okunuyor
+                                </span>
+                              ) : isRead ? (
+                                <span className="flex items-center gap-1 text-[10px] text-emerald-500 dark:text-emerald-400 font-semibold">
+                                  <CheckCircle2 size={14} />
+                                  <span className="hidden xs:inline">Okundu</span>
+                                </span>
+                              ) : null}
+                            </div>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
 
