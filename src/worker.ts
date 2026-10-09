@@ -52,6 +52,8 @@ const MEMORY_RATE_LIMIT = new Map<string, { count: number; resetAt: number }>();
 const ACTIVE_SESSIONS = new Map<string, number>();
 const OTP_STORE = new Map<string, { code: string; expiresAt: number; name?: string; password?: string }>();
 let d1SchemaInitPromise: Promise<void> | null = null;
+let cachedSeriesResponseJson: string | null = null;
+let cachedSeriesExpiresAt = 0;
 
 // Disposable / Fake Email domains blocklist
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -1080,10 +1082,50 @@ ${seriesXml}
 
             // Priority 3: Cloudflare D1 SQL Database
             if (db) {
-              const { results: series } = await db.prepare("SELECT * FROM series").all();
-              const { results: chapters } = await db.prepare("SELECT * FROM chapters").all();
+              const now = Date.now();
+              if (cachedSeriesResponseJson && now < cachedSeriesExpiresAt) {
+                return new Response(cachedSeriesResponseJson, {
+                  headers: {
+                    ...headers,
+                    'Cache-Control': 'public, max-age=15, stale-while-revalidate=60'
+                  }
+                });
+              }
 
-              const fullSeries = (series || []).map((s: any) => ({
+              const activeDb = usersDb || db;
+              const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
+                db.prepare("SELECT * FROM series").all(),
+                db.prepare("SELECT * FROM chapters").all(),
+                activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions')").all().catch(() => ({ results: [] })),
+                activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
+              ]);
+
+              const series = seriesRes?.results || [];
+              const chapters = chaptersRes?.results || [];
+
+              // Group chapters by series_id in O(N) using a Map instead of O(N*M) filter
+              const chaptersBySeries = new Map<string, any[]>();
+              for (const ch of chapters as any[]) {
+                const sid = ch.series_id;
+                let list = chaptersBySeries.get(sid);
+                if (!list) {
+                  list = [];
+                  chaptersBySeries.set(sid, list);
+                }
+                list.push({
+                  id: ch.id,
+                  number: ch.chapter_number,
+                  title: ch.title,
+                  publishedDate: ch.published_date,
+                  specialTag: ch.special_tag,
+                  images: ch.images_json ? JSON.parse(ch.images_json) : [],
+                  content: ch.content,
+                  notice: ch.notice,
+                  createdAt: ch.created_at
+                });
+              }
+
+              const fullSeries = (series as any[]).map((s: any) => ({
                 id: s.id,
                 slug: s.slug || s.id,
                 title: s.title,
@@ -1104,43 +1146,49 @@ ${seriesXml}
                 isGuncel: Boolean(s.is_guncel),
                 is18Plus: Boolean(s.is_18_plus),
                 updatedAt: s.updated_at,
-                chapters: (chapters || []).filter((c: any) => c.series_id === s.id).map((ch: any) => ({
-                  id: ch.id,
-                  number: ch.chapter_number,
-                  title: ch.title,
-                  publishedDate: ch.published_date,
-                  specialTag: ch.special_tag,
-                  images: ch.images_json ? JSON.parse(ch.images_json) : [],
-                  content: ch.content,
-                  notice: ch.notice,
-                  createdAt: ch.created_at
-                }))
+                chapters: chaptersBySeries.get(s.id) || []
               }));
 
               let announcement = null;
               let adSettings = null;
               let siteBranding = null;
               let reactions = null;
-              let globalNotifications = [];
+              let globalNotifications: any[] = [];
               try {
-                const activeDb = usersDb || db;
-                const { results: setRes } = await activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions')").all();
-                if (setRes && setRes.length > 0) {
-                  for (const row of setRes) {
-                    if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
-                    if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
-                    if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
-                    if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
-                  }
+                const setRes = setResObj?.results || [];
+                for (const row of setRes as any[]) {
+                  if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
+                  if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
+                  if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
+                  if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
                 }
-                const { results: notifRes } = await activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 500").all();
-                globalNotifications = (notifRes || []).map((n: any) => ({
+                const notifRes = notifResObj?.results || [];
+                globalNotifications = (notifRes as any[]).map((n: any) => ({
                   id: n.id, title: n.title, message: n.message, type: n.type,
                   seriesId: n.series_id, seriesTitle: n.series_title, chapterTitle: n.chapter_title,
                   chapterNumber: n.chapter_number, coverImage: n.cover_image, createdAt: n.created_at
                 }));
               } catch(e) {}
-              return new Response(JSON.stringify({ success: true, storage: 'D1', data: fullSeries, announcement, adSettings, siteBranding, reactions, globalNotifications }), { headers });
+
+              const responseBody = JSON.stringify({
+                success: true,
+                storage: 'D1',
+                data: fullSeries,
+                announcement,
+                adSettings,
+                siteBranding,
+                reactions,
+                globalNotifications
+              });
+              cachedSeriesResponseJson = responseBody;
+              cachedSeriesExpiresAt = Date.now() + 20000;
+
+              return new Response(responseBody, {
+                headers: {
+                  ...headers,
+                  'Cache-Control': 'public, max-age=15, stale-while-revalidate=60'
+                }
+              });
             }
 
             return new Response(JSON.stringify({
@@ -1258,6 +1306,9 @@ ${seriesXml}
                 await db.batch(chunk);
               }
 
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
+
               return new Response(JSON.stringify({
                 success: true,
                 storage: 'D1',
@@ -1299,6 +1350,8 @@ ${seriesXml}
             if (db && seriesId) {
               await db.prepare("DELETE FROM chapters WHERE series_id = ?").bind(seriesId).run();
               await db.prepare("DELETE FROM series WHERE id = ?").bind(seriesId).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true, storage: 'D1', message: 'Seri Cloudflare D1 deposundan silindi' }), { headers });
             }
 
@@ -1769,6 +1822,8 @@ ${seriesXml}
               `).bind(
                 n.id, n.title, n.message, n.type, n.seriesId || null, n.seriesTitle || null, n.chapterTitle || null, n.chapterNumber || null, n.coverImage || null, n.createdAt || new Date().toISOString()
               ).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
@@ -1781,6 +1836,8 @@ ${seriesXml}
               } else if (id) {
                 await activeDb.prepare("DELETE FROM global_notifications WHERE id = ?").bind(id).run();
               }
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
@@ -1793,6 +1850,8 @@ ${seriesXml}
             const ann = await request.json();
             if (activeDb) {
               await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('announcement', JSON.stringify(ann)).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
@@ -1805,6 +1864,8 @@ ${seriesXml}
             const ads = await request.json();
             if (activeDb) {
               await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('ad_settings', JSON.stringify(ads)).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
@@ -1817,6 +1878,8 @@ ${seriesXml}
             const branding = await request.json();
             if (activeDb) {
               await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('site_branding', JSON.stringify(branding)).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
@@ -1828,7 +1891,7 @@ ${seriesXml}
             if (request.method === 'GET') {
               if (activeDb) {
                 try {
-                  const { results } = await activeDb.prepare("SELECT * FROM point_grants ORDER BY created_at DESC LIMIT 10000").all();
+                  const { results } = await activeDb.prepare("SELECT * FROM point_grants ORDER BY created_at DESC LIMIT 200").all();
                   const logs = (results || []).map((r: any) => ({
                     id: r.id,
                     targetEmail: r.target_email,

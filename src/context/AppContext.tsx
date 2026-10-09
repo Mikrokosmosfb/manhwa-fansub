@@ -1595,42 +1595,46 @@ const deleteShopItemAndStyle = (itemId: string) => {
       })
       .catch(() => {});
 
-    safeFetchJson<{ success: boolean; data: any[] }>('/api/comments', { cache: 'no-store' })
-      .then(data => {
-        if (data && data.success && Array.isArray(data.data)) {
-          let deletedIds: string[] = [];
-          try {
-            const delStr = localStorage.getItem('mk_deleted_comments');
-            if (delStr) deletedIds = JSON.parse(delStr);
-          } catch (e) {}
-
-          const deletedSet = new Set(deletedIds);
-          const stillOnServer = data.data.filter(c => deletedSet.has(c.id));
-
-          // If any locally deleted comments still exist on D1 (e.g. previous delete was interrupted before refresh), purge them now
-          if (stillOnServer.length > 0) {
-            stillOnServer.forEach(c => {
-              fetch(`/api/comments?id=${encodeURIComponent(c.id)}`, {
-                method: 'DELETE',
-                cache: 'no-store',
-                keepalive: true
-              }).catch(() => {});
-            });
-          } else if (deletedIds.length > 0) {
-            // Server confirmed all deleted comments are gone
+    const commentsTimer = setTimeout(() => {
+      safeFetchJson<{ success: boolean; data: any[] }>('/api/comments')
+        .then(data => {
+          if (data && data.success && Array.isArray(data.data)) {
+            let deletedIds: string[] = [];
             try {
-              localStorage.removeItem('mk_deleted_comments');
+              const delStr = localStorage.getItem('mk_deleted_comments');
+              if (delStr) deletedIds = JSON.parse(delStr);
+            } catch (e) {}
+
+            const deletedSet = new Set(deletedIds);
+            const stillOnServer = data.data.filter(c => deletedSet.has(c.id));
+
+            // If any locally deleted comments still exist on D1 (e.g. previous delete was interrupted before refresh), purge them now
+            if (stillOnServer.length > 0) {
+              stillOnServer.forEach(c => {
+                fetch(`/api/comments?id=${encodeURIComponent(c.id)}`, {
+                  method: 'DELETE',
+                  cache: 'no-store',
+                  keepalive: true
+                }).catch(() => {});
+              });
+            } else if (deletedIds.length > 0) {
+              // Server confirmed all deleted comments are gone
+              try {
+                localStorage.removeItem('mk_deleted_comments');
+              } catch (e) {}
+            }
+
+            const cleanComments = data.data.filter(c => !deletedSet.has(c.id) && (!c.parentId || !deletedSet.has(c.parentId)));
+            setComments(cleanComments);
+            try {
+              localStorage.setItem('mk_comments', JSON.stringify(cleanComments));
             } catch (e) {}
           }
+        })
+        .catch(() => {});
+    }, 350);
 
-          const cleanComments = data.data.filter(c => !deletedSet.has(c.id) && (!c.parentId || !deletedSet.has(c.parentId)));
-          setComments(cleanComments);
-          try {
-            localStorage.setItem('mk_comments', JSON.stringify(cleanComments));
-          } catch (e) {}
-        }
-      })
-      .catch(() => {});
+    return () => clearTimeout(commentsTimer);
   }, []);
 
 
