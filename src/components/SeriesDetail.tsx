@@ -140,6 +140,10 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const currentBookmark = bookmarks[series.id];
   const selectedFolderNames = currentBookmark ? currentBookmark.folders : [];
 
+  // Active reading lists for this series
+  const activeReadingLists = readingLists.filter(l => l.seriesIds.includes(series.id));
+  const isAddedToAnyList = activeReadingLists.length > 0;
+
   // Reading history progress
   const historyProgress = readingHistory[series.id];
 
@@ -317,10 +321,22 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   }
                   setIsListModalOpen(true);
                 }}
-                className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 bg-gray-950/90 hover:bg-purple-950/80 border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400"
+                className={`mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 ${
+                  isAddedToAnyList
+                    ? 'bg-purple-900/80 hover:bg-purple-800 border border-purple-400/60 text-white ring-1 ring-purple-400/40'
+                    : 'bg-gray-950/90 hover:bg-purple-950/80 border border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400'
+                }`}
+                title={
+                  isAddedToAnyList
+                    ? `Ekli olduğu listeler: ${activeReadingLists.map(l => l.name).join(', ')}`
+                    : 'Seriyi okuma listelerinize ekleyin'
+                }
               >
-                <BookOpen size={16} className="text-purple-400" />
-                <span>Listeye Ekle</span>
+                <BookOpen size={16} className={isAddedToAnyList ? 'text-purple-300' : 'text-purple-400'} />
+                <span className="truncate">
+                  {isAddedToAnyList ? 'Listeye Eklendi' : 'Listeye Ekle'}
+                </span>
+                {isAddedToAnyList && <Check size={15} className="text-emerald-400 flex-shrink-0" />}
               </button>
               {/* Takip Et (Follow) Button */}
               <button
@@ -955,12 +971,21 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
       {/* Reading List Modal */}
       {isListModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsListModalOpen(false)}>
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-gray-900 border border-purple-500/40 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-              <h3 className="font-bold text-white flex items-center gap-2"><BookOpen size={18} className="text-purple-400" /> Okuma Listelerine Ekle</h3>
-              <button onClick={() => setIsListModalOpen(false)} className="p-1 hover:bg-gray-800 rounded-lg text-gray-400"><X size={18}/></button>
+              <h3 className="font-bold text-white flex items-center gap-2">
+                <BookOpen size={18} className="text-purple-400" />
+                <span>Okuma Listelerine Ekle</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsListModalOpen(false)}
+                className="p-1 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition"
+              >
+                <X size={18} />
+              </button>
             </div>
-            <div className="p-4 space-y-2">
+            <div className="p-4 space-y-2.5 max-h-72 overflow-y-auto">
               {readingLists.length === 0 ? (
                 <p className="text-sm text-gray-400 text-center py-4">Önce profilinizden bir okuma listesi oluşturun.</p>
               ) : (
@@ -968,6 +993,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   const isInList = list.seriesIds.includes(series.id);
                   return (
                     <button
+                      type="button"
                       key={list.id}
                       onClick={() => {
                         const newLists = readingLists.map(l => {
@@ -986,14 +1012,52 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         });
                         setReadingLists(newLists);
                       }}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition ${isInList ? 'bg-purple-900/40 border-purple-500/50 text-purple-200' : 'bg-gray-950 border-gray-800 text-gray-400 hover:bg-gray-800 hover:text-white'}`}
+                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition cursor-pointer ${
+                        isInList
+                          ? 'bg-purple-900/40 border-purple-500/60 text-white shadow-sm'
+                          : 'bg-gray-950 border-gray-800 text-gray-300 hover:bg-gray-800/80 hover:border-purple-500/30 hover:text-white'
+                      }`}
                     >
-                      <span className="font-bold text-sm">{list.name}</span>
-                      {isInList ? <Check size={16} className="text-purple-400" /> : <Plus size={16} />}
+                      <span className="font-bold text-sm truncate pr-2">{list.name}</span>
+                      {isInList ? (
+                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-400 bg-emerald-950/70 border border-emerald-500/40 px-2.5 py-1 rounded-lg flex-shrink-0">
+                          <Check size={14} />
+                          <span>Eklendi</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2.5 py-1 rounded-lg flex-shrink-0">
+                          <Plus size={14} />
+                          <span>Ekle</span>
+                        </span>
+                      )}
                     </button>
                   );
                 })
               )}
+            </div>
+            <div className="px-4 py-3 border-t border-gray-800 bg-gray-950/50 flex items-center justify-between gap-3">
+              <span className="text-xs text-gray-400 font-medium truncate">
+                {isAddedToAnyList
+                  ? `✓ ${activeReadingLists.map(l => l.name).join(', ')}`
+                  : 'Bir liste seçin'}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsListModalOpen(false);
+                  if (isAddedToAnyList) {
+                    showToast({
+                      title: 'Listeye Eklendi',
+                      message: `"${series.title}" (${activeReadingLists.map(l => l.name).join(', ')}) listenize kaydedildi.`,
+                      type: 'success'
+                    });
+                  }
+                }}
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs sm:text-sm px-6 py-2 rounded-xl shadow-lg transition flex items-center gap-1.5 active:scale-95 cursor-pointer flex-shrink-0"
+              >
+                <Check size={16} />
+                <span>Tamam</span>
+              </button>
             </div>
           </div>
         </div>
