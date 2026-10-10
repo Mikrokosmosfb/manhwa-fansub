@@ -346,7 +346,7 @@ export function getSeriesAlertsAndCleanSynopsis(
         const parser = new DOMParser();
         const doc = parser.parseFromString(cleanSynopsis, 'text/html');
         doc.querySelectorAll('.manga-alert, .m-warning, .m-info, .m-danger').forEach(n => n.remove());
-        cleanSynopsis = (doc.body.textContent || '').trim();
+        cleanSynopsis = (doc.body.innerHTML || doc.body.textContent || '').trim();
       } catch {}
     }
 
@@ -361,7 +361,25 @@ export function getSeriesAlertsAndCleanSynopsis(
         cleanSynopsis = cleanSynopsis.replace(msgRegex, '');
       }
     }
-    cleanSynopsis = cleanSynopsis.replace(/^\s*\.\.\.\s*$/, '').trim();
+  }
+
+  // Always strip remaining HTML tags (e.g. <b>Konu:</b>, <br>, <p>, etc.) and decode HTML entities
+  if (cleanSynopsis) {
+    cleanSynopsis = cleanSynopsis
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/Blogger Etiketleri\s*:.*$/gim, '')
+      .replace(/^\s*(Konu|Özet|Hikaye|Tanıtım)\s*:\s*/i, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/^\s*\.\.\.\s*$/, '')
+      .trim();
   }
 
   return {

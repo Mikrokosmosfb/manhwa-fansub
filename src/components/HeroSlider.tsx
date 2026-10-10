@@ -18,6 +18,7 @@ import {
 import { isSeries18Plus } from '../types';
 import { getSeriesLatestActivityTime } from '../utils/dateUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
+import { getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 
 export const HeroSlider: React.FC = () => {
   const { seriesList, setView, showNsfw } = useApp();
@@ -261,7 +262,8 @@ export const HeroSlider: React.FC = () => {
 
               {/* Synopsis */}
               <p className="text-xs sm:text-sm md:text-base text-neutral-200/90 line-clamp-3 leading-relaxed mb-4 sm:mb-6 font-normal max-w-2xl mx-auto md:mx-0 drop-shadow-sm">
-                {current.synopsis || 'Bu serinin detaylı açıklaması henüz girilmemiştir. Hemen okumaya başlayabilirsiniz!'}
+                {getSeriesAlertsAndCleanSynopsis(current.synopsis, current.notice).cleanSynopsis ||
+                  'Bu serinin detaylı açıklaması henüz girilmemiştir. Hemen okumaya başlayabilirsiniz!'}
               </p>
 
               {/* Action Buttons */}

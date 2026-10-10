@@ -474,61 +474,48 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                 {(() => {
                   const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
                   const synopsisText = cleanSynopsis || 'Bu seri için henüz bir özet girilmemiştir.';
-                  const isLongSynopsis = synopsisText.length > 200 || synopsisText.split('\n').length > 3;
+                  const isLongSynopsis = synopsisText.length > 220 || synopsisText.split('\n').length > 3;
 
                   return (
-                    <div className="mt-4 bg-gray-950/70 border border-purple-500/25 hover:border-purple-500/40 rounded-2xl p-4 sm:p-5 transition-all shadow-inner relative group/synopsis">
-                      {/* Header */}
-                      <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-purple-500/15">
-                        <h3 className="text-xs uppercase font-black tracking-wider text-purple-400 flex items-center gap-1.5">
-                          <Sparkles size={13} className="text-purple-400" />
-                          Özet
-                        </h3>
-                        {isLongSynopsis && (
-                          <button
-                            type="button"
-                            onClick={() => setIsSynopsisExpanded(!isSynopsisExpanded)}
-                            className="text-[11px] font-bold text-purple-300 hover:text-white transition flex items-center gap-1 sm:hidden bg-purple-950/80 px-2.5 py-0.5 rounded-md border border-purple-500/30"
-                          >
-                            <span>{isSynopsisExpanded ? 'Kapat' : 'Genişlet'}</span>
-                            {isSynopsisExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                          </button>
-                        )}
-                      </div>
+                    <div className="mt-4 pt-3 border-t border-purple-500/15">
+                      <div className="border-l-2 border-purple-500/70 bg-purple-950/20 rounded-r-xl pl-3.5 pr-3 py-2.5 sm:pl-4 sm:pr-4 sm:py-3 transition-colors">
+                        <div className="flex items-center gap-1.5 mb-1.5">
+                          <span className="text-[11px] uppercase font-extrabold tracking-wider text-purple-400">
+                            Hikaye Özeti
+                          </span>
+                        </div>
 
-                      {/* Content with smooth fade */}
-                      <div className="relative">
                         <p
-                          className={`text-xs sm:text-sm text-gray-200/95 leading-relaxed whitespace-pre-line text-left break-words transition-all duration-300 ${
+                          onClick={() => {
+                            if (isLongSynopsis && !isSynopsisExpanded) {
+                              setIsSynopsisExpanded(true);
+                            }
+                          }}
+                          className={`text-[13px] sm:text-sm text-gray-200/95 leading-relaxed whitespace-pre-line text-left break-words transition-all duration-200 ${
                             !isSynopsisExpanded && isLongSynopsis
-                              ? 'line-clamp-3 sm:line-clamp-4 overflow-hidden'
+                              ? 'line-clamp-3 sm:line-clamp-4 overflow-hidden cursor-pointer'
                               : ''
                           }`}
                         >
                           {synopsisText}
                         </p>
 
-                        {!isSynopsisExpanded && isLongSynopsis && (
-                          <div className="absolute bottom-0 inset-x-0 h-10 bg-gradient-to-t from-gray-950 via-gray-950/70 to-transparent pointer-events-none" />
+                        {isLongSynopsis && (
+                          <button
+                            type="button"
+                            onClick={() => setIsSynopsisExpanded(!isSynopsisExpanded)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-purple-400 hover:text-purple-200 transition-colors cursor-pointer"
+                            aria-expanded={isSynopsisExpanded}
+                          >
+                            <span>{isSynopsisExpanded ? 'Daha Az Göster' : 'Devamını Oku'}</span>
+                            {isSynopsisExpanded ? (
+                              <ChevronUp size={14} className="text-purple-400" />
+                            ) : (
+                              <ChevronDown size={14} className="text-purple-400" />
+                            )}
+                          </button>
                         )}
                       </div>
-
-                      {/* Symmetrical Expand / Collapse Arrow Button */}
-                      {isLongSynopsis && (
-                        <button
-                          type="button"
-                          onClick={() => setIsSynopsisExpanded(!isSynopsisExpanded)}
-                          className="mt-3 w-full py-2 px-4 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 border border-purple-500/30 hover:border-purple-400/60 text-purple-200 hover:text-white text-xs font-extrabold transition-all duration-200 flex items-center justify-center gap-2 group/btn shadow-md active:scale-[0.99] cursor-pointer"
-                          aria-expanded={isSynopsisExpanded}
-                        >
-                          <span>{isSynopsisExpanded ? 'Daha Az Göster' : 'Özetin Devamını Oku'}</span>
-                          {isSynopsisExpanded ? (
-                            <ChevronUp size={15} className="text-purple-400 group-hover/btn:-translate-y-0.5 transition-transform" />
-                          ) : (
-                            <ChevronDown size={15} className="text-purple-400 group-hover/btn:translate-y-0.5 transition-transform" />
-                          )}
-                        </button>
-                      )}
                     </div>
                   );
                 })()}
