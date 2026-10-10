@@ -54,6 +54,8 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
   const { seriesList, user, isAdminLoggedIn, setView, showToast, showNsfw } = useApp();
 
   const isAdmin = isAuthorizedAdmin(user?.email) || isAdminLoggedIn;
+  // Wallpaper yükleme işlemleri SADECE Yönetim Paneli (Admin Panel) içinden yapılabilir
+  const canUploadInAdminPanel = Boolean(isAdmin && isAdminPanel);
 
   // Wallpapers state with localStorage cache + D1 backend sync
   const [wallpapers, setWallpapers] = useState<WallpaperItem[]>(() => {
@@ -61,7 +63,7 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       const cached = localStorage.getItem('mk_wallpapers_v1');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed)) return parsed.filter((w: any) => !String(w?.id || '').startsWith('series-'));
       }
     } catch {}
     return [];
@@ -89,14 +91,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>(initialSeriesId || 'all');
   const [selectedCategory, setSelectedCategory] = useState<'all' | WallpaperCategory>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'popular' | 'downloads' | 'az'>('newest');
-  const [includeSeriesCovers, setIncludeSeriesCovers] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('mk_wp_include_covers');
-      return saved !== null ? saved === 'true' : true;
-    } catch {
-      return true;
-    }
-  });
 
   // Series Selector Dropdown inside Filter Bar
   const [isSeriesDropdownOpen, setIsSeriesDropdownOpen] = useState(false);
@@ -107,7 +101,7 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
   const [activeWallpaper, setActiveWallpaper] = useState<WallpaperItem | null>(null);
   const [isDownloadingId, setIsDownloadingId] = useState<string | null>(null);
 
-  // Admin Upload Modal state
+  // Admin Upload Modal state (only active inside Admin Panel)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(isAdminPanel);
   const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
   const [uploadSeriesId, setUploadSeriesId] = useState<string>(initialSeriesId || '');
@@ -164,9 +158,10 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     try {
       const data = await safeFetchWallpapersJson<{ success?: boolean; wallpapers?: WallpaperItem[] }>('/api/wallpapers');
       if (data && Array.isArray(data.wallpapers)) {
-        setWallpapers(data.wallpapers);
+        const cleanWallpapers = data.wallpapers.filter(w => !String(w.id || '').startsWith('series-'));
+        setWallpapers(cleanWallpapers);
         try {
-          localStorage.setItem('mk_wallpapers_v1', JSON.stringify(data.wallpapers));
+          localStorage.setItem('mk_wallpapers_v1', JSON.stringify(cleanWallpapers));
         } catch {}
       }
     } catch {
@@ -187,59 +182,18 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     return showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
   }, [seriesList, showNsfw]);
 
-  // Combine uploaded wallpapers + optional series covers/banners so every series on the site can be found
+  // Sadece yönetim panelinden yüklenen gerçek wallpaperlar gösterilir (seri kapakları/bannerları dahil edilmez)
   const allDisplayWallpapers = useMemo(() => {
     const nsIdSet = new Set(
       seriesList.filter(s => !showNsfw && isSeries18Plus(s)).map(s => s.id)
     );
 
-    const customList = wallpapers.filter(w => {
+    return wallpapers.filter(w => {
+      if (String(w.id || '').startsWith('series-')) return false;
       if (!showNsfw && w.seriesId && nsIdSet.has(w.seriesId)) return false;
       return true;
     });
-
-    if (!includeSeriesCovers) {
-      return customList;
-    }
-
-    const existingUrls = new Set(customList.map(w => w.imageUrl.trim()));
-    const derivedFromSeries: WallpaperItem[] = [];
-
-    for (const s of visibleSeries) {
-      if (s.coverImage && s.coverImage.trim() && !existingUrls.has(s.coverImage.trim())) {
-        existingUrls.add(s.coverImage.trim());
-        derivedFromSeries.push({
-          id: `series-cover-${s.id}`,
-          title: `${s.title} - Özel Kapak`,
-          imageUrl: s.coverImage,
-          seriesId: s.id,
-          seriesTitle: s.title,
-          category: 'mobil',
-          tags: [...(s.genres || []), s.type, 'Kapak'],
-          likes: Math.max(5, Math.round((s.rating || 9) * 3)),
-          downloads: Math.max(8, Math.round((s.rating || 9) * 5)),
-          createdAt: s.updatedAt || '2026-01-01T00:00:00.000Z'
-        });
-      }
-      if (s.bannerImage && s.bannerImage.trim() && !existingUrls.has(s.bannerImage.trim())) {
-        existingUrls.add(s.bannerImage.trim());
-        derivedFromSeries.push({
-          id: `series-banner-${s.id}`,
-          title: `${s.title} - Masaüstü Banner`,
-          imageUrl: s.bannerImage,
-          seriesId: s.id,
-          seriesTitle: s.title,
-          category: 'masaustu',
-          tags: [...(s.genres || []), s.type, 'Banner'],
-          likes: Math.max(4, Math.round((s.rating || 9) * 2)),
-          downloads: Math.max(6, Math.round((s.rating || 9) * 4)),
-          createdAt: s.updatedAt || '2026-01-01T00:00:00.000Z'
-        });
-      }
-    }
-
-    return [...customList, ...derivedFromSeries];
-  }, [wallpapers, visibleSeries, includeSeriesCovers, showNsfw, seriesList]);
+  }, [wallpapers, showNsfw, seriesList]);
 
   // Count wallpapers per series
   const wallpaperCountBySeries = useMemo(() => {
@@ -247,10 +201,17 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     for (const w of allDisplayWallpapers) {
       if (w.seriesId) {
         counts[w.seriesId] = (counts[w.seriesId] || 0) + 1;
+      } else if (w.seriesTitle) {
+        const matched = seriesList.find(
+          s => normalizeSearchText(s.title) === normalizeSearchText(w.seriesTitle)
+        );
+        if (matched) {
+          counts[matched.id] = (counts[matched.id] || 0) + 1;
+        }
       }
     }
     return counts;
-  }, [allDisplayWallpapers]);
+  }, [allDisplayWallpapers, seriesList]);
 
   // Filtered and sorted wallpapers
   const filteredWallpapers = useMemo(() => {
@@ -284,10 +245,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       if (sortBy === 'popular') return (b.likes || 0) - (a.likes || 0);
       if (sortBy === 'downloads') return (b.downloads || 0) - (a.downloads || 0);
       if (sortBy === 'az') return (a.seriesTitle || a.title).localeCompare(b.seriesTitle || b.title, 'tr');
-      // newest: custom uploaded wallpapers first, then by createdAt
-      const aIsCustom = !a.id.startsWith('series-') ? 1 : 0;
-      const bIsCustom = !b.id.startsWith('series-') ? 1 : 0;
-      if (aIsCustom !== bIsCustom) return bIsCustom - aIsCustom;
       return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
   }, [allDisplayWallpapers, searchQuery, selectedSeriesId, selectedCategory, sortBy, visibleSeries]);
@@ -308,16 +265,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     if (!q) return seriesList;
     return seriesList.filter(s => normalizeSearchText(s.title).includes(q));
   }, [seriesList, uploadSeriesSearch]);
-
-  const handleToggleIncludeCovers = () => {
-    setIncludeSeriesCovers(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('mk_wp_include_covers', String(next));
-      } catch {}
-      return next;
-    });
-  };
 
   // Like a wallpaper
   const handleToggleLike = async (w: WallpaperItem, e?: React.MouseEvent) => {
@@ -535,10 +482,10 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     });
   };
 
-  // Submit new wallpapers (Admin)
+  // Submit new wallpapers (Sadece Admin Panelinden)
   const handleUploadSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isAdmin) return;
+    if (!canUploadInAdminPanel) return;
 
     const selectedSeries = seriesList.find(s => s.id === uploadSeriesId);
     const finalSeriesTitle = selectedSeries ? selectedSeries.title : customSeriesTitle.trim();
@@ -643,7 +590,7 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       await safeFetchWallpapersJson('/api/wallpapers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wallpapers: newItems })
+        body: JSON.stringify({ wallpapers: newItems, adminEmail: user?.email || '' })
       });
 
       const updatedList = [...newItems, ...wallpapers];
@@ -659,9 +606,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       setUploadUrlText('');
       setUploadTitle('');
       setUploadTagsInput('');
-      if (!isAdminPanel) {
-        setIsUploadModalOpen(false);
-      }
 
       showToast({
         title: 'Wallpaper Yüklendi!',
@@ -685,15 +629,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     if (e) e.stopPropagation();
     if (!isAdmin) return;
 
-    if (w.id.startsWith('series-')) {
-      showToast({
-        title: 'Otomatik Seri Görseli',
-        message: 'Bu görsel serinin kendi kapak/banner görselidir. Üstteki "Seri Kapakları" butonundan gizleyebilirsiniz.',
-        type: 'info'
-      });
-      return;
-    }
-
     const updated = wallpapers.filter(item => item.id !== w.id);
     setWallpapers(updated);
     try {
@@ -704,9 +639,12 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       setActiveWallpaper(null);
     }
 
-    await safeFetchWallpapersJson(`/api/wallpapers?id=${encodeURIComponent(w.id)}`, {
-      method: 'DELETE'
-    });
+    await safeFetchWallpapersJson(
+      `/api/wallpapers?id=${encodeURIComponent(w.id)}&adminEmail=${encodeURIComponent(user?.email || '')}`,
+      {
+        method: 'DELETE'
+      }
+    );
     window.dispatchEvent(new Event('mk-wallpapers-updated'));
     showToast({
       title: 'Wallpaper Silindi',
@@ -777,36 +715,21 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Toggle automatic series covers */}
-            <button
-              onClick={handleToggleIncludeCovers}
-              className={`px-3 py-2 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer ${
-                includeSeriesCovers
-                  ? 'bg-purple-900/60 border-purple-400/50 text-purple-100'
-                  : 'bg-gray-900/80 border-gray-700 text-gray-400 hover:text-gray-200'
-              }`}
-              title="Mevcut serilerin kapak ve banner görsellerini galeriye dahil et / gizle"
-            >
-              <Layers size={14} className={includeSeriesCovers ? 'text-purple-300' : 'text-gray-500'} />
-              <span>Seri Kapakları: {includeSeriesCovers ? 'Açık' : 'Gizli'}</span>
-            </button>
-
-            {/* Admin Upload Button */}
-            {isAdmin && (
+          {canUploadInAdminPanel && (
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => setIsUploadModalOpen(prev => !prev)}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white font-black text-xs sm:text-sm shadow-lg shadow-purple-900/50 border border-purple-400/40 flex items-center gap-2 transition active:scale-95 cursor-pointer"
               >
                 <Plus size={16} />
-                <span>{isUploadModalOpen ? 'Yükleme Panelini Kapat' : 'Yeni Wallpaper Yükle'}</span>
+                <span>{isUploadModalOpen ? 'Yükleme Panelini Gizle' : 'Yeni Wallpaper Yükle'}</span>
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* ADMININLINE / MODAL UPLOAD DRAWER */}
-        {isAdmin && isUploadModalOpen && (
+        {/* SADECE ADMIN PANELİNDE GÖRÜNEN YÜKLEME FORMU */}
+        {canUploadInAdminPanel && isUploadModalOpen && (
           <div className="relative z-10 mt-6 pt-6 border-t border-purple-500/30 animate-fadeIn">
             <form onSubmit={handleUploadSubmit} className="bg-gray-950/90 border border-purple-500/40 rounded-2xl p-4 sm:p-6 space-y-5 shadow-2xl">
               <div className="flex items-center justify-between gap-2 border-b border-gray-800 pb-3">
@@ -1348,7 +1271,7 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            {isAdmin && (
+            {canUploadInAdminPanel && (
               <button
                 onClick={() => {
                   setUploadSeriesId(activeSeriesObj.id);
@@ -1390,32 +1313,30 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
           </div>
           <div className="space-y-1">
             <h3 className="text-base sm:text-lg font-black text-white">
-              Aradığınız Kriterde Duvar Kağıdı Bulunamadı
+              {allDisplayWallpapers.length === 0
+                ? 'Henüz Duvar Kağıdı Yüklenmedi'
+                : 'Aradığınız Kriterde Duvar Kağıdı Bulunamadı'}
             </h3>
             <p className="text-xs sm:text-sm text-gray-400 max-w-md mx-auto">
-              Farklı bir seri adı arayabilir veya filtreleri sıfırlayarak tüm koleksiyonu görüntüleyebilirsiniz.
+              {allDisplayWallpapers.length === 0
+                ? 'Yönetici panelinden serilere ait özel duvar kağıtları yüklendiğinde burada Pinterest görünümüyle listelenecektir.'
+                : 'Farklı bir seri adı arayabilir veya filtreleri sıfırlayarak tüm koleksiyonu görüntüleyebilirsiniz.'}
             </p>
           </div>
-          <div className="flex items-center justify-center gap-2 pt-2">
-            <button
-              onClick={() => {
-                setSelectedSeriesId('all');
-                setSearchQuery('');
-                setSelectedCategory('all');
-              }}
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold transition cursor-pointer"
-            >
-              Tüm Wallpaperları Göster
-            </button>
-            {isAdmin && (
+          {(selectedSeriesId !== 'all' || searchQuery || selectedCategory !== 'all') && (
+            <div className="flex items-center justify-center gap-2 pt-2">
               <button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-purple-200 border border-purple-500/30 text-xs font-bold transition cursor-pointer"
+                onClick={() => {
+                  setSelectedSeriesId('all');
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold transition cursor-pointer"
               >
-                + Yeni Wallpaper Yükle
+                Filtreleri Temizle
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3 sm:gap-4 space-y-3 sm:space-y-4">

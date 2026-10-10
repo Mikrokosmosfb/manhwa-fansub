@@ -1942,6 +1942,10 @@ ${seriesXml}
 
           if (request.method === 'POST') {
             const body: any = await request.json();
+            const callerEmail = String(body.adminEmail || '').trim().toLowerCase();
+            if (callerEmail && !ADMIN_EMAILS.has(callerEmail)) {
+              return new Response(JSON.stringify({ success: false, message: 'Duvar kağıdı yükleme yetkisi yalnızca yöneticilere aittir.' }), { status: 403, headers });
+            }
             const itemsInput = Array.isArray(body.wallpapers) ? body.wallpapers : body.wallpaper ? [body.wallpaper] : [];
             if (itemsInput.length === 0) {
               return new Response(JSON.stringify({ success: false, message: 'Eklenecek wallpaper bulunamadı.' }), { status: 400, headers });
@@ -2025,6 +2029,10 @@ ${seriesXml}
 
           if (request.method === 'DELETE') {
             const id = url.searchParams.get('id');
+            const callerEmail = String(url.searchParams.get('adminEmail') || '').trim().toLowerCase();
+            if (callerEmail && !ADMIN_EMAILS.has(callerEmail)) {
+              return new Response(JSON.stringify({ success: false, message: 'Duvar kağıdı silme yetkisi yalnızca yöneticilere aittir.' }), { status: 403, headers });
+            }
             if (id && activeDb) {
               try {
                 await activeDb.prepare("DELETE FROM wallpapers WHERE id = ?").bind(id).run();
