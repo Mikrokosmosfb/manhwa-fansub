@@ -873,37 +873,33 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                       />
 
                       <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
-                        {/* Stylized Chapter Number Emblem with Dimmed Cover Backdrop */}
+                        {/* Chapter Mini Square Preview Thumbnail */}
                         <div
-                          className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex-shrink-0 flex flex-col items-center justify-center border transition-all ${
+                          className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-xl overflow-hidden flex-shrink-0 bg-gray-950 border transition-all shadow-sm ${
                             is18
-                              ? 'bg-rose-950/80 border-rose-500/50 group-hover:border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
+                              ? 'border-rose-500/60 group-hover:border-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
                               : isRead
-                              ? 'bg-emerald-950/60 border-emerald-500/40'
-                              : 'bg-gray-900 border-purple-500/35 group-hover:border-purple-400'
+                              ? 'border-emerald-500/45 group-hover:border-emerald-400'
+                              : 'border-purple-500/35 group-hover:border-purple-400'
                           }`}
                         >
                           <img
                             src={previewImg}
-                            alt=""
+                            alt={ch.title}
                             loading="lazy"
-                            className="absolute inset-0 w-full h-full object-cover opacity-25 group-hover:opacity-35 group-hover:scale-110 transition duration-300"
+                            className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                           />
-                          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/90 via-gray-950/50 to-gray-950/60" />
-                          <span className="relative z-10 text-[9px] uppercase font-bold tracking-wider text-gray-400 leading-none">
-                            BÖLÜM
-                          </span>
-                          <span
-                            className={`relative z-10 text-xs sm:text-sm font-black leading-tight mt-0.5 ${
+                          <div
+                            className={`absolute bottom-0 right-0 text-[9px] font-black px-1.5 py-0.2 rounded-tl-md backdrop-blur-xs border-t border-l ${
                               is18
-                                ? 'text-rose-200'
+                                ? 'bg-rose-950/90 text-rose-200 border-rose-500/40'
                                 : isRead
-                                ? 'text-emerald-300'
-                                : 'text-purple-200 group-hover:text-white'
+                                ? 'bg-emerald-950/90 text-emerald-300 border-emerald-500/40'
+                                : 'bg-purple-950/90 text-purple-200 border-purple-500/40'
                             }`}
                           >
-                            {ch.number}
-                          </span>
+                            #{ch.number}
+                          </div>
                         </div>
 
                         {/* Chapter Title, Front 18+ Icon & Metadata */}
