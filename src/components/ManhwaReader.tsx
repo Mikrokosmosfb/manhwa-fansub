@@ -38,7 +38,8 @@ import { CommentsSection } from './CommentsSection';
 
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { AdBannerBlock } from './AdScriptRunner';
-import { sortChapters, formatChapterDate, cleanNoticeText } from '../utils/chapterUtils';
+import { MangaAlertStack } from './MangaAlertBox';
+import { sortChapters, formatChapterDate, getChapterAlerts } from '../utils/chapterUtils';
 import { getOptimizedImageUrl } from '../utils/imageUtils';
 
 interface ManhwaReaderProps {
@@ -1045,28 +1046,8 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </div>
           </div>
 
-          {/* Chapter Specific Notice / Warning */}
-          {cleanNoticeText(currentChapter.notice) && (
-            <div className="mt-4 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs rounded-2xl p-3.5 text-left font-medium flex items-start gap-2.5 shadow-sm">
-              <div className="p-1.5 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-700 dark:text-amber-300 flex-shrink-0 mt-0.5">
-                <MessageSquare size={16} />
-              </div>
-              <div className="flex-1">
-                <strong className="block font-bold text-amber-900 dark:text-amber-300 text-xs mb-0.5">Not:</strong>
-                <p className="leading-relaxed text-amber-800 dark:text-amber-100/90">{cleanNoticeText(currentChapter.notice)}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Series Notice if no chapter notice */}
-          {!cleanNoticeText(currentChapter.notice) && cleanNoticeText(series.notice) && (
-            <div className="mt-4 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-500/30 text-purple-900 dark:text-purple-200 text-xs rounded-2xl p-3 text-left font-medium flex items-center gap-2.5">
-              <div className="p-1.5 bg-purple-100 dark:bg-purple-900/60 rounded-xl text-purple-700 dark:text-purple-300 flex-shrink-0">
-                <Megaphone size={16} />
-              </div>
-              <p className="leading-relaxed flex-1"><strong className="text-purple-800 dark:text-purple-300">Not:</strong> {cleanNoticeText(series.notice)}</p>
-            </div>
-          )}
+          {/* Chapter / Blogger Alerts & Notices (m-warning, m-info, note) */}
+          <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, true)} />
         </div>
 
         {/* Damage/Broken Image Report Button Banner */}

@@ -3,6 +3,7 @@ import React
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin } from '../types';
 import { GENRE_LIST } from '../data/mockData';
 import {
@@ -567,7 +568,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
         let synopsis = `${item.seriesName} serisine ait bölümler. Blogger aktarımı ile otomatik eklenmiştir.`;
         if (item.projectPost) {
-          const cleanText = item.projectPost.contentHtml
+          const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(item.projectPost.contentHtml);
+          const cleanText = cleanSynopsis
             .replace(/<img[^>]*>/gi, '')
             .replace(/<[^>]+>/g, '\n')
             .replace(/\n+/g, ' ')
@@ -740,6 +742,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         );
 
         const newChapters: Chapter[] = detSeries.chapterPosts.map((post, cIdx) => {
+          const parsedAlerts = extractMangaAlerts(post.contentHtml);
+          const formattedAlertsNotice =
+            parsedAlerts.length > 0
+              ? parsedAlerts.map(a => `${a.label}: ${a.message}`).join('\n\n')
+              : undefined;
+
           const cleanContent = post.contentHtml
             .replace(/<img[^>]*>/gi, '')
             .replace(/<[^>]+>/g, '\n')
@@ -754,7 +762,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             createdAt: Date.now() - (detSeries.chapterPosts.length - cIdx) * 1000,
             isNew: true,
             images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-            content: cleanContent.length > 30 ? cleanContent : undefined
+            content: cleanContent.length > 30 ? cleanContent : undefined,
+            notice: formattedAlertsNotice
           };
         });
 
@@ -854,6 +863,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     }
 
     const newChapters: Chapter[] = selectedPosts.map((post, index) => {
+      const parsedAlerts = extractMangaAlerts(post.contentHtml);
+      const formattedAlertsNotice =
+        parsedAlerts.length > 0
+          ? parsedAlerts.map(a => `${a.label}: ${a.message}`).join('\n\n')
+          : undefined;
+
       const cleanContent = post.contentHtml
         .replace(/<img[^>]*>/gi, '')
         .replace(/<[^>]+>/g, '\n')
@@ -868,7 +883,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         createdAt: Date.now() - (selectedPosts.length - index) * 1000,
         isNew: true,
         images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-        content: cleanContent.length > 30 ? cleanContent : undefined
+        content: cleanContent.length > 30 ? cleanContent : undefined,
+        notice: formattedAlertsNotice
       };
     });
 

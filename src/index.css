@@ -336,6 +336,82 @@ html.light {
 .animate-silver-butterfly-delayed { animation: silverButterflyFloat 6.2s ease-in-out 1.8s infinite; }
 .animate-branch-drape { animation: branchDrapeSway 7s ease-in-out infinite; transform-origin: bottom left; }
 
+/* Blogger Manga-Alert Compatibility Styles (.manga-alert, .m-warning, .m-info) */
+.chapter-html-content .manga-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border-radius: 1rem;
+  margin: 0.75rem 0;
+  text-align: left;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+}
+
+.chapter-html-content .manga-alert.m-warning {
+  background: linear-gradient(90deg, rgba(69, 26, 3, 0.9), rgba(67, 20, 7, 0.85), rgba(69, 10, 10, 0.8));
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  color: #fef3c7;
+}
+
+.chapter-html-content .manga-alert.m-info {
+  background: linear-gradient(90deg, rgba(8, 47, 73, 0.9), rgba(30, 27, 75, 0.85), rgba(59, 7, 100, 0.8));
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #e0f2fe;
+}
+
+.chapter-html-content .manga-alert .m-icon-wrapper {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.chapter-html-content .manga-alert.m-warning .m-icon-wrapper {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+}
+
+.chapter-html-content .manga-alert.m-info .m-icon-wrapper {
+  background: rgba(14, 165, 233, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #7dd3fc;
+}
+
+.chapter-html-content .manga-alert .m-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-html-content .manga-alert .m-label {
+  display: block;
+  font-weight: 900;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.chapter-html-content .manga-alert.m-warning .m-label {
+  color: #fcd34d;
+}
+
+.chapter-html-content .manga-alert.m-info .m-label {
+  color: #7dd3fc;
+}
+
+.chapter-html-content .manga-alert .m-text p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
 
 
 

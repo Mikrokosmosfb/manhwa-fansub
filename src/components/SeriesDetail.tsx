@@ -38,7 +38,8 @@ import { CommentsSection } from './CommentsSection';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
-import { sortChapters, cleanNoticeText } from '../utils/chapterUtils';
+import { MangaAlertStack } from './MangaAlertBox';
+import { sortChapters, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface SeriesDetailProps {
@@ -471,7 +472,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {/* Synopsis */}
                 {(() => {
-                  const synopsisText = series.synopsis?.trim() || 'Bu seri için henüz bir özet girilmemiştir.';
+                  const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
+                  const synopsisText = cleanSynopsis || 'Bu seri için henüz bir özet girilmemiştir.';
                   const isLongSynopsis = synopsisText.length > 200 || synopsisText.split('\n').length > 3;
 
                   return (
@@ -594,38 +596,47 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
         </div>
 
         {/* Compact Warning & Notice Banners Section (Only rendered if an active notice or warning exists) */}
-        {(cleanNoticeText(series.notice) || series.releaseDay || series.is18Plus || series.genres.includes('18+') || (series.ageRating && series.ageRating !== 'Genel')) && (
-          <div className="mt-4 space-y-2.5">
-            {/* Translator / Admin Notice Banner */}
-            {(cleanNoticeText(series.notice) || series.releaseDay) && (
-              <div className="bg-amber-950/50 border border-amber-500/40 rounded-xl p-3 sm:p-3.5 flex items-start gap-3 shadow-md">
-                <Megaphone size={18} className="text-amber-400 mt-0.5 flex-shrink-0" />
-                <div className="text-xs sm:text-sm text-amber-100 flex-1">
-                  {cleanNoticeText(series.notice) && <p className="font-medium leading-relaxed">{cleanNoticeText(series.notice)}</p>}
-                  {series.releaseDay && (
-                    <p className="mt-1 text-[11px] sm:text-xs text-amber-300/90 font-semibold flex items-center gap-1.5">
-                      <Clock size={13} className="text-amber-400" />
-                      Yayın Günü: <span className="text-white font-bold">{series.releaseDay}</span> {series.releaseTime ? `(${series.releaseTime})` : ''}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
+        {(() => {
+          const { alerts: seriesAlerts } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
+          const hasAdultWarning =
+            (series.is18Plus || series.genres.includes('18+') || (series.ageRating && series.ageRating !== 'Genel')) &&
+            !seriesAlerts.some(a => a.type === 'warning');
 
-            {/* 18+ / Content Warning Banner */}
-            {(series.is18Plus || series.genres.includes('18+') || (series.ageRating && series.ageRating !== 'Genel')) && (
-              <div className="bg-rose-950/60 border border-rose-800/80 rounded-xl p-3 sm:p-3.5 flex items-start gap-3 shadow-md">
-                <ShieldAlert size={18} className="text-rose-400 mt-0.5 flex-shrink-0" />
-                <div className="text-xs sm:text-sm text-rose-200">
-                  <span className="font-extrabold text-rose-300 block mb-0.5">Yetişkin / Özel İçerik Uyarısı ({series.ageRating || '18+'})</span>
-                  <p className="text-[11px] sm:text-xs opacity-90 leading-relaxed">
-                    Bu seri hassas temalar veya yetişkinlere yönelik unsurlar barındırabilir.
+          if (seriesAlerts.length === 0 && !series.releaseDay && !hasAdultWarning) return null;
+
+          return (
+            <div className="mt-4 space-y-2.5">
+              {/* Structured Blogger / Admin Alerts (m-warning, m-info, note) */}
+              {seriesAlerts.length > 0 && (
+                <MangaAlertStack alerts={seriesAlerts} className="space-y-2.5" />
+              )}
+
+              {/* Release Schedule Banner */}
+              {series.releaseDay && (
+                <div className="bg-amber-950/50 border border-amber-500/40 rounded-2xl p-3 sm:p-3.5 flex items-center gap-3 shadow-md">
+                  <Megaphone size={18} className="text-amber-400 flex-shrink-0" />
+                  <p className="text-xs sm:text-sm text-amber-300/90 font-semibold flex items-center gap-1.5">
+                    <Clock size={14} className="text-amber-400" />
+                    Yayın Günü: <span className="text-white font-bold">{series.releaseDay}</span> {series.releaseTime ? `(${series.releaseTime})` : ''}
                   </p>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+
+              {/* 18+ / Content Warning Banner (if not already shown by a custom m-warning alert) */}
+              {hasAdultWarning && (
+                <div className="bg-rose-950/60 border border-rose-800/80 rounded-2xl p-3 sm:p-3.5 flex items-start gap-3 shadow-md">
+                  <ShieldAlert size={18} className="text-rose-400 mt-0.5 flex-shrink-0" />
+                  <div className="text-xs sm:text-sm text-rose-200">
+                    <span className="font-extrabold text-rose-300 block mb-0.5">Yetişkin / Özel İçerik Uyarısı ({series.ageRating || '18+'})</span>
+                    <p className="text-[11px] sm:text-xs opacity-90 leading-relaxed">
+                      Bu seri hassas temalar veya yetişkinlere yönelik unsurlar barındırabilir.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Chapters Section */}
         <div className="mt-8 bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-8 shadow-xl">
