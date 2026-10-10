@@ -120,9 +120,6 @@ export const SeoManager: React.FC = () => {
     } else if (view.type === 'schedule') {
       pageTitle = 'Haftalık Yayın Takvimi | Mikrokosmos Fansub';
       pageDescription = 'Yeni Webtoon ve Web Novel bölümlerinin yayınlanma günleri ve saatleri.';
-    } else if (view.type === 'lessons') {
-      pageTitle = 'Mobil Manhwa Editörlük Rehberi & Dersler | Mikrokosmos Fansub';
-      pageDescription = 'Telefonda Photoshop, Ibis Paint ve Cropybara ile profesyonel manhwa editörlüğü videolu rehberi ve dersleri.';
     } else if (view.type === 'social-media') {
       pageTitle = 'Sosyal Medya Hesaplarımız | Mikrokosmos Fansub';
       pageDescription = 'Mikrokosmos Fansub sosyal medya hesapları. Discord, Instagram, WhatsApp ve TikTok hesaplarımızı takip edin.';

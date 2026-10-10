@@ -2,16 +2,13 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import {
   MessageSquare,
-  FileText,
   Clock,
   Tags,
   ArrowDownAZ,
-  Send,
   Bug,
   Calendar,
   ThumbsUp,
   SlidersHorizontal,
-  GraduationCap,
   Share2,
   Trophy,
   Image as ImageIcon
@@ -71,16 +68,6 @@ export const QuickNav: React.FC = () => {
       title: 'Sosyal Medya',
       icon: <Share2 className="w-3.5 h-3.5 text-pink-300" />,
       onClick: () => setView({ type: 'social-media' })
-    },
-    {
-      title: 'Dersler',
-      icon: <GraduationCap className="w-3.5 h-3.5 text-emerald-300" />,
-      onClick: () => setView({ type: 'lessons' })
-    },
-    {
-      title: 'Başvuru',
-      icon: <FileText className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'join-team' })
     },
     {
       title: 'Sorun Bildir',

@@ -65,12 +65,6 @@ export const Footer: React.FC = () => {
             <button onClick={() => setView({ type: 'social-media' })} className="text-pink-400 hover:text-pink-300 font-bold">
               Sosyal Medya
             </button>
-            <button onClick={() => setView({ type: 'lessons' })} className="text-emerald-400 hover:text-emerald-300 font-bold">
-              Editörlük Dersleri
-            </button>
-            <button onClick={() => setView({ type: 'join-team' })} className="hover:text-purple-300">
-              Ekip Başvurusu
-            </button>
             <button onClick={() => setView({ type: 'report' })} className="hover:text-purple-300">
               Sorun Bildir
             </button>

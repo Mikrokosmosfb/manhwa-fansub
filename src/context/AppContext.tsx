@@ -42,8 +42,6 @@ type ViewState =
   | { type: 'schedule' }
   | { type: 'request-board' }
   | { type: 'report' }
-  | { type: 'join-team' }
-  | { type: 'lessons' }
   | { type: 'social-media' }
   | { type: 'admin' }
   | { type: 'management' }
@@ -86,10 +84,6 @@ export const viewToHash = (v: ViewState): string => {
       return '#/istekler';
     case 'report':
       return '#/bildir';
-    case 'join-team':
-      return '#/ekibe-katil';
-    case 'lessons':
-      return '#/dersler';
     case 'social-media':
       return '#/sosyal-medya';
     case 'admin':
@@ -152,11 +146,6 @@ export const hashToView = (hash: string): ViewState => {
       return { type: 'request' };
     case 'bildir':
       return { type: 'report' };
-    case 'ekibe-katil':
-      return { type: 'join-team' };
-    case 'dersler':
-    case 'rehber':
-      return { type: 'lessons' };
     case 'sosyal-medya':
       return { type: 'social-media' };
     case 'admin':

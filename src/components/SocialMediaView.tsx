@@ -9,7 +9,7 @@ import {
   Users,
   BookOpen,
   Image as ImageIcon,
-  GraduationCap
+  Calendar
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { SaturnIcon } from './SaturnIcon';
@@ -427,34 +427,25 @@ export const SocialMediaView: React.FC = () => {
         })}
       </section>
 
-      {/* COMMUNITY & SITE SHORTCUTS FOOTER SECTION */}
+      {/* SITE SHORTCUTS FOOTER SECTION */}
       <section className="rounded-2xl bg-[#0c0718] border border-purple-500/20 p-6 sm:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
         <div className="space-y-1.5 max-w-xl">
           <h3 className="text-base sm:text-lg font-black text-white">
-            Mikrokosmos Çeviri & Edit Ekibine Katılmak İster misiniz?
+            Mikrokosmos Arşivini Keşfedin
           </h3>
           <p className="text-xs sm:text-sm text-gray-400 leading-relaxed">
-            Çevirmen, dizgici (typesetter), temizleyici (cleaner) veya redaktör olarak aramıza katılabilir ya da ücretsiz editörlük derslerimizle sıfırdan öğrenebilirsiniz.
+            Güncel serilerimize, HD duvar kağıtları galerimize ve haftalık bölüm yayın takvimimize aşağıdan hızlıca ulaşabilirsiniz.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           <button
             type="button"
-            onClick={() => setView({ type: 'join-team' })}
+            onClick={() => setView({ type: 'series-list' })}
             className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-extrabold flex items-center gap-2 transition cursor-pointer"
           >
-            <Users size={15} />
-            <span>Ekip Başvurusu Yap</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setView({ type: 'lessons' })}
-            className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-200 hover:text-white border border-gray-800 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
-          >
-            <GraduationCap size={15} className="text-emerald-400" />
-            <span>Editörlük Dersleri</span>
+            <BookOpen size={15} />
+            <span>Tüm Seriler</span>
           </button>
 
           <button
@@ -468,11 +459,11 @@ export const SocialMediaView: React.FC = () => {
 
           <button
             type="button"
-            onClick={() => setView({ type: 'series-list' })}
+            onClick={() => setView({ type: 'schedule' })}
             className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-gray-200 hover:text-white border border-gray-800 text-xs font-bold flex items-center gap-2 transition cursor-pointer"
           >
-            <BookOpen size={15} className="text-purple-400" />
-            <span>Tüm Seriler</span>
+            <Calendar size={15} className="text-amber-400" />
+            <span>Yayın Takvimi</span>
           </button>
         </div>
       </section>

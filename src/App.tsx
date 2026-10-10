@@ -42,10 +42,8 @@ const ScheduleView = React.lazy(() => import('./components/ScheduleView').then(m
 const RequestBoardView = React.lazy(() => import('./components/RequestBoardView').then(m => ({ default: m.RequestBoardView })));
 const ReportModal = React.lazy(() => import('./components/ReportModal').then(m => ({ default: m.ReportModal })));
 const RequestModal = React.lazy(() => import('./components/RequestModal').then(m => ({ default: m.RequestModal })));
-const JoinTeamModal = React.lazy(() => import('./components/JoinTeamModal').then(m => ({ default: m.JoinTeamModal })));
 const ManagementPanel = React.lazy(() => import('./components/ManagementPanel').then(m => ({ default: m.ManagementPanel })));
 const NotificationsView = React.lazy(() => import('./components/NotificationsView').then(m => ({ default: m.NotificationsView })));
-const LessonsView = React.lazy(() => import('./components/LessonsView').then(m => ({ default: m.LessonsView })));
 const SocialMediaView = React.lazy(() => import('./components/SocialMediaView').then(m => ({ default: m.SocialMediaView })));
 const AuthModal = React.lazy(() => import('./components/AuthModal').then(m => ({ default: m.AuthModal })));
 const ShopModal = React.lazy(() => import('./components/ShopModal').then(m => ({ default: m.ShopModal })));
@@ -215,22 +213,6 @@ const MainContent: React.FC = () => {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         <RequestModal />
-      </Suspense>
-    );
-  }
-
-  if (view.type === 'join-team') {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <JoinTeamModal />
-      </Suspense>
-    );
-  }
-
-  if (view.type === 'lessons') {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <LessonsView />
       </Suspense>
     );
   }

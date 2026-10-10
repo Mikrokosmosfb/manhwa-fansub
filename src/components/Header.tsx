@@ -26,7 +26,6 @@ import {
   LogOut,
   SlidersHorizontal,
   Bell,
-  GraduationCap,
   Share2,
   LayoutGrid,
   Layers,
