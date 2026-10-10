@@ -451,7 +451,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
       )}
 
       {/* Reader Navigation Header */}
-      <div className="reader-toolbar bg-white/95 dark:bg-gray-900/95 border-b border-purple-200 dark:border-purple-500/20 sticky top-0 z-40 backdrop-blur-md px-2.5 sm:px-4 py-2 shadow-md dark:shadow-lg">
+      <div className="reader-toolbar bg-white/95 dark:bg-gray-900/95 border-b border-purple-200 dark:border-purple-500/20 sticky top-0 z-30 backdrop-blur-md px-2.5 sm:px-4 py-2 shadow-md dark:shadow-lg">
         <div className="max-w-3xl mx-auto flex items-center gap-1.5 sm:gap-2.5">
           
           {/* Back to Series */}
