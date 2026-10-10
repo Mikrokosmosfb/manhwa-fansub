@@ -813,7 +813,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           </div>
 
           {/* Chapter / Blogger Alerts & Notices (m-warning, m-info, note) */}
-          <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, false)} />
+          <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, false, series.synopsis, series.title)} />
         </div>
 
         {/* Optional Chapter Images inside Novel */}

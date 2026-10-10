@@ -1071,7 +1071,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
           </div>
 
           {/* Chapter / Blogger Alerts & Notices (m-warning, m-info, note) */}
-          <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, true)} />
+          <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, true, series.synopsis, series.title)} />
         </div>
 
         {/* Damage/Broken Image Report Button Banner */}

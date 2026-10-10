@@ -188,7 +188,12 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
       }
 
       doc.querySelectorAll('img, iframe, script, style').forEach(n => n.remove());
-      remainingText = doc.body.innerText || doc.body.textContent || '';
+      doc.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+      doc.querySelectorAll('p, div, li, baslik').forEach(el => {
+        el.prepend('\n');
+        el.append('\n');
+      });
+      remainingText = doc.body.textContent || '';
     } catch {
       // Fallback to plain text parsing below
     }
@@ -203,10 +208,12 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
   if (!remainingText) return alerts;
 
   // Normalize known Turkish alert headings so multi-block plain text splits cleanly
-  const normalized = remainingText.replace(
-    /(?:^|\n|(?<=[.!?])\s+)\s*(İÇERİK UYARISI|YETİŞKİN İÇERİK UYARISI|ÖNEMLİ BİLGİLENDİRME|BİLGİLENDİRME|ÇEVİRMEN NOTU|EDİTÖR NOTU|BÖLÜM NOTU|BÖLÜM DUYURUSU)\s*:?\s*/gi,
-    '\n@@ALERT_SPLIT@@$1:\n'
-  );
+  const normalized = remainingText
+    .replace(/\n{2,}/g, '\n@@ALERT_SPLIT@@\n')
+    .replace(
+      /(?:^|\n|(?<=[.!?])\s+)\s*(İÇERİK UYARISI|ICERIK UYARISI|içerik uyarısı|YETİŞKİN İÇERİK UYARISI|ÖNEMLİ BİLGİLENDİRME|BİLGİLENDİRME|BILGILENDIRME|bilgilendirme|ÇEVİRMEN NOTU|EDİTÖR NOTU|BÖLÜM NOTU|BÖLÜM DUYURUSU)\s*:?\s*/gi,
+      '\n@@ALERT_SPLIT@@$1:\n'
+    );
 
   const chunks = normalized
     .split('@@ALERT_SPLIT@@')
@@ -215,7 +222,7 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
 
   for (const chunk of chunks) {
     const headerMatch = chunk.match(
-      /^(📢\s*)?(İÇERİK UYARISI|YETİŞKİN İÇERİK UYARISI|ÖNEMLİ BİLGİLENDİRME|BİLGİLENDİRME|ÇEVİRMEN NOTU|EDİTÖR NOTU|BÖLÜM NOTU|BÖLÜM DUYURUSU|SERİ NOTU|DUYURU|UYARI|DİKKAT|Not)\s*:\s*([\s\S]*)$/i
+      /^(📢\s*)?(İÇERİK UYARISI|ICERIK UYARISI|YETİŞKİN İÇERİK UYARISI|ÖNEMLİ BİLGİLENDİRME|BİLGİLENDİRME|BILGILENDIRME|ÇEVİRMEN NOTU|EDİTÖR NOTU|BÖLÜM NOTU|BÖLÜM DUYURUSU|SERİ NOTU|DUYURU|UYARI|DİKKAT|Not)\s*:\s*([\s\S]*)$/i
     );
 
     if (headerMatch) {
@@ -230,7 +237,7 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
         /sansürsüz|cinsel içerik|şiddet|\+18|18\+/i.test(body)
       ) {
         type = 'warning';
-      } else if (rawHeader.includes('BİLGİ') || rawHeader.includes('DUYURU')) {
+      } else if (rawHeader.includes('BİLGİ') || rawHeader.includes('BILGI') || rawHeader.includes('DUYURU')) {
         type = 'info';
       }
 
@@ -248,7 +255,7 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
       if (/sansürsüz|cinsel içerik|şiddet|olumsuz örnek/i.test(cleaned)) {
         type = 'warning';
         label = 'İÇERİK UYARISI';
-      } else if (/güncel bir seridir|yeni bölümleri her ayın|yayınlanabilir/i.test(cleaned)) {
+      } else if (/güncel bir seridir|yeni bölümleri|yayınlanabilir/i.test(cleaned)) {
         type = 'info';
         label = 'BİLGİLENDİRME';
       }
@@ -260,10 +267,52 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
   return alerts;
 }
 
+export function mergeChapterNoticesFromSources(
+  manualNotice?: string | null,
+  ...rawSources: (string | undefined | null)[]
+): string | undefined {
+  const combined: ParsedMangaAlert[] = [];
+  const seen = new Set<string>();
+
+  const addAll = (list: ParsedMangaAlert[]) => {
+    for (const item of list) {
+      const key = item.message.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        combined.push(item);
+      }
+    }
+  };
+
+  if (manualNotice && manualNotice.trim()) {
+    addAll(extractMangaAlerts(manualNotice));
+  }
+
+  for (const src of rawSources) {
+    if (!src || !src.trim()) continue;
+    // Extract from HTML / Blogger embed sources if they contain alert classes, <baslik>, or known alert headers
+    if (
+      /manga-alert|m-warning|m-info|m-danger|chapter-alert|alert-box|<baslik>/i.test(src) ||
+      /(İÇERİK UYARISI|YETİŞKİN İÇERİK UYARISI|ÖNEMLİ BİLGİLENDİRME|BİLGİLENDİRME|ÇEVİRMEN NOTU|EDİTÖR NOTU|BÖLÜM NOTU|BÖLÜM DUYURUSU)\s*:/i.test(src)
+    ) {
+      addAll(extractMangaAlerts(src));
+    }
+  }
+
+  if (combined.length === 0) {
+    const trimmed = (manualNotice || '').trim();
+    return trimmed || undefined;
+  }
+
+  return combined.map(a => `${a.label}: ${a.message}`).join('\n\n');
+}
+
 export function getChapterAlerts(
   chapter?: Partial<Chapter> | null,
   seriesNotice?: string | null,
-  isManhwa = true
+  isManhwa = true,
+  seriesSynopsis?: string | null,
+  seriesTitle?: string | null
 ): ParsedMangaAlert[] {
   if (!chapter) return extractMangaAlerts(seriesNotice);
 
@@ -284,10 +333,14 @@ export function getChapterAlerts(
     addAll(extractMangaAlerts(chapter.notice));
   }
 
+  if (chapter.chapterNote) {
+    addAll(extractMangaAlerts(chapter.chapterNote));
+  }
+
   // For Manhwa/Webtoon chapters, Blogger posts often store their .manga-alert text inside chapter.content
   if (isManhwa && chapter.content) {
     addAll(extractMangaAlerts(chapter.content));
-  } else if (!isManhwa && chapter.content && /manga-alert|m-warning|m-info/i.test(chapter.content)) {
+  } else if (!isManhwa && chapter.content && /manga-alert|m-warning|m-info|<baslik>/i.test(chapter.content)) {
     // For Novel chapters, only extract explicit .manga-alert HTML blocks from content
     if (typeof DOMParser !== 'undefined') {
       try {
@@ -305,6 +358,34 @@ export function getChapterAlerts(
 
   if (combined.length === 0 && seriesNotice) {
     addAll(extractMangaAlerts(seriesNotice));
+  }
+
+  if (combined.length === 0 && seriesSynopsis) {
+    const { alerts: synAlerts } = getSeriesAlertsAndCleanSynopsis(seriesSynopsis, seriesNotice);
+    addAll(synAlerts);
+  }
+
+  // Fallback for already-uploaded Borderline chapter if its HTML alerts were not saved prior to parser update
+  const isBorderlineSeries =
+    (seriesTitle && seriesTitle.toLowerCase().includes('borderline')) ||
+    (Array.isArray(chapter.images) &&
+      chapter.images.some(img => img.includes('eae5ecf3fce0f3e9f0e9e0b6f4beaca0b6b2e9fce1e9f2')));
+
+  if (combined.length === 0 && isBorderlineSeries) {
+    addAll([
+      {
+        type: 'warning',
+        label: 'İÇERİK UYARISI',
+        message:
+          'Dikkat, bu içerik sansürsüzdür. Ayrıca seri şiddet, cinsel içerik ve ya olumsuz örnek oluşturabilecek öğeler içerebilir. Lütfen bunu dikkate alarak devam ediniz.'
+      },
+      {
+        type: 'info',
+        label: 'BİLGİLENDİRME',
+        message:
+          'Borderline serisi artık güncel bir seridir. Yeni bölümleri ayın 9/19/29 tarihlerinde gelecektir. Ve yeni bölümler Mikrokosmos Fansubda ya çıktığı gün ya da bir gün sonra yayınlanabilir.'
+      }
+    ]);
   }
 
   return combined;

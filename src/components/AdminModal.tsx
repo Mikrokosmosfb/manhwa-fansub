@@ -3,7 +3,8 @@ import React
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources } from '../utils/chapterUtils';
+import { MangaAlertStack } from './MangaAlertBox';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
 import {
@@ -1128,6 +1129,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     const bulkExtracted = extractImageUrls(bulkImages);
     const parsedBulkImages = bulkExtracted.length > 0 ? bulkExtracted : undefined;
     const parsedBulkContent = bulkContent.trim() || undefined;
+    const mergedBulkNotice = mergeChapterNoticesFromSources(bulkNotice, bulkImages, bulkContent);
 
     for (let num = bulkStartNum; num <= bulkEndNum; num++) {
       const title = bulkTitlePattern.replace('{n}', num.toString());
@@ -1140,7 +1142,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         isNew: true,
         images: parsedBulkImages,
         content: parsedBulkContent,
-        notice: bulkNotice.trim() || undefined
+        notice: mergedBulkNotice
       });
     }
 
@@ -1178,11 +1180,17 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
     const extractedImages = extractImageUrls(editingChapterImagesText);
     const parsedImages = extractedImages.length > 0 ? extractedImages : undefined;
+    const mergedEditNotice = mergeChapterNoticesFromSources(
+      editingChapter.notice,
+      editingChapterImagesText,
+      editingChapterContentText
+    );
 
     const updatedChapter: Chapter = {
       ...editingChapter,
       images: parsedImages,
-      content: editingChapterContentText.trim() || undefined
+      content: editingChapterContentText.trim() || undefined,
+      notice: mergedEditNotice
     };
 
     const updatedChapters = targetSeries.chapters.map(c =>
@@ -1356,6 +1364,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     const cTitle = chapterTitle.trim() || `Bölüm ${num}`;
 
     const extractedImages = extractImageUrls(chapterImages);
+    const mergedNotice = mergeChapterNoticesFromSources(chapterNotice, chapterImages, chapterContent);
 
     const newChapter: Chapter = {
       id: 'c-' + Date.now(),
@@ -1368,7 +1377,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       specialTag: chapterSpecialTag.trim() || undefined,
       images: extractedImages.length > 0 ? extractedImages : undefined,
       content: chapterContent.trim() || undefined,
-      notice: chapterNotice.trim() || undefined
+      notice: mergedNotice
     };
 
     const updatedSeries: Series = {
@@ -2164,14 +2173,14 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
           <div>
             <label className="block text-purple-300 font-bold text-xs mb-1">
-              Bölüm Özel Duyurusu / Notu (Opsiyonel)
+              Bölüm Özel Duyurusu / Notu (Opsiyonel — Blogger HTML kodundaki uyarı ve bilgilendirme kutuları otomatik algılanır)
             </label>
-            <input
-              type="text"
-              placeholder="Örn: UYARI: Bu bölümde heyecanlı dövüş sahneleri mevcuttur."
+            <textarea
+              rows={2}
+              placeholder="Örn: İÇERİK UYARISI: Dikkat, bu içerik sansürsüzdür... (Veya doğrudan Blogger HTML kodunu aşağıdaki görsel kutusuna yapıştırın)"
               value={chapterNotice}
               onChange={e => setChapterNotice(e.target.value)}
-              className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none"
+              className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none resize-y"
             />
           </div>
 
@@ -2229,16 +2238,50 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
               {/* Textarea for manual URLs, HTML embed tags, or batch list */}
               <div className="mt-3">
                 <label className="block text-gray-400 text-[11px] font-semibold mb-1">
-                  Harici Görsel Linkleri, HTML Embed (&lt;img src="..."&gt;, &lt;iframe...&gt;) veya URL Listesi:
+                  Harici Görsel Linkleri, Blogger Bölüm Kodu (&lt;baslik&gt;, .manga-alert, &lt;img src="..."&gt;) veya URL Listesi:
                 </label>
                 <textarea
                   rows={4}
-                  placeholder="Linkler, HTML embed kodları (&lt;img src=...&gt;) veya BBCode ([img]...[/img]) yapıştırabilirsiniz."
+                  placeholder="Blogger bölüm HTML kodunu (&lt;baslik&gt;...&lt;/baslik&gt;&lt;div class='wt-cont'&gt;...), &lt;img src=...&gt; veya URL listesini doğrudan buraya yapıştırabilirsiniz."
                   value={chapterImages}
-                  onChange={e => setChapterImages(e.target.value)}
+                  onChange={e => {
+                    const val = e.target.value;
+                    setChapterImages(val);
+                    if (/manga-alert|m-warning|m-info|<baslik>/i.test(val)) {
+                      const autoNotice = mergeChapterNoticesFromSources(chapterNotice, val);
+                      if (autoNotice && autoNotice !== chapterNotice) {
+                        setChapterNotice(autoNotice);
+                      }
+                    }
+                  }}
                   className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none font-mono resize-none"
                 />
               </div>
+
+              {/* Live Preview of Extracted Blogger Alerts / Chapter Notes */}
+              {(() => {
+                const combinedPreviewNotice = mergeChapterNoticesFromSources(chapterNotice, chapterImages, chapterContent);
+                const detectedAlerts = extractMangaAlerts(combinedPreviewNotice);
+                if (detectedAlerts.length === 0) return null;
+                return (
+                  <div className="mt-3 bg-gray-950/90 border border-amber-500/30 rounded-2xl p-3.5 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
+                        <Megaphone size={14} className="text-amber-400" />
+                        Tespit Edilen Bölüm Notları & Uyarıları ({detectedAlerts.length} Adet)
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setChapterNotice('')}
+                        className="text-[10px] bg-gray-900 text-gray-400 hover:text-white border border-gray-700 px-2 py-0.5 rounded transition font-bold"
+                      >
+                        Notu Temizle
+                      </button>
+                    </div>
+                    <MangaAlertStack alerts={detectedAlerts} className="space-y-2" />
+                  </div>
+                );
+              })()}
 
               {/* Uploaded / Extracted Image Gallery Grid Preview */}
               {extractImageUrls(chapterImages).length > 0 && (
@@ -2463,28 +2506,55 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
                 <div>
                   <label className="block text-purple-300 font-bold text-xs mb-1">
-                    Bölüm Özel Duyurusu / Notu (Opsiyonel)
+                    Bölüm Özel Duyurusu / Notu (Opsiyonel — Blogger HTML kodundaki uyarı kutuları otomatik algılanır)
                   </label>
-                  <input
-                    type="text"
-                    placeholder="Örn: Telif hakları sebebiyle güncellenmiştir."
+                  <textarea
+                    rows={2}
+                    placeholder="Örn: İÇERİK UYARISI: Dikkat, bu içerik sansürsüzdür..."
                     value={editingChapter.notice || ''}
                     onChange={e => setEditingChapter({ ...editingChapter, notice: e.target.value })}
-                    className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-2.5 focus:outline-none"
+                    className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-2.5 focus:outline-none resize-y"
                   />
                 </div>
 
                 <div>
                   <label className="block text-purple-300 font-bold text-xs mb-1">
-                    Manhwa / Çizgi Roman Resim Linkleri (Her satıra 1 URL)
+                    Manhwa / Çizgi Roman Resim Linkleri veya Blogger HTML Kodu
                   </label>
                   <textarea
                     rows={5}
-                    placeholder="https://image1.jpg&#10;https://image2.jpg"
+                    placeholder="https://image1.jpg&#10;https://image2.jpg veya Blogger HTML kodunu (&lt;baslik&gt;...&lt;/baslik&gt;&lt;div class='wt-cont'&gt;...) yapıştırın"
                     value={editingChapterImagesText}
-                    onChange={e => setEditingChapterImagesText(e.target.value)}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setEditingChapterImagesText(val);
+                      if (/manga-alert|m-warning|m-info|<baslik>/i.test(val)) {
+                        const autoNotice = mergeChapterNoticesFromSources(editingChapter.notice, val);
+                        if (autoNotice && autoNotice !== editingChapter.notice) {
+                          setEditingChapter({ ...editingChapter, notice: autoNotice });
+                        }
+                      }
+                    }}
                     className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none font-mono resize-none"
                   />
+                  {(() => {
+                    const previewNotice = mergeChapterNoticesFromSources(
+                      editingChapter.notice,
+                      editingChapterImagesText,
+                      editingChapterContentText
+                    );
+                    const detectedAlerts = extractMangaAlerts(previewNotice);
+                    if (detectedAlerts.length === 0) return null;
+                    return (
+                      <div className="mt-2.5 bg-gray-950/90 border border-amber-500/30 rounded-2xl p-3 space-y-2">
+                        <span className="text-[11px] font-extrabold text-amber-300 flex items-center gap-1.5">
+                          <Megaphone size={13} className="text-amber-400" />
+                          Tespit Edilen Bölüm Notları & Uyarıları ({detectedAlerts.length} Adet)
+                        </span>
+                        <MangaAlertStack alerts={detectedAlerts} className="space-y-2" />
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 <div>
