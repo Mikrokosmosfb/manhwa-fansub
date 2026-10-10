@@ -159,6 +159,28 @@
         </div>
       </div>
     </div>
+    <script>
+      // Eski mikrokosmosdeposu adresini otomatik olarak yeni mediadepo adresine yönlendirir:
+      function replaceMikrokosmosDepoUrls() {
+        document.querySelectorAll('.wt-img, img[src*="mikrokosmosdeposu"]').forEach(img => {
+          if (img.src && img.src.includes('mikrokosmosdeposu')) {
+            img.src = img.src.replace(/mikrokosmosdeposu/g, 'mediadepo');
+          }
+        });
+      }
+      window.addEventListener('DOMContentLoaded', () => {
+        replaceMikrokosmosDepoUrls();
+        if (typeof MutationObserver !== 'undefined' && document.body) {
+          const observer = new MutationObserver(() => replaceMikrokosmosDepoUrls());
+          observer.observe(document.body, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['src']
+          });
+        }
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

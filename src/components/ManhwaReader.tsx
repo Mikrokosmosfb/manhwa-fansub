@@ -1127,7 +1127,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                       key={idx}
                       src={getOptimizedImageUrl(imgUrl, getImageOptimizationConfig())}
                       alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
-                      className="w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
+                      className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
                       loading={idx < 2 ? 'eager' : 'lazy'}
                       decoding="async"
                       referrerPolicy="no-referrer"
@@ -1227,7 +1227,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                           target.src = rawUrl;
                         }
                       }}
-                      className="w-full rounded-2xl shadow-2xl object-contain bg-white dark:bg-gray-900 border border-purple-200 dark:border-purple-500/20"
+                      className="wt-img w-full rounded-2xl shadow-2xl object-contain bg-white dark:bg-gray-900 border border-purple-200 dark:border-purple-500/20"
                     />
                   )}
 

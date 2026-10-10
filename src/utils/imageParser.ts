@@ -29,6 +29,11 @@ export function normalizeImageUrl(url: string): string {
     return clean;
   }
 
+  // Eski mikrokosmosdeposu adresini otomatik olarak yeni mediadepo adresine yönlendirir:
+  if (clean.includes('mikrokosmosdeposu')) {
+    clean = clean.replace(/mikrokosmosdeposu/g, 'mediadepo');
+  }
+
   // 1. Google Drive direct image conversion
   // Matches:
   // https://drive.google.com/file/d/FILE_ID/preview

@@ -835,7 +835,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                   alt={`Görsel ${idx + 1}`}
                   referrerPolicy="no-referrer"
                   loading="lazy"
-                  className="w-full max-w-2xl rounded-xl shadow-lg border border-purple-500/20"
+                  className="wt-img w-full max-w-2xl rounded-xl shadow-lg border border-purple-500/20"
                 />
               )
             ))}
@@ -858,7 +858,9 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             isHtmlContent(currentChapter.content) ? (
               <div
                 className="chapter-html-content space-y-4"
-                dangerouslySetInnerHTML={{ __html: currentChapter.content }}
+                dangerouslySetInnerHTML={{
+                  __html: currentChapter.content.replace(/mikrokosmosdeposu/g, 'mediadepo')
+                }}
               />
             ) : (
               currentChapter.content.split('\n\n').map((paragraph, idx) => (
