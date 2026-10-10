@@ -59,20 +59,35 @@ export const ProfileReadingLists: React.FC<{ isOwnProfile: boolean, userId: stri
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="text-lg font-black text-white">Listeler</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-black text-white">Okuma Listelerim</h3>
+            <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-lg bg-purple-950/80 border border-purple-500/30 text-purple-300">
+              {listsToDisplay.length} / 3 Liste
+            </span>
+          </div>
           <p className="text-xs text-gray-400 mt-1">
-            {isOwnProfile ? 'Favori serilerinizi kategorize edin ve listelerinizi oluşturun.' : 'Kullanıcının oluşturduğu herkese açık okuma listeleri.'}
+            {isOwnProfile
+              ? 'En fazla 3 özel okuma listesi oluşturabilir ve her listeye maksimum 30 seri ekleyebilirsiniz.'
+              : 'Kullanıcının oluşturduğu herkese açık okuma listeleri.'}
           </p>
         </div>
-        {isOwnProfile && readingLists.length < 3 && !isCreating && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5"
-          >
-            <Plus size={14} /> Yeni Liste
-          </button>
+        {isOwnProfile && !isCreating && (
+          readingLists.length < 3 ? (
+            <button
+              type="button"
+              onClick={() => setIsCreating(true)}
+              className="px-3.5 py-2 bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer shadow"
+            >
+              <Plus size={14} />
+              <span>Yeni Liste Oluştur ({readingLists.length}/3)</span>
+            </button>
+          ) : (
+            <span className="text-xs font-bold text-amber-300 bg-amber-950/40 border border-amber-500/30 px-3 py-1.5 rounded-xl self-start sm:self-auto">
+              Maksimum Liste Limiti (3/3)
+            </span>
+          )
         )}
       </div>
 
@@ -82,13 +97,27 @@ export const ProfileReadingLists: React.FC<{ isOwnProfile: boolean, userId: stri
             type="text"
             value={newListName}
             onChange={(e) => setNewListName(e.target.value)}
-            placeholder="Liste adı..."
-            className="flex-1 bg-gray-950/50 border border-gray-800 rounded-xl px-3 py-1.5 text-sm text-white focus:outline-none focus:border-purple-500 transition"
+            placeholder={`Yeni liste adı (${readingLists.length + 1}. liste)...`}
+            maxLength={40}
+            className="flex-1 bg-gray-950/50 border border-gray-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-500 transition"
             autoFocus
             onKeyDown={(e) => e.key === 'Enter' && handleCreateList()}
           />
-          <button onClick={handleCreateList} className="p-1.5 bg-green-600/20 text-green-400 rounded-lg hover:bg-green-600/40 transition"><Check size={16} /></button>
-          <button onClick={() => setIsCreating(false)} className="p-1.5 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/40 transition"><X size={16} /></button>
+          <button
+            type="button"
+            onClick={handleCreateList}
+            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center gap-1 cursor-pointer"
+          >
+            <Check size={15} />
+            <span>Oluştur</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCreating(false)}
+            className="p-2 bg-red-600/20 text-red-400 rounded-xl hover:bg-red-600/40 transition cursor-pointer"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 

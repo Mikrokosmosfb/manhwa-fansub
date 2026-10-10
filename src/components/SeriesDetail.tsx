@@ -82,6 +82,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const [newFolderName, setNewFolderName] = useState('');
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [isListModalOpen, setIsListModalOpen] = useState(false);
+  const [newReadingListName, setNewReadingListName] = useState('');
 
   if (!series) {
     return (
@@ -984,76 +985,212 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
       )}
       {/* Reading List Modal */}
       {isListModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsListModalOpen(false)}>
-          <div className="bg-gray-900 border border-purple-500/40 rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-              <h3 className="font-bold text-white flex items-center gap-2">
-                <BookOpen size={18} className="text-purple-400" />
-                <span>Okuma Listelerine Ekle</span>
-              </h3>
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          onClick={() => setIsListModalOpen(false)}
+        >
+          <div
+            className="bg-gray-900 border border-purple-500/40 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-gray-800 flex items-center justify-between gap-2">
+              <div>
+                <h3 className="font-bold text-white flex items-center gap-2 text-sm sm:text-base">
+                  <BookOpen size={18} className="text-purple-400" />
+                  <span>Okuma Listelerine Ekle</span>
+                  <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-purple-950/90 border border-purple-500/30 text-purple-300">
+                    {readingLists.length} / 3 Liste
+                  </span>
+                </h3>
+                <p className="text-[11px] text-gray-400 mt-0.5">
+                  En fazla 3 liste oluşturabilir, her listeye maksimum 30 seri ekleyebilirsiniz.
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsListModalOpen(false)}
-                className="p-1 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition"
+                className="p-1.5 hover:bg-gray-800 rounded-lg text-gray-400 hover:text-white transition shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
+
+            {/* Create New Reading List Form */}
+            <div className="px-4 pt-3.5 pb-2 border-b border-gray-800/70 bg-gray-950/40">
+              {readingLists.length < 3 ? (
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    const trimmed = newReadingListName.trim();
+                    if (!trimmed) return;
+                    if (readingLists.length >= 3) {
+                      showToast({
+                        title: 'Liste Limiti Dolu (3/3)',
+                        message: 'Maksimum 3 okuma listesi oluşturabilirsiniz.',
+                        type: 'warning'
+                      });
+                      return;
+                    }
+                    if (readingLists.some(l => l.name.toLowerCase() === trimmed.toLowerCase())) {
+                      showToast({
+                        title: 'Aynı İsimde Liste Var',
+                        message: 'Bu isimde bir okuma listeniz zaten mevcut.',
+                        type: 'warning'
+                      });
+                      return;
+                    }
+                    const createdList = {
+                      id: 'list-' + Date.now(),
+                      name: trimmed,
+                      seriesIds: [series.id]
+                    };
+                    setReadingLists([...readingLists, createdList]);
+                    setNewReadingListName('');
+                    showToast({
+                      title: 'Yeni Liste Oluşturuldu',
+                      message: `"${trimmed}" listesi oluşturuldu ve "${series.title}" eklendi.`,
+                      type: 'success'
+                    });
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    type="text"
+                    value={newReadingListName}
+                    onChange={e => setNewReadingListName(e.target.value)}
+                    maxLength={40}
+                    placeholder={`Yeni liste adı (${readingLists.length + 1}. liste)...`}
+                    className="flex-1 bg-gray-950 border border-purple-500/30 focus:border-purple-400 rounded-xl px-3 py-2 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none transition"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!newReadingListName.trim()}
+                    className="px-3.5 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 disabled:pointer-events-none text-white font-bold text-xs flex items-center gap-1 transition shrink-0 cursor-pointer"
+                  >
+                    <Plus size={15} />
+                    <span>Yeni Liste</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="flex items-center justify-between text-xs text-amber-300/90 bg-amber-950/30 border border-amber-500/30 rounded-xl px-3 py-2">
+                  <span>Maksimum 3 liste limitine ulaştınız (3/3).</span>
+                </div>
+              )}
+            </div>
+
+            {/* Existing Reading Lists */}
             <div className="p-4 space-y-2.5 max-h-72 overflow-y-auto">
               {readingLists.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">Önce profilinizden bir okuma listesi oluşturun.</p>
+                <div className="text-center py-6 space-y-1">
+                  <p className="text-sm font-semibold text-gray-300">Henüz okuma listeniz yok.</p>
+                  <p className="text-xs text-gray-500">
+                    Yukarıdaki kutucuktan ilk okuma listenizi hemen oluşturabilirsiniz.
+                  </p>
+                </div>
               ) : (
                 readingLists.map(list => {
                   const isInList = list.seriesIds.includes(series.id);
+                  const isListFull = list.seriesIds.length >= 30;
                   return (
-                    <button
-                      type="button"
+                    <div
                       key={list.id}
-                      onClick={() => {
-                        const newLists = readingLists.map(l => {
-                          if (l.id === list.id) {
-                            if (isInList) {
-                              return { ...l, seriesIds: l.seriesIds.filter(id => id !== series.id) };
-                            } else {
-                              if (l.seriesIds.length >= 30) {
-                                showToast({ title: 'Liste Dolu', message: 'Bu listeye en fazla 30 seri eklenebilir.', type: 'error' });
-                                return l;
-                              }
-                              return { ...l, seriesIds: [...l.seriesIds, series.id] };
-                            }
-                          }
-                          return l;
-                        });
-                        setReadingLists(newLists);
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl border transition cursor-pointer ${
+                      className={`w-full flex items-center justify-between gap-2 p-3 rounded-xl border transition ${
                         isInList
-                          ? 'bg-purple-900/40 border-purple-500/60 text-white shadow-sm'
-                          : 'bg-gray-950 border-gray-800 text-gray-300 hover:bg-gray-800/80 hover:border-purple-500/30 hover:text-white'
+                          ? 'bg-purple-900/35 border-purple-500/60 text-white shadow-sm'
+                          : 'bg-gray-950 border-gray-800 text-gray-300 hover:border-purple-500/30'
                       }`}
                     >
-                      <span className="font-bold text-sm truncate pr-2">{list.name}</span>
-                      {isInList ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-400 bg-emerald-950/70 border border-emerald-500/40 px-2.5 py-1 rounded-lg flex-shrink-0">
-                          <Check size={14} />
-                          <span>Eklendi</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-purple-300 bg-purple-950/60 border border-purple-500/30 px-2.5 py-1 rounded-lg flex-shrink-0">
-                          <Plus size={14} />
-                          <span>Ekle</span>
-                        </span>
-                      )}
-                    </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-white truncate">{list.name}</span>
+                          <span
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md border shrink-0 ${
+                              isListFull
+                                ? 'bg-rose-950/80 border-rose-500/40 text-rose-300'
+                                : 'bg-gray-900 border-gray-700 text-gray-400'
+                            }`}
+                          >
+                            {list.seriesIds.length} / 30 Seri
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newLists = readingLists.map(l => {
+                              if (l.id === list.id) {
+                                if (isInList) {
+                                  return { ...l, seriesIds: l.seriesIds.filter(id => id !== series.id) };
+                                } else {
+                                  if (l.seriesIds.length >= 30) {
+                                    showToast({
+                                      title: 'Liste Dolu (30/30)',
+                                      message: 'Bir okuma listesine en fazla 30 seri eklenebilir.',
+                                      type: 'warning'
+                                    });
+                                    return l;
+                                  }
+                                  return { ...l, seriesIds: [...l.seriesIds, series.id] };
+                                }
+                              }
+                              return l;
+                            });
+                            setReadingLists(newLists);
+                          }}
+                          className={`inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1.5 rounded-lg border transition cursor-pointer ${
+                            isInList
+                              ? 'text-emerald-300 bg-emerald-950/80 border-emerald-500/50 hover:bg-emerald-900/70'
+                              : isListFull
+                              ? 'text-gray-500 bg-gray-900 border-gray-800 cursor-not-allowed'
+                              : 'text-purple-200 bg-purple-950/70 border-purple-500/40 hover:bg-purple-800/80 hover:text-white'
+                          }`}
+                        >
+                          {isInList ? (
+                            <>
+                              <Check size={14} />
+                              <span>Eklendi</span>
+                            </>
+                          ) : (
+                            <>
+                              <Plus size={14} />
+                              <span>{isListFull ? 'Dolu' : 'Ekle'}</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(`"${list.name}" listesini silmek istediğinize emin misiniz?`)) {
+                              setReadingLists(readingLists.filter(l => l.id !== list.id));
+                              showToast({
+                                title: 'Liste Silindi',
+                                message: `"${list.name}" okuma listesi kaldırıldı.`,
+                                type: 'info'
+                              });
+                            }
+                          }}
+                          className="p-1.5 rounded-lg text-gray-500 hover:text-rose-400 hover:bg-rose-950/40 transition cursor-pointer"
+                          title="Listeyi Sil"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
                   );
                 })
               )}
             </div>
+
+            {/* Footer */}
             <div className="px-4 py-3 border-t border-gray-800 bg-gray-950/50 flex items-center justify-between gap-3">
               <span className="text-xs text-gray-400 font-medium truncate">
                 {isAddedToAnyList
                   ? `✓ ${activeReadingLists.map(l => l.name).join(', ')}`
-                  : 'Bir liste seçin'}
+                  : 'Bir liste seçin veya yeni oluşturun'}
               </span>
               <button
                 type="button"
@@ -1061,7 +1198,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   setIsListModalOpen(false);
                   if (isAddedToAnyList) {
                     showToast({
-                      title: 'Listeye Eklendi',
+                      title: 'Listeye Kaydedildi',
                       message: `"${series.title}" (${activeReadingLists.map(l => l.name).join(', ')}) listenize kaydedildi.`,
                       type: 'success'
                     });
