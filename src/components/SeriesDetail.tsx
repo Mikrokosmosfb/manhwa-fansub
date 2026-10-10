@@ -38,7 +38,7 @@ import { CommentsSection } from './CommentsSection';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
-import { sortChapters } from '../utils/chapterUtils';
+import { sortChapters, cleanNoticeText } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 interface SeriesDetailProps {
@@ -594,14 +594,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
         </div>
 
         {/* Compact Warning & Notice Banners Section (Only rendered if an active notice or warning exists) */}
-        {(series.notice || series.releaseDay || series.is18Plus || series.genres.includes('18+') || (series.ageRating && series.ageRating !== 'Genel')) && (
+        {(cleanNoticeText(series.notice) || series.releaseDay || series.is18Plus || series.genres.includes('18+') || (series.ageRating && series.ageRating !== 'Genel')) && (
           <div className="mt-4 space-y-2.5">
             {/* Translator / Admin Notice Banner */}
-            {(series.notice || series.releaseDay) && (
+            {(cleanNoticeText(series.notice) || series.releaseDay) && (
               <div className="bg-amber-950/50 border border-amber-500/40 rounded-xl p-3 sm:p-3.5 flex items-start gap-3 shadow-md">
                 <Megaphone size={18} className="text-amber-400 mt-0.5 flex-shrink-0" />
                 <div className="text-xs sm:text-sm text-amber-100 flex-1">
-                  {series.notice && <p className="font-medium leading-relaxed">{series.notice}</p>}
+                  {cleanNoticeText(series.notice) && <p className="font-medium leading-relaxed">{cleanNoticeText(series.notice)}</p>}
                   {series.releaseDay && (
                     <p className="mt-1 text-[11px] sm:text-xs text-amber-300/90 font-semibold flex items-center gap-1.5">
                       <Clock size={13} className="text-amber-400" />

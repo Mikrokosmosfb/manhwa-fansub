@@ -101,10 +101,16 @@ export function formatChapterDate(ch?: Partial<Chapter> | null): string {
 
 export function cleanNoticeText(text?: string | null): string {
   if (!text) return '';
-  return text
+  const cleaned = text
     .replace(/^(📢\s*)?(Çevirmen Notu|Editör Notu|Admin Notu|Seri Notu|Bölüm Notu|Bölüm Duyurusu|Duyuru|Not)\s*:\s*/i, '')
+    .replace(/Blogger Etiketleri\s*:.*$/im, '')
     .trim();
+  if (/^blogger etiketleri\s*:/i.test(cleaned)) {
+    return '';
+  }
+  return cleaned;
 }
+
 
 
 

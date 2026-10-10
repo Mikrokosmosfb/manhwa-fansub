@@ -754,8 +754,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             createdAt: Date.now() - (detSeries.chapterPosts.length - cIdx) * 1000,
             isNew: true,
             images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-            content: cleanContent.length > 30 ? cleanContent : undefined,
-            notice: post.tags.length > 0 ? `Blogger Etiketleri: ${post.tags.join(', ')}` : undefined
+            content: cleanContent.length > 30 ? cleanContent : undefined
           };
         });
 
@@ -869,8 +868,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         createdAt: Date.now() - (selectedPosts.length - index) * 1000,
         isNew: true,
         images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-        content: cleanContent.length > 30 ? cleanContent : undefined,
-        notice: post.tags.length > 0 ? `Blogger Etiketleri: ${post.tags.join(', ')}` : undefined
+        content: cleanContent.length > 30 ? cleanContent : undefined
       };
     });
 
@@ -1148,8 +1146,9 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   };
 
   const startEditingChapter = (seriesId: string, chapter: Chapter) => {
+    const cleanedNotice = chapter.notice?.replace(/Blogger Etiketleri\s*:.*$/im, '').trim() || undefined;
     setEditingChapterSeriesId(seriesId);
-    setEditingChapter({ ...chapter });
+    setEditingChapter({ ...chapter, notice: cleanedNotice });
     setEditingChapterImagesText(chapter.images ? chapter.images.join('\n') : '');
     setEditingChapterContentText(chapter.content || '');
   };
@@ -2922,7 +2921,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                                   Bölüm {ch.number}
                                 </span>
                                 <span className="font-bold text-gray-200 truncate">{ch.title}</span>
-                                {ch.notice && (
+                                {ch.notice && !/^blogger etiketleri\s*:/i.test(ch.notice.trim()) && (
                                   <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded truncate flex items-center gap-1">
                                     <MessageSquare size={10} />
                                     <span>{ch.notice}</span>

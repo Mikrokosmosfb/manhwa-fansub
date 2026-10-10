@@ -1046,7 +1046,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
           </div>
 
           {/* Chapter Specific Notice / Warning */}
-          {currentChapter.notice && (
+          {cleanNoticeText(currentChapter.notice) && (
             <div className="mt-4 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs rounded-2xl p-3.5 text-left font-medium flex items-start gap-2.5 shadow-sm">
               <div className="p-1.5 bg-amber-100 dark:bg-amber-900/60 rounded-xl text-amber-700 dark:text-amber-300 flex-shrink-0 mt-0.5">
                 <MessageSquare size={16} />
@@ -1059,7 +1059,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
           )}
 
           {/* Series Notice if no chapter notice */}
-          {!currentChapter.notice && series.notice && (
+          {!cleanNoticeText(currentChapter.notice) && cleanNoticeText(series.notice) && (
             <div className="mt-4 bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-500/30 text-purple-900 dark:text-purple-200 text-xs rounded-2xl p-3 text-left font-medium flex items-center gap-2.5">
               <div className="p-1.5 bg-purple-100 dark:bg-purple-900/60 rounded-xl text-purple-700 dark:text-purple-300 flex-shrink-0">
                 <Megaphone size={16} />
