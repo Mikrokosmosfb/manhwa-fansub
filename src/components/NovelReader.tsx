@@ -503,239 +503,245 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </>
       )}
 
-      {/* Customizable Reading Settings Panel */}
+      {/* Customizable Reading Settings Panel (Sticky right below the toolbar so it opens wherever you are in the chapter) */}
       {isSettingsOpen && (
-        <div className="max-w-4xl mx-auto px-4 mt-3">
-          <div className="bg-white dark:bg-purple-950/95 border border-purple-300 dark:border-purple-500/50 rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-white space-y-4">
-            
-            <div className="flex items-center justify-between border-b border-purple-200 dark:border-purple-800 pb-2">
-              <h3 className="font-extrabold text-sm uppercase tracking-wider text-purple-700 dark:text-purple-200 flex items-center gap-2">
-                <Settings size={16} />
-                Roman Okuma Ayarları
-              </h3>
-              <button
-                onClick={() => setIsSettingsOpen(false)}
-                className="text-xs text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white font-semibold"
-              >
-                Kapat
-              </button>
-            </div>
-
-            {/* Presets (Gündüz, Sepya, Gece) */}
-            <div>
-              <label className="text-[11px] uppercase font-bold text-slate-600 dark:text-purple-300 block mb-1.5">
-                Hazır Modlar
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateNovelSettings({ bgColor: '#ffffff', textColor: '#0f172a' })
-                  }
-                  className="py-2 rounded-xl font-bold text-xs bg-white text-slate-900 border border-slate-300 shadow hover:scale-102 transition"
-                >
-                  Gündüz
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateNovelSettings({ bgColor: '#F2EFE9', textColor: '#3d0807' })
-                  }
-                  className="py-2 rounded-xl font-bold text-xs bg-[#F2EFE9] text-[#3d0807] border border-amber-300 shadow hover:scale-102 transition"
-                >
-                  Sepya
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    updateNovelSettings({ bgColor: '#1e1e1e', textColor: '#dddddd' })
-                  }
-                  className="py-2 rounded-xl font-bold text-xs bg-[#1e1e1e] text-[#dddddd] border border-gray-700 shadow hover:scale-102 transition"
-                >
-                  Gece
-                </button>
-              </div>
-            </div>
-
-            {/* Dropdown Options Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-30"
+            onClick={() => setIsSettingsOpen(false)}
+          />
+          <div className="sticky top-[53px] sm:top-[57px] z-40 max-w-4xl mx-auto px-4 pt-2">
+            <div className="max-h-[calc(100vh-76px)] overflow-y-auto custom-scrollbar bg-white dark:bg-purple-950/95 border border-purple-300 dark:border-purple-500/50 rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-white space-y-4">
               
-              {/* Font Family */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Yazı Tipi</label>
-                <select
-                  value={novelSettings.fontFamily}
-                  onChange={e => updateNovelSettings({ fontFamily: e.target.value })}
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
+              <div className="flex items-center justify-between border-b border-purple-200 dark:border-purple-800 pb-2">
+                <h3 className="font-extrabold text-sm uppercase tracking-wider text-purple-700 dark:text-purple-200 flex items-center gap-2">
+                  <Settings size={16} />
+                  Roman Okuma Ayarları
+                </h3>
+                <button
+                  onClick={() => setIsSettingsOpen(false)}
+                  className="text-xs text-purple-600 dark:text-purple-300 hover:text-purple-900 dark:hover:text-white font-semibold cursor-pointer"
                 >
-                  <option value="Open Sans">Open Sans</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                  <option value="Courier New">Courier New</option>
-                </select>
+                  Kapat ✕
+                </button>
               </div>
 
-              {/* Line Height */}
+              {/* Presets (Gündüz, Sepya, Gece) */}
               <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Satır Aralığı</label>
-                <select
-                  value={novelSettings.lineHeight}
-                  onChange={e => updateNovelSettings({ lineHeight: e.target.value })}
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
-                >
-                  <option value="120%">120%</option>
-                  <option value="140%">140%</option>
-                  <option value="160%">160%</option>
-                  <option value="180%">180%</option>
-                </select>
-              </div>
-
-              {/* Text Align */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Yazı Hizalama</label>
-                <select
-                  value={novelSettings.textAlign}
-                  onChange={e =>
-                    updateNovelSettings({
-                      textAlign: e.target.value as NovelSettings['textAlign']
-                    })
-                  }
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
-                >
-                  <option value="left">Sola Yasla</option>
-                  <option value="center">Ortala</option>
-                  <option value="justify">İki Yana Yasla</option>
-                </select>
-              </div>
-
-              {/* Column Width */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Okuma Genişliği</label>
-                <select
-                  value={novelSettings.widthMode}
-                  onChange={e =>
-                    updateNovelSettings({
-                      widthMode: e.target.value as NovelSettings['widthMode']
-                    })
-                  }
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
-                >
-                  <option value="dar">Dar (Odaklı)</option>
-                  <option value="orta">Orta (Standart)</option>
-                  <option value="genis">Geniş (Serbest)</option>
-                </select>
-              </div>
-
-            </div>
-
-            {/* Font Size & Speed Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-purple-200 dark:border-purple-800/80">
-              
-              {/* Font Size Selector */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold text-xs mb-1">
-                  Yazı Boyutu ({novelSettings.fontSize}px)
+                <label className="text-[11px] uppercase font-bold text-slate-600 dark:text-purple-300 block mb-1.5">
+                  Hazır Modlar
                 </label>
-                <div className="flex items-center gap-2 bg-slate-100 dark:bg-purple-900/60 p-1.5 rounded-xl border border-purple-200 dark:border-purple-700/50">
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() =>
-                      updateNovelSettings({
-                        fontSize: Math.max(12, novelSettings.fontSize - 2)
-                      })
+                      updateNovelSettings({ bgColor: '#ffffff', textColor: '#0f172a' })
                     }
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg text-xs transition shadow-sm"
+                    className="py-2 rounded-xl font-bold text-xs bg-white text-slate-900 border border-slate-300 shadow hover:scale-102 transition"
                   >
-                    A-
+                    Gündüz
                   </button>
-                  <span className="font-extrabold px-3 text-sm text-slate-900 dark:text-white">{novelSettings.fontSize}px</span>
                   <button
                     type="button"
                     onClick={() =>
-                      updateNovelSettings({
-                        fontSize: Math.min(32, novelSettings.fontSize + 2)
-                      })
+                      updateNovelSettings({ bgColor: '#F2EFE9', textColor: '#3d0807' })
                     }
-                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg text-xs transition shadow-sm"
+                    className="py-2 rounded-xl font-bold text-xs bg-[#F2EFE9] text-[#3d0807] border border-amber-300 shadow hover:scale-102 transition"
                   >
-                    A+
+                    Sepya
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateNovelSettings({ bgColor: '#1e1e1e', textColor: '#dddddd' })
+                    }
+                    className="py-2 rounded-xl font-bold text-xs bg-[#1e1e1e] text-[#dddddd] border border-gray-700 shadow hover:scale-102 transition"
+                  >
+                    Gece
                   </button>
                 </div>
               </div>
 
-              {/* Scroll Speed Selector */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold text-xs mb-1">
-                  Kaydırma Hızı ({novelSettings.scrollSpeed}x)
-                </label>
-                <div className="flex gap-1 bg-slate-100 dark:bg-purple-900/60 p-1.5 rounded-xl border border-purple-200 dark:border-purple-700/50">
-                  {[1, 2, 3].map(speed => (
+              {/* Dropdown Options Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                
+                {/* Font Family */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Yazı Tipi</label>
+                  <select
+                    value={novelSettings.fontFamily}
+                    onChange={e => updateNovelSettings({ fontFamily: e.target.value })}
+                    className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
+                  >
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Montserrat">Montserrat</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Courier New">Courier New</option>
+                  </select>
+                </div>
+
+                {/* Line Height */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Satır Aralığı</label>
+                  <select
+                    value={novelSettings.lineHeight}
+                    onChange={e => updateNovelSettings({ lineHeight: e.target.value })}
+                    className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
+                  >
+                    <option value="120%">120%</option>
+                    <option value="140%">140%</option>
+                    <option value="160%">160%</option>
+                    <option value="180%">180%</option>
+                  </select>
+                </div>
+
+                {/* Text Align */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Yazı Hizalama</label>
+                  <select
+                    value={novelSettings.textAlign}
+                    onChange={e =>
+                      updateNovelSettings({
+                        textAlign: e.target.value as NovelSettings['textAlign']
+                      })
+                    }
+                    className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
+                  >
+                    <option value="left">Sola Yasla</option>
+                    <option value="center">Ortala</option>
+                    <option value="justify">İki Yana Yasla</option>
+                  </select>
+                </div>
+
+                {/* Column Width */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1">Okuma Genişliği</label>
+                  <select
+                    value={novelSettings.widthMode}
+                    onChange={e =>
+                      updateNovelSettings({
+                        widthMode: e.target.value as NovelSettings['widthMode']
+                      })
+                    }
+                    className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-2 font-medium"
+                  >
+                    <option value="dar">Dar (Odaklı)</option>
+                    <option value="orta">Orta (Standart)</option>
+                    <option value="genis">Geniş (Serbest)</option>
+                  </select>
+                </div>
+
+              </div>
+
+              {/* Font Size & Speed Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-purple-200 dark:border-purple-800/80">
+                
+                {/* Font Size Selector */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold text-xs mb-1">
+                    Yazı Boyutu ({novelSettings.fontSize}px)
+                  </label>
+                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-purple-900/60 p-1.5 rounded-xl border border-purple-200 dark:border-purple-700/50">
                     <button
-                      key={speed}
                       type="button"
-                      onClick={() => updateNovelSettings({ scrollSpeed: speed })}
-                      className={`flex-1 py-1 rounded-lg font-bold text-xs transition ${
-                        novelSettings.scrollSpeed === speed
-                          ? 'bg-purple-600 text-white shadow-sm'
-                          : 'bg-slate-200 dark:bg-purple-800/50 text-slate-800 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-700'
-                      }`}
+                      onClick={() =>
+                        updateNovelSettings({
+                          fontSize: Math.max(12, novelSettings.fontSize - 2)
+                        })
+                      }
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg text-xs transition shadow-sm"
                     >
-                      {speed}x
+                      A-
                     </button>
-                  ))}
+                    <span className="font-extrabold px-3 text-sm text-slate-900 dark:text-white">{novelSettings.fontSize}px</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateNovelSettings({
+                          fontSize: Math.min(32, novelSettings.fontSize + 2)
+                        })
+                      }
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 rounded-lg text-xs transition shadow-sm"
+                    >
+                      A+
+                    </button>
+                  </div>
                 </div>
+
+                {/* Scroll Speed Selector */}
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold text-xs mb-1">
+                    Kaydırma Hızı ({novelSettings.scrollSpeed}x)
+                  </label>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-purple-900/60 p-1.5 rounded-xl border border-purple-200 dark:border-purple-700/50">
+                    {[1, 2, 3].map(speed => (
+                      <button
+                        key={speed}
+                        type="button"
+                        onClick={() => updateNovelSettings({ scrollSpeed: speed })}
+                        className={`flex-1 py-1 rounded-lg font-bold text-xs transition ${
+                          novelSettings.scrollSpeed === speed
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-slate-200 dark:bg-purple-800/50 text-slate-800 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-700'
+                        }`}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Action Buttons Row */}
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-purple-200 dark:border-purple-800">
+                <button
+                  type="button"
+                  onClick={() => setIsAutoScrolling(!isAutoScrolling)}
+                  className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition ${
+                    isAutoScrolling ? 'bg-amber-600 text-black' : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }`}
+                >
+                  {isAutoScrolling ? <Pause size={14} /> : <Play size={14} />}
+                  {isAutoScrolling ? 'Kaydırmayı Durdur' : 'Otomatik Kaydır'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => updateNovelSettings({ isBold: !novelSettings.isBold })}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition ${
+                    novelSettings.isBold
+                      ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                      : 'bg-slate-100 dark:bg-purple-900/60 border-purple-200 dark:border-purple-700 text-slate-800 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-800'
+                  }`}
+                >
+                  <Type size={14} />
+                  {novelSettings.isBold ? 'Kalın Yazı (Açık)' : 'Kalın Yazı'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className="py-2 px-3 rounded-xl font-bold text-xs bg-slate-100 dark:bg-purple-900/60 border border-purple-200 dark:border-purple-700 text-slate-800 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-800 flex items-center justify-center gap-1 transition"
+                >
+                  <Maximize size={14} />
+                  Tam Ekran
+                </button>
+
+                <button
+                  type="button"
+                  onClick={resetNovelSettings}
+                  className="py-2 px-3 rounded-xl font-bold text-xs bg-rose-50 dark:bg-red-900/40 hover:bg-rose-100 dark:hover:bg-red-900/70 border border-rose-200 dark:border-red-700 text-rose-700 dark:text-red-200 flex items-center justify-center gap-1 transition"
+                >
+                  <RotateCcw size={14} />
+                  Varsayılan
+                </button>
               </div>
 
             </div>
-
-            {/* Action Buttons Row */}
-            <div className="flex flex-wrap gap-2 pt-2 border-t border-purple-200 dark:border-purple-800">
-              <button
-                type="button"
-                onClick={() => setIsAutoScrolling(!isAutoScrolling)}
-                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition ${
-                  isAutoScrolling ? 'bg-amber-600 text-black' : 'bg-purple-600 hover:bg-purple-700 text-white'
-                }`}
-              >
-                {isAutoScrolling ? <Pause size={14} /> : <Play size={14} />}
-                {isAutoScrolling ? 'Kaydırmayı Durdur' : 'Otomatik Kaydır'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => updateNovelSettings({ isBold: !novelSettings.isBold })}
-                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition ${
-                  novelSettings.isBold
-                    ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
-                    : 'bg-slate-100 dark:bg-purple-900/60 border-purple-200 dark:border-purple-700 text-slate-800 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-800'
-                }`}
-              >
-                <Type size={14} />
-                {novelSettings.isBold ? 'Kalın Yazı (Açık)' : 'Kalın Yazı'}
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="py-2 px-3 rounded-xl font-bold text-xs bg-slate-100 dark:bg-purple-900/60 border border-purple-200 dark:border-purple-700 text-slate-800 dark:text-white hover:bg-purple-50 dark:hover:bg-purple-800 flex items-center justify-center gap-1 transition"
-              >
-                <Maximize size={14} />
-                Tam Ekran
-              </button>
-
-              <button
-                type="button"
-                onClick={resetNovelSettings}
-                className="py-2 px-3 rounded-xl font-bold text-xs bg-rose-50 dark:bg-red-900/40 hover:bg-rose-100 dark:hover:bg-red-900/70 border border-rose-200 dark:border-red-700 text-rose-700 dark:text-red-200 flex items-center justify-center gap-1 transition"
-              >
-                <RotateCcw size={14} />
-                Varsayılan
-              </button>
-            </div>
-
           </div>
-        </div>
+        </>
       )}
 
       {/* Floating Stop Auto Scroll button */}

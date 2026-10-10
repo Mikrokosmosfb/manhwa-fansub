@@ -489,7 +489,7 @@ const AppLayout: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
 
   return (
-    <div className={`min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white overflow-x-hidden w-full max-w-full pb-20 md:pb-0 transition-colors duration-200 ${
+    <div className={`min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white overflow-x-clip w-full max-w-full pb-20 md:pb-0 transition-colors duration-200 ${
       theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-950 text-gray-100'
     }`}>
       {/* Cosmic Entrance Loading Splash Screen */}
@@ -511,7 +511,7 @@ const AppLayout: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 w-full max-w-full overflow-hidden">
+      <main className="flex-1 w-full max-w-full overflow-x-clip">
         <MainContent />
       </main>
 
