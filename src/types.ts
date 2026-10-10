@@ -100,11 +100,24 @@ export interface Chapter {
   publishedDate: string; // e.g. "2026-07-20" or "2 saat önce"
   createdAt?: number; // Epoch timestamp for exact time-based 12/24 hour "YENİ" tag calculations
   isNew?: boolean;
+  is18Plus?: boolean; // 18+ / Smut chapter flag managed by admin
   specialTag?: 'Sezon Finali' | 'Final' | 'Ekstra' | 'Yan Bölüm' | 'Özel' | string;
   content?: string; // HTML or Markdown text for Web Novels
   images?: string[]; // Image URLs for Manhwa/Webtoons
   notice?: string; // Chapter specific admin notice / translator note
 }
+
+export const isChapter18Plus = (ch?: Chapter | null): boolean => {
+  if (!ch) return false;
+  if (ch.is18Plus) return true;
+  if (ch.specialTag) {
+    const t = ch.specialTag.toLowerCase().trim();
+    if (t === '18+' || t === '+18' || t.includes('18+') || t.includes('smut') || t.includes('nsfw')) {
+      return true;
+    }
+  }
+  return false;
+};
 
 export interface Series {
   id: string;

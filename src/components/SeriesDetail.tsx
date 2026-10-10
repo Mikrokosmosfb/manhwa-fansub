@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Chapter, isSeries18Plus } from '../types';
+import { Chapter, isSeries18Plus, isChapter18Plus } from '../types';
 import {
   Bookmark,
   Star,
@@ -74,7 +74,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
   const [chapterSearch, setChapterSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [chapterFilter, setChapterFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const [chapterFilter, setChapterFilter] = useState<'all' | 'unread' | 'read' | '18plus'>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [isExpandedList, setIsExpandedList] = useState<boolean>(false);
   const CHAPTERS_PER_PAGE = 15;
@@ -158,6 +158,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   };
 
   const readChaptersCount = series.chapters.filter(c => isChapterRead(c)).length;
+  const adultChaptersCount = series.chapters.filter(c => isChapter18Plus(c)).length;
 
   // Filter and sort chapters
   const filteredChapters = series.chapters.filter(c => {
@@ -168,6 +169,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
     if (chapterFilter === 'read') return isChapterRead(c);
     if (chapterFilter === 'unread') return !isChapterRead(c);
+    if (chapterFilter === '18plus') return isChapter18Plus(c);
     return true;
   });
 
@@ -666,70 +668,84 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
         })()}
 
         {/* Chapters Section */}
-        <div className="mt-8 bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-8 shadow-xl">
-          
+        <div className="mt-8 relative overflow-hidden bg-gradient-to-b from-gray-900/95 via-gray-950/95 to-gray-950 border border-purple-500/25 rounded-2xl sm:rounded-3xl p-4 sm:p-7 shadow-[0_12px_40px_rgba(0,0,0,0.6)]">
+          {/* Top Ambient Glow Line */}
+          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-purple-400/70 to-transparent" />
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+
           {/* Header & Controls */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-800">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-purple-900/60 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-inner">
-                <BookOpen size={20} />
+          <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-purple-500/15">
+            {/* Left: Title, Count, Reading Progress & Bulk Actions */}
+            <div className="flex items-start sm:items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.2)] flex-shrink-0">
+                <Layers size={20} />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-bold text-white">
+                  <h2 className="text-base sm:text-xl font-black tracking-tight text-white">
                     Bölüm Listesi
                   </h2>
-                  <span className="text-xs bg-purple-950 text-purple-300 border border-purple-800 px-2.5 py-0.5 rounded-full font-extrabold">
+                  <span className="text-[11px] bg-purple-950/90 text-purple-200 border border-purple-500/40 px-2.5 py-0.5 rounded-lg font-extrabold shadow-sm">
                     {series.chapters.length} Bölüm
                   </span>
-                  <span className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
-                    readChaptersCount > 0
-                      ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/50'
-                      : 'bg-gray-950 text-gray-400 border-gray-800'
-                  }`}>
+                  {adultChaptersCount > 0 && (
+                    <span className="text-[11px] bg-rose-950/90 text-rose-200 border border-rose-500/40 px-2 py-0.5 rounded-lg font-extrabold flex items-center gap-1 shadow-sm">
+                      <Flame size={11} className="text-rose-400 fill-rose-400/30" />
+                      {adultChaptersCount} Smut (18+)
+                    </span>
+                  )}
+                  <span
+                    className={`text-[11px] px-2.5 py-0.5 rounded-lg font-extrabold border flex items-center gap-1 ${
+                      readChaptersCount > 0
+                        ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40'
+                        : 'bg-gray-950/90 text-gray-400 border-gray-800'
+                    }`}
+                  >
                     <CheckCircle2 size={12} className={readChaptersCount > 0 ? 'text-emerald-400' : 'text-gray-500'} />
                     <span>{readChaptersCount} / {series.chapters.length} Okundu</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                  <span>Okumak istediğiniz bölümü seçin.</span>
-                  {/* Bulk Read Actions */}
-                  <div className="flex items-center gap-2">
+
+                <div className="flex items-center gap-2.5 mt-1.5 text-xs text-gray-400 flex-wrap">
+                  {/* Reading Progress Mini Bar */}
+                  {series.chapters.length > 0 && (
+                    <div className="w-24 sm:w-32 h-1.5 bg-gray-800/90 rounded-full overflow-hidden border border-purple-500/15">
+                      <div
+                        className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.round((readChaptersCount / series.chapters.length) * 100))}%` }}
+                      />
+                    </div>
+                  )}
+                  <button
+                    onClick={() => markAllChaptersRead(series.id)}
+                    className="text-[11px] font-bold text-purple-300 hover:text-white bg-purple-950/50 hover:bg-purple-900/70 border border-purple-500/25 px-2 py-0.5 rounded-md transition cursor-pointer flex items-center gap-1"
+                    title="Tüm bölümleri okundu olarak işaretle"
+                  >
+                    <Check size={11} />
+                    Tümünü Okundu Yap
+                  </button>
+                  {readChaptersCount > 0 && (
                     <button
-                      onClick={() => markAllChaptersRead(series.id)}
-                      className="text-[11px] font-bold text-purple-300 hover:text-purple-100 hover:underline cursor-pointer flex items-center gap-1"
-                      title="Tüm bölümleri okundu olarak işaretle"
+                      onClick={() => markAllChaptersUnread(series.id)}
+                      className="text-[11px] font-bold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/25 px-2 py-0.5 rounded-md transition cursor-pointer"
+                      title="Okundu işaretlerini temizle"
                     >
-                      <Check size={12} />
-                      Tümünü Okundu Yap
+                      Sıfırla
                     </button>
-                    {readChaptersCount > 0 && (
-                      <>
-                        <span className="text-gray-600">•</span>
-                        <button
-                          onClick={() => markAllChaptersUnread(series.id)}
-                          className="text-[11px] font-bold text-rose-400/90 hover:text-rose-300 hover:underline cursor-pointer"
-                          title="Okundu işaretlerini temizle"
-                        >
-                          Sıfırla
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Controls: Search, Filter Tabs & Sort */}
+            {/* Right: Filter Tabs, Search & Sort */}
             <div className="flex flex-wrap items-center gap-2">
-              
-              {/* Filter Tabs (Hepsi, Okunmayanlar, Okunanlar) */}
-              <div className="flex items-center bg-gray-950 border border-purple-500/30 rounded-xl p-1 text-xs">
+              {/* Filter Tabs */}
+              <div className="flex items-center bg-gray-950/90 border border-purple-500/25 rounded-xl p-1 text-xs shadow-inner overflow-x-auto max-w-full">
                 <button
                   onClick={() => { setChapterFilter('all'); setCurrentPage(1); }}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                  className={`px-2.5 py-1.5 rounded-lg font-extrabold transition cursor-pointer whitespace-nowrap ${
                     chapterFilter === 'all'
-                      ? 'bg-purple-600 text-white shadow'
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
@@ -737,61 +753,84 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                 </button>
                 <button
                   onClick={() => { setChapterFilter('unread'); setCurrentPage(1); }}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                  className={`px-2.5 py-1.5 rounded-lg font-extrabold transition cursor-pointer whitespace-nowrap ${
                     chapterFilter === 'unread'
-                      ? 'bg-purple-600 text-white shadow'
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  Okunmayanlar
+                  Okunmayan
                 </button>
                 <button
                   onClick={() => { setChapterFilter('read'); setCurrentPage(1); }}
-                  className={`px-2.5 py-1 rounded-lg font-bold transition ${
+                  className={`px-2.5 py-1.5 rounded-lg font-extrabold transition cursor-pointer whitespace-nowrap ${
                     chapterFilter === 'read'
-                      ? 'bg-purple-600 text-white shadow'
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  Okunanlar
+                  Okunan
                 </button>
+                {adultChaptersCount > 0 && (
+                  <button
+                    onClick={() => { setChapterFilter('18plus'); setCurrentPage(1); }}
+                    className={`px-2.5 py-1.5 rounded-lg font-black transition cursor-pointer whitespace-nowrap flex items-center gap-1 ${
+                      chapterFilter === '18plus'
+                        ? 'bg-gradient-to-r from-rose-600 to-red-600 text-white shadow'
+                        : 'text-rose-400 hover:text-rose-200'
+                    }`}
+                  >
+                    <Flame size={11} className="fill-current" />
+                    18+
+                  </button>
+                )}
               </div>
 
               {/* Search Chapter */}
-              <div className="relative flex-1 sm:w-44">
+              <div className="relative flex-1 sm:w-44 min-w-[140px]">
                 <input
                   type="text"
                   placeholder="Bölüm ara..."
                   value={chapterSearch}
                   onChange={e => { setChapterSearch(e.target.value); setCurrentPage(1); }}
-                  className="w-full bg-gray-950 border border-purple-500/30 text-white placeholder-gray-500 text-xs rounded-xl pl-8 pr-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-purple-400"
+                  className="w-full bg-gray-950/90 border border-purple-500/25 text-white placeholder-gray-500 text-xs rounded-xl pl-8 pr-7 py-2 focus:outline-none focus:border-purple-400 transition"
                 />
-                <Search size={14} className="absolute left-2.5 top-2 text-gray-400" />
+                <Search size={14} className="absolute left-2.5 top-2.5 text-purple-400/70" />
+                {chapterSearch && (
+                  <button
+                    type="button"
+                    onClick={() => { setChapterSearch(''); setCurrentPage(1); }}
+                    className="absolute right-2 top-2 text-gray-500 hover:text-white"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
               </div>
 
               {/* Sort Order Button */}
               <button
                 onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-                className="bg-purple-900/70 hover:bg-purple-800 border border-purple-500/40 text-purple-200 font-semibold text-xs px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition"
+                className="bg-gray-950/90 hover:bg-purple-950/80 border border-purple-500/30 hover:border-purple-400/60 text-purple-200 font-extrabold text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-sm"
                 title="Sıralamayı Değiştir"
               >
-                <ArrowUpDown size={14} />
-                <span>{sortOrder === 'desc' ? 'Son -> İlk' : 'İlk -> Son'}</span>
+                <ArrowUpDown size={14} className="text-purple-400" />
+                <span>{sortOrder === 'desc' ? 'Yeniden Eskiye' : 'Eskiden Yeniye'}</span>
               </button>
             </div>
           </div>
 
           {/* Chapters Grid / List */}
           {sortedChapters.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 text-sm bg-gray-950/40 rounded-2xl border border-gray-800">
+            <div className="p-10 text-center text-gray-400 text-sm bg-gray-950/50 rounded-2xl border border-purple-500/15">
               Aranan kriterlere uygun bölüm bulunamadı.
             </div>
           ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
                 {paginatedChapters.map(ch => {
                   const isRead = isChapterRead(ch);
                   const isNew24h = checkIsChapterNew(ch, 24);
+                  const is18 = isChapter18Plus(ch);
 
                   // Pick a varied preview image frame from chapter images or fallback to series cover
                   const getChapterPreview = (chapter: Chapter): string => {
@@ -814,75 +853,135 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                       onClick={() =>
                         setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })
                       }
-                      className={`p-3 rounded-2xl border text-left flex items-center justify-between transition group hover:-translate-y-0.5 cursor-pointer relative ${
+                      className={`group relative overflow-hidden p-3 sm:p-3.5 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
                         isRead
-                          ? 'bg-purple-950/40 border-purple-500/40 text-purple-100'
-                          : 'bg-gray-950/70 hover:bg-purple-950/50 border-gray-800 hover:border-purple-500/40 text-gray-200'
+                          ? 'bg-gray-950/50 hover:bg-purple-950/35 border-emerald-500/25 hover:border-emerald-400/50 text-gray-300'
+                          : is18
+                          ? 'bg-gradient-to-r from-rose-950/35 via-gray-950/95 to-purple-950/30 hover:from-rose-950/55 hover:to-purple-950/50 border-rose-500/35 hover:border-rose-400/70 text-gray-100 shadow-[0_2px_14px_rgba(244,63,94,0.08)]'
+                          : 'bg-gradient-to-r from-gray-900/90 via-gray-950/95 to-gray-900/90 hover:from-purple-950/60 hover:via-gray-900/95 hover:to-indigo-950/60 border-purple-500/20 hover:border-purple-400/55 text-gray-100 shadow-sm hover:shadow-[0_4px_20px_rgba(168,85,247,0.14)]'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                        {/* Chapter Frame Preview Thumbnail */}
-                        <div className="relative w-11 h-11 rounded-xl overflow-hidden bg-gray-900 border border-purple-500/30 flex-shrink-0 group-hover:border-purple-400 transition">
+                      {/* Left glowing indicator bar */}
+                      <div
+                        className={`absolute left-0 top-2.5 bottom-2.5 w-1 rounded-r-full transition-all ${
+                          is18
+                            ? 'bg-gradient-to-b from-rose-500 to-red-600 shadow-[0_0_8px_rgba(244,63,94,0.8)]'
+                            : isRead
+                            ? 'bg-gradient-to-b from-emerald-400 to-teal-500'
+                            : 'bg-gradient-to-b from-purple-500 to-indigo-500 opacity-50 group-hover:opacity-100'
+                        }`}
+                      />
+
+                      <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
+                        {/* Stylized Chapter Number Emblem with Dimmed Cover Backdrop */}
+                        <div
+                          className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex-shrink-0 flex flex-col items-center justify-center border transition-all ${
+                            is18
+                              ? 'bg-rose-950/80 border-rose-500/50 group-hover:border-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.2)]'
+                              : isRead
+                              ? 'bg-emerald-950/60 border-emerald-500/40'
+                              : 'bg-gray-900 border-purple-500/35 group-hover:border-purple-400'
+                          }`}
+                        >
                           <img
                             src={previewImg}
-                            alt="Bölüm Karesi"
-                            className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
+                            alt=""
+                            loading="lazy"
+                            className="absolute inset-0 w-full h-full object-cover opacity-25 group-hover:opacity-35 group-hover:scale-110 transition duration-300"
                           />
-                          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-gray-950/90 via-gray-950/50 to-gray-950/60" />
+                          <span className="relative z-10 text-[9px] uppercase font-bold tracking-wider text-gray-400 leading-none">
+                            BÖLÜM
+                          </span>
+                          <span
+                            className={`relative z-10 text-xs sm:text-sm font-black leading-tight mt-0.5 ${
+                              is18
+                                ? 'text-rose-200'
+                                : isRead
+                                ? 'text-emerald-300'
+                                : 'text-purple-200 group-hover:text-white'
+                            }`}
+                          >
+                            {ch.number}
+                          </span>
                         </div>
 
+                        {/* Chapter Title, Front 18+ Icon & Metadata */}
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-xs sm:text-sm text-gray-100 group-hover:text-purple-300 truncate">
+                          {/* Row 1: Front 18+ Icon Badge + Chapter Title */}
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {is18 && (
+                              <span
+                                className="inline-flex items-center gap-0.5 bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white text-[10px] font-black px-1.5 py-0.5 rounded-md border border-rose-400/70 shadow-[0_0_10px_rgba(244,63,94,0.4)] flex-shrink-0 tracking-tight"
+                                title="18+ Yetişkin / Smut İçerikli Bölüm"
+                              >
+                                <Flame size={10} className="fill-amber-200 text-amber-200 flex-shrink-0" />
+                                <span>18+</span>
+                              </span>
+                            )}
+                            <span
+                              className={`font-extrabold text-xs sm:text-[13px] truncate transition-colors ${
+                                isRead
+                                  ? 'text-gray-300 group-hover:text-white'
+                                  : is18
+                                  ? 'text-rose-100 group-hover:text-white'
+                                  : 'text-white group-hover:text-purple-200'
+                              }`}
+                            >
                               {ch.title}
                             </span>
-                            
+                          </div>
+
+                          {/* Row 2: Date & Secondary Badges */}
+                          <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                            <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                              <Calendar size={10} className="text-purple-400/70 flex-shrink-0" />
+                              <span>{ch.publishedDate}</span>
+                            </span>
+
                             {/* Chapter Special Tag Badge */}
-                            {ch.specialTag && (
-                              <ChapterSpecialBadge tag={ch.specialTag} size="sm" />
+                            {ch.specialTag && ch.specialTag.toLowerCase().trim() !== '18+' && (
+                              <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
                             )}
 
                             {/* 24-Hour "YENİ" Tag */}
                             {isNew24h && (
-                              <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase flex-shrink-0 animate-pulse shadow-sm flex items-center gap-0.5">
-                                <Flame size={10} />
+                              <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded uppercase flex-shrink-0 animate-pulse shadow-sm flex items-center gap-0.5">
+                                <Flame size={9} />
                                 YENİ
                               </span>
                             )}
 
                             {/* "OKUNDU" Tag */}
                             {isRead && (
-                              <span className="bg-emerald-950/90 text-emerald-400 border border-emerald-700/60 text-[9px] font-extrabold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 flex-shrink-0 shadow-sm">
-                                <Check size={10} />
+                              <span className="bg-emerald-950/90 text-emerald-400 border border-emerald-700/60 text-[9px] font-extrabold px-1.5 py-0.2 rounded flex items-center gap-0.5 flex-shrink-0">
+                                <Check size={9} />
                                 OKUNDU
                               </span>
                             )}
 
                             {/* Non-logged in lock badge */}
                             {!user && (
-                              <span className="bg-purple-950/90 text-amber-300 border border-purple-500/40 text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 flex-shrink-0 shadow-sm">
-                                <Lock size={9} />
+                              <span className="bg-purple-950/90 text-amber-300 border border-purple-500/40 text-[9px] font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5 flex-shrink-0">
+                                <Lock size={8} />
                                 Üyelik
                               </span>
                             )}
                           </div>
-
-                          <span className="text-[11px] text-gray-400 block mt-0.5">
-                            {ch.publishedDate}
-                          </span>
                         </div>
                       </div>
 
+                      {/* Right Read Toggle Button */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleChapterRead(series.id, ch.id, ch.number, ch.title);
                         }}
-                        className={`p-1.5 rounded-xl border transition flex-shrink-0 cursor-pointer ${
+                        className={`p-2 rounded-xl border transition flex-shrink-0 cursor-pointer ${
                           isRead
                             ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-400 hover:bg-rose-950/80 hover:border-rose-500/50 hover:text-rose-400'
-                            : 'bg-gray-900/80 border-gray-800 text-gray-500 hover:text-purple-300 hover:border-purple-500/40 opacity-50 group-hover:opacity-100'
+                            : 'bg-gray-900/90 border-purple-500/20 text-gray-500 hover:text-purple-200 hover:border-purple-400/50 opacity-70 group-hover:opacity-100'
                         }`}
                         title={isRead ? 'Okunmadı olarak işaretle' : 'Okundu olarak işaretle'}
                       >
@@ -894,19 +993,19 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
               </div>
 
               {/* Pagination & List Expansion Toggle Bar */}
-              <div className="pt-4 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="pt-4 border-t border-purple-500/15 flex flex-col sm:flex-row items-center justify-between gap-3">
                 <button
                   onClick={() => setIsExpandedList(!isExpandedList)}
-                  className="w-full sm:w-auto bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200 font-bold text-xs px-4 py-2 rounded-xl flex items-center justify-center gap-2 transition"
+                  className="w-full sm:w-auto bg-gradient-to-r from-purple-950/80 via-indigo-950/80 to-purple-950/80 hover:from-purple-900 hover:to-indigo-900 border border-purple-500/35 hover:border-purple-400/60 text-purple-200 hover:text-white font-extrabold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
                 >
                   {isExpandedList ? (
                     <>
-                      <ChevronUp size={16} />
+                      <ChevronUp size={15} />
                       Bölüm Listesini Daralt (Sayfalı Görünüm)
                     </>
                   ) : (
                     <>
-                      <ChevronDown size={16} />
+                      <ChevronDown size={15} />
                       Tüm Bölümleri Aç ({totalChaptersCount} Bölüm)
                     </>
                   )}
@@ -914,15 +1013,15 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {!isExpandedList && totalPages > 1 && (
                   <div className="flex items-center gap-1.5 overflow-x-auto max-w-full py-1">
-                    <span className="text-xs text-gray-400 mr-1">Sayfa:</span>
+                    <span className="text-xs text-gray-400 mr-1 font-semibold">Sayfa:</span>
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
                       <button
                         key={page}
                         onClick={() => setCurrentPage(page)}
-                        className={`w-8 h-8 rounded-xl text-xs font-bold transition flex items-center justify-center ${
+                        className={`w-8 h-8 rounded-xl text-xs font-extrabold transition flex items-center justify-center cursor-pointer ${
                           currentPage === page
-                            ? 'bg-purple-600 text-white shadow-md'
-                            : 'bg-gray-950 text-gray-400 hover:bg-gray-800 hover:text-white border border-gray-800'
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md border border-purple-400/50'
+                            : 'bg-gray-950 text-gray-400 hover:bg-purple-950/60 hover:text-white border border-purple-500/20'
                         }`}
                       >
                         {page}

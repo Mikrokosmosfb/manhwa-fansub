@@ -4,7 +4,7 @@ import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
 import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
-import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin } from '../types';
+import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
 import {
   Plus,
@@ -1002,6 +1002,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const [chapterNumber, setChapterNumber] = useState('');
   const [chapterTitle, setChapterTitle] = useState('');
   const [chapterSpecialTag, setChapterSpecialTag] = useState('');
+  const [chapterIs18Plus, setChapterIs18Plus] = useState(false);
   const [bulkSpecialTag, setBulkSpecialTag] = useState('');
   const [chapterImages, setChapterImages] = useState(''); // newline separated URLs
   const [chapterContent, setChapterContent] = useState(''); // for web novels
@@ -1213,6 +1214,19 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setTimeout(() => setChapterNotifSentNotice(null), 4500);
   };
 
+  const handleToggleChapter18Plus = (seriesId: string, chapterId: string) => {
+    const targetSeries = seriesList.find(s => s.id === seriesId);
+    if (!targetSeries) return;
+    const updatedChapters = targetSeries.chapters.map(c =>
+      c.id === chapterId ? { ...c, is18Plus: !isChapter18Plus(c) } : c
+    );
+    addOrUpdateSeries({
+      ...targetSeries,
+      updatedAt: new Date().toISOString(),
+      chapters: updatedChapters
+    });
+  };
+
   const handleDeleteChapter = (seriesId: string, chapterId: string, chapterNumber: number) => {
     const targetSeries = seriesList.find(s => s.id === seriesId);
     if (!targetSeries) return;
@@ -1350,6 +1364,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       publishedDate: new Date().toISOString().slice(0, 10),
       createdAt: Date.now(),
       isNew: true,
+      is18Plus: chapterIs18Plus || undefined,
       specialTag: chapterSpecialTag.trim() || undefined,
       images: extractedImages.length > 0 ? extractedImages : undefined,
       content: chapterContent.trim() || undefined,
@@ -1371,6 +1386,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
     setChapterNumber('');
     setChapterTitle('');
+    setChapterSpecialTag('');
+    setChapterIs18Plus(false);
     setChapterImages('');
     setChapterContent('');
     setChapterNotice('');
@@ -2113,6 +2130,38 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             </div>
           </div>
 
+          {/* 18+ / Smut Chapter Toggle */}
+          <div
+            onClick={() => setChapterIs18Plus(!chapterIs18Plus)}
+            className={`rounded-2xl p-3.5 border flex items-center justify-between gap-3 cursor-pointer select-none transition ${
+              chapterIs18Plus
+                ? 'bg-rose-950/60 border-rose-500/60 shadow-[0_0_20px_rgba(244,63,94,0.15)]'
+                : 'bg-gray-950/70 border-rose-800/40 hover:border-rose-500/40'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-xs px-2.5 py-1 rounded-lg flex items-center gap-1 shadow">
+                <Flame size={13} className="fill-amber-200 text-amber-200" />
+                18+
+              </span>
+              <div>
+                <h4 className="text-xs font-extrabold text-rose-200">
+                  18+ / Smut Bölümü Etiketi
+                </h4>
+                <p className="text-[11px] text-gray-400">
+                  İşaretlendiğinde seri sayfasındaki bölüm listesinde bu bölümün önünde kırmızı <strong className="text-rose-300">18+</strong> ikonu görünür.
+                </p>
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={chapterIs18Plus}
+              onChange={e => setChapterIs18Plus(e.target.checked)}
+              onClick={e => e.stopPropagation()}
+              className="w-5 h-5 accent-rose-600 rounded cursor-pointer flex-shrink-0"
+            />
+          </div>
+
           <div>
             <label className="block text-purple-300 font-bold text-xs mb-1">
               Bölüm Özel Duyurusu / Notu (Opsiyonel)
@@ -2378,6 +2427,38 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       </button>
                     ))}
                   </div>
+                </div>
+
+                {/* 18+ / Smut Chapter Toggle in Edit Modal */}
+                <div
+                  onClick={() => setEditingChapter({ ...editingChapter, is18Plus: !editingChapter.is18Plus })}
+                  className={`rounded-2xl p-3 border flex items-center justify-between gap-3 cursor-pointer select-none transition ${
+                    editingChapter.is18Plus
+                      ? 'bg-rose-950/60 border-rose-500/60 shadow-[0_0_15px_rgba(244,63,94,0.2)]'
+                      : 'bg-gray-950/80 border-rose-800/40 hover:border-rose-500/40'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-xs px-2 py-0.5 rounded-md flex items-center gap-1 shadow">
+                      <Flame size={12} className="fill-amber-200 text-amber-200" />
+                      18+
+                    </span>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-rose-200">
+                        18+ / Smut Bölümü Etiketi
+                      </h4>
+                      <p className="text-[10px] text-gray-400">
+                        Aktif edildiğinde bölüm listesinde bu bölümün önünde <strong className="text-rose-300">18+</strong> ikonu yer alır.
+                      </p>
+                    </div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(editingChapter.is18Plus)}
+                    onChange={e => setEditingChapter({ ...editingChapter, is18Plus: e.target.checked })}
+                    onClick={e => e.stopPropagation()}
+                    className="w-5 h-5 accent-rose-600 rounded cursor-pointer flex-shrink-0"
+                  />
                 </div>
 
                 <div>
@@ -2927,42 +3008,68 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                         <p className="text-xs text-gray-400 py-3 text-center">Bu seride henüz yayınlanmış bölüm bulunmamaktadır.</p>
                       ) : (
                         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                          {sortedChapters.map(ch => (
-                            <div
-                              key={ch.id}
-                              className="bg-gray-900 hover:bg-purple-950/40 border border-gray-800 hover:border-purple-600/40 rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs transition"
-                            >
-                              <div className="min-w-0 flex items-center gap-2">
-                                <span className="bg-purple-950 border border-purple-700/50 text-purple-200 font-extrabold text-[11px] px-2 py-0.5 rounded">
-                                  Bölüm {ch.number}
-                                </span>
-                                <span className="font-bold text-gray-200 truncate">{ch.title}</span>
-                                {ch.notice && !/^blogger etiketleri\s*:/i.test(ch.notice.trim()) && (
-                                  <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded truncate flex items-center gap-1">
-                                    <MessageSquare size={10} />
-                                    <span>{ch.notice}</span>
+                          {sortedChapters.map(ch => {
+                            const isCh18 = isChapter18Plus(ch);
+                            return (
+                              <div
+                                key={ch.id}
+                                className={`bg-gray-900 hover:bg-purple-950/40 border rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs transition ${
+                                  isCh18
+                                    ? 'border-rose-500/40 hover:border-rose-400/60'
+                                    : 'border-gray-800 hover:border-purple-600/40'
+                                }`}
+                              >
+                                <div className="min-w-0 flex items-center gap-2">
+                                  <span className="bg-purple-950 border border-purple-700/50 text-purple-200 font-extrabold text-[11px] px-2 py-0.5 rounded flex-shrink-0">
+                                    Bölüm {ch.number}
                                   </span>
-                                )}
-                              </div>
+                                  {isCh18 && (
+                                    <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0 shadow-sm">
+                                      <Flame size={10} className="fill-amber-200 text-amber-200" />
+                                      18+
+                                    </span>
+                                  )}
+                                  <span className="font-bold text-gray-200 truncate">{ch.title}</span>
+                                  {ch.notice && !/^blogger etiketleri\s*:/i.test(ch.notice.trim()) && (
+                                    <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded truncate flex items-center gap-1">
+                                      <MessageSquare size={10} />
+                                      <span>{ch.notice}</span>
+                                    </span>
+                                  )}
+                                </div>
 
-                              <div className="flex items-center gap-1.5 flex-shrink-0">
-                                <button
-                                  onClick={() => startEditingChapter(s.id, ch)}
-                                  className="bg-purple-900/80 hover:bg-purple-800 text-purple-100 text-[11px] font-bold px-2.5 py-1 rounded-md border border-purple-600/50 flex items-center gap-1 transition"
-                                >
-                                  <Edit2 size={12} />
-                                  Düzenle
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteChapter(s.id, ch.id, ch.number)}
-                                  className="bg-red-950 hover:bg-red-900 text-red-300 text-[11px] font-bold p-1 rounded-md border border-red-800 transition"
-                                  title="Bölümü Sil"
-                                >
-                                  <Trash2 size={12} />
-                                </button>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleChapter18Plus(s.id, ch.id)}
+                                    className={`text-[11px] font-black px-2 py-1 rounded-md border flex items-center gap-1 transition cursor-pointer ${
+                                      isCh18
+                                        ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-sm'
+                                        : 'bg-gray-950 hover:bg-rose-950/70 text-gray-400 hover:text-rose-200 border-gray-700 hover:border-rose-500/50'
+                                    }`}
+                                    title={isCh18 ? '18+ (Smut) etiketini kaldır' : 'Bu bölümü 18+ (Smut) olarak işaretle'}
+                                  >
+                                    <Flame size={11} className={isCh18 ? 'fill-amber-200 text-amber-200' : ''} />
+                                    18+
+                                  </button>
+                                  <button
+                                    onClick={() => startEditingChapter(s.id, ch)}
+                                    className="bg-purple-900/80 hover:bg-purple-800 text-purple-100 text-[11px] font-bold px-2.5 py-1 rounded-md border border-purple-600/50 flex items-center gap-1 transition"
+                                  >
+                                    <Edit2 size={12} />
+                                    Düzenle
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteChapter(s.id, ch.id, ch.number)}
+                                    className="bg-red-950 hover:bg-red-900 text-red-300 text-[11px] font-bold p-1 rounded-md border border-red-800 transition"
+                                    title="Bölümü Sil"
+                                  >
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>
