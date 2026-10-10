@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { NovelSettings } from '../types';
+import { NovelSettings, isChapter18Plus } from '../types';
 import { extractImageUrls, isHtmlContent, isIframeUrl } from '../utils/imageParser';
 import {
   Settings,
@@ -312,6 +312,14 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             >
               <div className="flex items-center gap-1.5 min-w-0 flex-1">
                 <Layers size={14} className="text-purple-500 dark:text-purple-400 shrink-0" />
+                {isChapter18Plus(currentChapter) && (
+                  <span
+                    className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white text-[10px] font-black tracking-wider border border-red-400/50 shadow-sm shadow-red-900/40 shrink-0"
+                    title="18+ Yetişkin İçerikli Bölüm (Smut)"
+                  >
+                    18+
+                  </span>
+                )}
                 <span className="truncate">{currentChapter.title}</span>
                 {currentChapter.specialTag && (
                   <span className="hidden xs:inline-flex shrink-0">
@@ -470,6 +478,14 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                         }`} />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
+                            {isChapter18Plus(ch) && (
+                              <span
+                                className="inline-flex items-center justify-center px-1.5 py-0.5 rounded-md bg-gradient-to-r from-red-600 to-rose-600 text-white text-[10px] font-black tracking-wider border border-red-400/50 shadow-sm shadow-red-900/40 shrink-0"
+                                title="18+ Yetişkin İçerikli Bölüm (Smut)"
+                              >
+                                18+
+                              </span>
+                            )}
                             <span className="truncate font-semibold">{ch.title}</span>
                             {ch.specialTag && (
                               <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
