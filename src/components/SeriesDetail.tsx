@@ -259,15 +259,15 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
         <div className="bg-gray-900/95 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-4 sm:p-8 shadow-2xl backdrop-blur-md">
           <div className="flex flex-col md:flex-row gap-5 md:gap-8">
             
-            {/* Cover Column: ONLY on mobile (-mt-20, w-48, elevated floating), normal on desktop (md:mt-0, md:w-56) */}
-            <div className="flex flex-col items-center flex-shrink-0 -mt-20 md:mt-0 w-full md:w-56">
-              <div className="relative w-48 sm:w-52 md:w-56 shadow-[0_16px_40px_rgba(0,0,0,0.85)] md:shadow-2xl rounded-2xl overflow-hidden border-2 border-purple-400/40 ring-4 ring-gray-950/80 md:ring-0 transition-transform duration-300">
+            {/* Cover Column: ONLY on mobile (-mt-20, w-48, elevated floating), spacious on desktop (md:mt-0, md:w-64 lg:w-72) */}
+            <div className="flex flex-col items-center flex-shrink-0 -mt-20 md:mt-0 w-full md:w-64 lg:w-72">
+              <div className="relative w-48 sm:w-52 md:w-full shadow-[0_16px_40px_rgba(0,0,0,0.85)] md:shadow-2xl rounded-2xl overflow-hidden border-2 border-purple-400/40 ring-4 ring-gray-950/80 md:ring-0 transition-transform duration-300">
                 <DiagonalStatusRibbon status={series.status} size="lg" />
                 <img
                   src={getOptimizedImageUrl(series.coverImage, { width: 400, height: 533, quality: 80 })}
                   alt={series.title}
-                  width="224"
-                  height="298"
+                  width="288"
+                  height="384"
                   decoding="async"
                   referrerPolicy="no-referrer"
                   onError={(e) => handleImageError(e, series.coverImage, series.title)}
@@ -286,28 +286,34 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                 )}
               </div>
 
-              {/* Compact Control & Metadata Panel under Cover */}
-              <div className="w-full max-w-[300px] sm:max-w-[320px] md:max-w-none mt-3 space-y-2">
-                {/* 1. Unified 3-Column Stat Bar: Puan | Durum | Format */}
-                <div className="w-full bg-gray-950/90 border border-purple-500/25 rounded-xl py-2 px-1 grid grid-cols-3 divide-x divide-purple-500/20 text-center shadow-inner">
-                  <div className="px-1 flex flex-col items-center justify-center">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Puan</span>
-                    <div className="flex items-center justify-center gap-1 mt-0.5 text-amber-400 font-extrabold text-xs">
-                      <Star size={12} className="fill-amber-400 text-amber-400 flex-shrink-0" />
-                      <span>{series.rating}</span>
+              {/* Spacious & Cohesive Control Panel under Cover */}
+              <div className="w-full max-w-[340px] sm:max-w-[360px] md:max-w-none mt-4 space-y-2.5">
+                {/* 1. Unified Rating + 2-Column Info Card (Never truncates 'Devam Ediyor') */}
+                <div className="w-full bg-gray-950/90 border border-purple-500/30 rounded-xl overflow-hidden shadow-md">
+                  {/* Top Row: 5 Stars + Numeric Score */}
+                  <div className="px-3.5 py-2.5 flex items-center justify-between bg-gradient-to-r from-purple-950/40 via-gray-950/80 to-indigo-950/40">
+                    <div className="flex items-center gap-1">
+                      {renderStars(series.rating)}
+                    </div>
+                    <div className="flex items-baseline gap-0.5">
+                      <span className="text-amber-400 font-extrabold text-sm">{series.rating}</span>
+                      <span className="text-[11px] text-gray-400 font-semibold">/ 10</span>
                     </div>
                   </div>
-                  <div className="px-1 flex flex-col items-center justify-center min-w-0">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Durum</span>
-                    <span className="mt-0.5 text-purple-200 font-extrabold text-[11px] truncate w-full">
-                      {series.status}
-                    </span>
-                  </div>
-                  <div className="px-1 flex flex-col items-center justify-center min-w-0">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">Format</span>
-                    <span className="mt-0.5 text-indigo-200 font-extrabold text-[11px] truncate w-full">
-                      {series.type}
-                    </span>
+                  {/* Bottom Row: 2 Spacious Columns for Durum & Format */}
+                  <div className="grid grid-cols-2 divide-x divide-purple-500/20 border-t border-purple-500/20 bg-gray-950/90 text-center">
+                    <div className="py-2 px-2.5 flex flex-col items-center justify-center">
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Durum</span>
+                      <span className="mt-0.5 text-purple-200 font-extrabold text-xs sm:text-[13px]">
+                        {series.status}
+                      </span>
+                    </div>
+                    <div className="py-2 px-2.5 flex flex-col items-center justify-center">
+                      <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">Format</span>
+                      <span className="mt-0.5 text-indigo-200 font-extrabold text-xs sm:text-[13px]">
+                        {series.type}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -320,14 +326,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     }
                     setIsBookmarkModalOpen(true);
                   }}
-                  className={`w-full flex items-center justify-center gap-2 py-2.5 px-3.5 rounded-xl font-extrabold text-xs sm:text-[13px] shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
+                  className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-extrabold text-xs sm:text-sm shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
                     selectedFolderNames.length > 0
                       ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-purple-600 hover:from-purple-500 hover:to-fuchsia-500 text-white ring-1 ring-purple-300/60 shadow-purple-900/40'
                       : 'bg-gradient-to-r from-purple-700 via-indigo-700 to-purple-800 hover:from-purple-600 hover:to-indigo-600 text-white border border-purple-400/30'
                   }`}
                 >
                   <Bookmark
-                    size={15}
+                    size={16}
                     className={`flex-shrink-0 ${selectedFolderNames.length > 0 ? 'fill-current' : ''}`}
                   />
                   <span className="truncate">
@@ -337,8 +343,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   </span>
                 </button>
 
-                {/* 3. Compact 3-Column Secondary Action Dock: Liste | Takip | Wallpaper */}
-                <div className="grid grid-cols-3 gap-1.5">
+                {/* 3. Spacious 2-Column Row: Listeye Ekle & Takip Et */}
+                <div className="grid grid-cols-2 gap-2.5">
                   {/* Listeye Ekle */}
                   <button
                     onClick={() => {
@@ -348,10 +354,10 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                       }
                       setIsListModalOpen(true);
                     }}
-                    className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl font-bold text-[11px] transition-all active:scale-95 cursor-pointer border ${
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-[13px] transition-all active:scale-95 cursor-pointer border ${
                       isAddedToAnyList
                         ? 'bg-purple-900/70 hover:bg-purple-800/80 border-purple-400/60 text-white shadow-sm'
-                        : 'bg-gray-950/90 hover:bg-purple-950/70 border-purple-500/25 text-purple-200 hover:text-white hover:border-purple-400/50'
+                        : 'bg-gray-950/90 hover:bg-purple-950/70 border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/50'
                     }`}
                     title={
                       isAddedToAnyList
@@ -359,22 +365,18 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         : 'Seriyi okuma listelerinize ekleyin'
                     }
                   >
-                    <div className="flex items-center gap-1">
-                      <BookOpen size={14} className={isAddedToAnyList ? 'text-purple-300' : 'text-purple-400'} />
-                      {isAddedToAnyList && <Check size={12} className="text-emerald-400 stroke-[3]" />}
-                    </div>
-                    <span className="truncate w-full text-center leading-tight">
-                      {isAddedToAnyList ? 'Listede' : 'Listeye Ekle'}
-                    </span>
+                    <BookOpen size={15} className={`flex-shrink-0 ${isAddedToAnyList ? 'text-purple-300' : 'text-purple-400'}`} />
+                    <span>{isAddedToAnyList ? 'Listede' : 'Listeye Ekle'}</span>
+                    {isAddedToAnyList && <Check size={14} className="text-emerald-400 stroke-[3] flex-shrink-0" />}
                   </button>
 
                   {/* Takip Et */}
                   <button
                     onClick={() => toggleFollowSeries(series.id)}
-                    className={`flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl font-bold text-[11px] transition-all active:scale-95 cursor-pointer border ${
+                    className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-[13px] transition-all active:scale-95 cursor-pointer border ${
                       isFollowingSeries(series.id)
                         ? 'bg-emerald-950/75 hover:bg-emerald-900/80 border-emerald-500/50 text-emerald-300 shadow-sm'
-                        : 'bg-gray-950/90 hover:bg-purple-950/70 border-purple-500/25 text-purple-200 hover:text-white hover:border-purple-400/50'
+                        : 'bg-gray-950/90 hover:bg-purple-950/70 border-purple-500/30 text-purple-200 hover:text-white hover:border-purple-400/50'
                     }`}
                     title={
                       isFollowingSeries(series.id)
@@ -382,31 +384,30 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         : 'Yeni bölümler yüklendiğinde bildirim almak için seriyi takip edin.'
                     }
                   >
-                    <div className="flex items-center gap-1">
-                      {isFollowingSeries(series.id) ? (
-                        <>
-                          <BellRing size={14} className="text-emerald-400 fill-emerald-500/20" />
-                          <Check size={12} className="text-emerald-400 stroke-[3]" />
-                        </>
-                      ) : (
-                        <Bell size={14} className="text-purple-400" />
-                      )}
-                    </div>
-                    <span className="truncate w-full text-center leading-tight">
-                      {isFollowingSeries(series.id) ? 'Takipte' : 'Takip Et'}
-                    </span>
-                  </button>
-
-                  {/* Wallpaperlar */}
-                  <button
-                    onClick={() => setView({ type: 'wallpapers', seriesId: series.id })}
-                    className="flex flex-col items-center justify-center gap-1 py-2 px-1.5 rounded-xl font-bold text-[11px] transition-all active:scale-95 cursor-pointer bg-gray-950/90 hover:bg-pink-950/50 border border-pink-500/30 text-pink-200 hover:text-white hover:border-pink-400/60"
-                    title="Bu serinin yüksek çözünürlüklü duvar kağıtlarını görüntüle"
-                  >
-                    <ImageIcon size={14} className="text-pink-400" />
-                    <span className="truncate w-full text-center leading-tight">Wallpaper</span>
+                    {isFollowingSeries(series.id) ? (
+                      <>
+                        <BellRing size={15} className="text-emerald-400 fill-emerald-500/20 flex-shrink-0" />
+                        <span>Takipte</span>
+                        <Check size={14} className="text-emerald-400 stroke-[3] flex-shrink-0" />
+                      </>
+                    ) : (
+                      <>
+                        <Bell size={15} className="text-purple-400 flex-shrink-0" />
+                        <span>Takip Et</span>
+                      </>
+                    )}
                   </button>
                 </div>
+
+                {/* 4. Full-Width Wallpaper Button */}
+                <button
+                  onClick={() => setView({ type: 'wallpapers', seriesId: series.id })}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-[13px] transition-all active:scale-[0.98] cursor-pointer bg-gray-950/90 hover:bg-pink-950/50 border border-pink-500/30 text-pink-200 hover:text-white hover:border-pink-400/60 shadow-sm"
+                  title="Bu serinin yüksek çözünürlüklü duvar kağıtlarını görüntüle"
+                >
+                  <ImageIcon size={15} className="text-pink-400 flex-shrink-0" />
+                  <span>Serinin Wallpaperları</span>
+                </button>
               </div>
             </div>
 
