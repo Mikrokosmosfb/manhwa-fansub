@@ -2,16 +2,22 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { extractImageUrls, isIframeUrl } from '../utils/imageParser';
 import {
+  Settings,
   ChevronLeft,
   ChevronRight,
   List,
   AlertTriangle,
   ArrowLeft,
-  CheckCheck,
   Columns,
   Rows,
   Sparkles,
-  Maximize2,
+  Maximize,
+  RotateCcw,
+  Play,
+  Pause,
+  ZoomIn,
+  ZoomOut,
+  Sun,
   Scroll,
   BookOpen,
   MessageSquare,
@@ -24,11 +30,11 @@ import {
   Calendar,
   Layers,
   ChevronDown,
-  Info,
-  CheckCircle2
+  CheckCircle2,
+  MousePointerClick,
+  Eye
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
-import { RecruitmentBanner } from './RecruitmentBanner';
 
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { AdBannerBlock } from './AdScriptRunner';
@@ -39,6 +45,30 @@ interface ManhwaReaderProps {
   seriesId: string;
   chapterId: string;
 }
+
+interface ManhwaSettings {
+  widthMode: 'dar' | 'standart' | 'genis' | 'tam';
+  zoomPercent: number;
+  bgTheme: 'uzay' | 'oled' | 'gri' | 'sepya';
+  pageGap: number; // 0, 4, 12, 24 (px)
+  brightness: number; // 55 to 100 (%)
+  imageQuality: 'yuksek' | 'dengeli' | 'tasarruf';
+  scrollSpeed: number; // 1, 2, 3, 4
+  showProgressBar: boolean;
+  tapToScroll: boolean;
+}
+
+const DEFAULT_MANHWA_SETTINGS: ManhwaSettings = {
+  widthMode: 'standart',
+  zoomPercent: 100,
+  bgTheme: 'uzay',
+  pageGap: 0,
+  brightness: 100,
+  imageQuality: 'yuksek',
+  scrollSpeed: 2,
+  showProgressBar: true,
+  tapToScroll: false
+};
 
 export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId }) => {
   const {
@@ -65,6 +95,38 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   const [readerMode, setReaderMode] = useState<'webtoon' | 'manga'>(() => {
     return (localStorage.getItem('mk_manhwa_reader_mode') as 'webtoon' | 'manga') || 'webtoon';
   });
+
+  // Manhwa-specific reading settings persisted in localStorage
+  const [manhwaSettings, setManhwaSettings] = useState<ManhwaSettings>(() => {
+    try {
+      const saved = localStorage.getItem('mk_manhwa_settings');
+      if (saved) {
+        return { ...DEFAULT_MANHWA_SETTINGS, ...JSON.parse(saved) };
+      }
+    } catch {}
+    return DEFAULT_MANHWA_SETTINGS;
+  });
+
+  const updateManhwaSettings = (partial: Partial<ManhwaSettings>) => {
+    setManhwaSettings(prev => {
+      const updated = { ...prev, ...partial };
+      try {
+        localStorage.setItem('mk_manhwa_settings', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const resetManhwaSettings = () => {
+    setManhwaSettings(DEFAULT_MANHWA_SETTINGS);
+    try {
+      localStorage.setItem('mk_manhwa_settings', JSON.stringify(DEFAULT_MANHWA_SETTINGS));
+    } catch {}
+  };
+
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Current page index for Manga (single page) mode (0-indexed)
   const [currentPage, setCurrentPage] = useState(0);
@@ -141,6 +203,30 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     if (nextChapter && series && currentChapter) {
       markChapterCompleted(series.id, currentChapter.id, currentChapter.number, currentChapter.title);
       setView({ type: 'reader', seriesId: series.id, chapterId: nextChapter.id });
+    }
+  };
+
+  // Auto-scroll effect for Webtoon mode
+  useEffect(() => {
+    if (isAutoScrolling && readerMode === 'webtoon') {
+      const scrollStep = manhwaSettings.scrollSpeed * 1.8;
+      autoScrollRef.current = setInterval(() => {
+        window.scrollBy({ top: scrollStep, behavior: 'smooth' });
+      }, 30);
+    } else {
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current);
+    }
+
+    return () => {
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current);
+    };
+  }, [isAutoScrolling, manhwaSettings.scrollSpeed, readerMode]);
+
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
     }
   };
 
@@ -305,14 +391,62 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
       ? ((currentPage + 1) / totalPages) * 100
       : scrollProgress;
 
+  const getBgStyle = () => {
+    switch (manhwaSettings.bgTheme) {
+      case 'oled':
+        return '#000000';
+      case 'gri':
+        return '#18181b';
+      case 'sepya':
+        return '#1c1917';
+      default:
+        return '#030712';
+    }
+  };
+
+  const getContainerMaxWidth = () => {
+    switch (manhwaSettings.widthMode) {
+      case 'dar':
+        return '600px';
+      case 'genis':
+        return '1024px';
+      case 'tam':
+        return '100%';
+      default:
+        return '768px';
+    }
+  };
+
+  const getImageOptimizationConfig = () => {
+    switch (manhwaSettings.imageQuality) {
+      case 'yuksek':
+        return { width: 1600, quality: 92 };
+      case 'tasarruf':
+        return { width: 800, quality: 65 };
+      default:
+        return { width: 1200, quality: 82 };
+    }
+  };
+
+  const handleWebtoonImageTap = () => {
+    if (manhwaSettings.tapToScroll && readerMode === 'webtoon') {
+      window.scrollBy({ top: window.innerHeight * 0.75, behavior: 'smooth' });
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-gray-950 text-slate-900 dark:text-gray-100 pb-20 transition-colors">
+    <div
+      className="min-h-screen text-gray-100 pb-20 transition-colors duration-300"
+      style={{ backgroundColor: getBgStyle() }}
+    >
       
       {/* Top Reading Progress Bar */}
-      <div
-        className="fixed top-0 left-0 h-1.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-teal-400 z-50 transition-all duration-150"
-        style={{ width: `${effectiveProgress}%` }}
-      />
+      {manhwaSettings.showProgressBar && (
+        <div
+          className="fixed top-0 left-0 h-1.5 bg-gradient-to-r from-purple-500 via-indigo-500 to-teal-400 z-50 transition-all duration-150"
+          style={{ width: `${effectiveProgress}%` }}
+        />
+      )}
 
       {/* Reader Navigation Header */}
       <div className="reader-toolbar bg-white/95 dark:bg-gray-900/95 border-b border-purple-200 dark:border-purple-500/20 sticky top-0 z-40 backdrop-blur-md px-2.5 sm:px-4 py-2 shadow-md dark:shadow-lg">
@@ -385,8 +519,21 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </button>
           </div>
 
-          {/* Prev / Next Header Buttons */}
+          {/* Settings & Prev / Next Header Buttons */}
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl border flex items-center justify-center transition cursor-pointer ${
+                isSettingsOpen
+                  ? 'bg-purple-600 border-purple-400 text-white shadow-md shadow-purple-900/50'
+                  : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+              }`}
+              title="Manhwa Okuma Ayarları"
+            >
+              <Settings size={17} />
+            </button>
+
             <button
               type="button"
               disabled={!prevChapter}
@@ -547,8 +694,311 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
+      {/* Customizable Manhwa Reading Settings Panel */}
+      {isSettingsOpen && (
+        <div className="max-w-3xl mx-auto px-2.5 sm:px-4 mt-3">
+          <div className="bg-gray-900/95 border border-purple-500/40 rounded-2xl p-4 sm:p-5 shadow-2xl text-white space-y-4 backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+            
+            <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+              <h3 className="font-extrabold text-xs sm:text-sm uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                <Settings size={16} className="text-purple-400" />
+                Manhwa / Webtoon Okuma Ayarları
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(false)}
+                className="text-xs text-purple-300 hover:text-white font-bold px-2.5 py-1 rounded-lg bg-purple-950/60 border border-purple-500/30 transition cursor-pointer"
+              >
+                Kapat ✕
+              </button>
+            </div>
+
+            {/* Reading Mode & Background Theme */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Reading Mode */}
+              <div>
+                <label className="text-[11px] uppercase font-bold text-purple-300 block mb-1.5">
+                  Okuma Modu
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleReaderMode('webtoon')}
+                    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      readerMode === 'webtoon'
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md'
+                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50'
+                    }`}
+                  >
+                    <Rows size={14} />
+                    Webtoon (Dikey)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleReaderMode('manga')}
+                    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                      readerMode === 'manga'
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md'
+                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50'
+                    }`}
+                  >
+                    <Columns size={14} />
+                    Manga (Sayfalı)
+                  </button>
+                </div>
+              </div>
+
+              {/* Background Theme */}
+              <div>
+                <label className="text-[11px] uppercase font-bold text-purple-300 block mb-1.5">
+                  Arka Plan Rengi
+                </label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    { id: 'uzay', label: 'Uzay', bg: 'bg-[#030712]' },
+                    { id: 'oled', label: 'Saf Siyah', bg: 'bg-black' },
+                    { id: 'gri', label: 'Koyu Gri', bg: 'bg-zinc-900' },
+                    { id: 'sepya', label: 'Gece Sepya', bg: 'bg-stone-900' }
+                  ].map(theme => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      onClick={() => updateManhwaSettings({ bgTheme: theme.id as ManhwaSettings['bgTheme'] })}
+                      className={`py-2 px-1.5 rounded-xl font-bold text-[11px] border transition cursor-pointer ${theme.bg} ${
+                        manhwaSettings.bgTheme === theme.id
+                          ? 'border-purple-400 text-white ring-2 ring-purple-500/40'
+                          : 'border-gray-700 text-gray-400 hover:text-white'
+                      }`}
+                    >
+                      {theme.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Image Width, Page Gap, Image Quality */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-2 border-t border-purple-500/20">
+              {/* Image Width Preset */}
+              <div>
+                <label className="block text-purple-300 font-bold mb-1">Sayfa Genişliği</label>
+                <select
+                  value={manhwaSettings.widthMode}
+                  onChange={e =>
+                    updateManhwaSettings({
+                      widthMode: e.target.value as ManhwaSettings['widthMode'],
+                      zoomPercent: 100
+                    })
+                  }
+                  className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-2 font-semibold outline-none focus:border-purple-400"
+                >
+                  <option value="dar">Dar (Odaklı - 600px)</option>
+                  <option value="standart">Standart (768px)</option>
+                  <option value="genis">Geniş (1024px)</option>
+                  <option value="tam">Tam Ekran Genişliği (%100)</option>
+                </select>
+              </div>
+
+              {/* Page Gap (Webtoon mode) */}
+              <div>
+                <label className="block text-purple-300 font-bold mb-1">Sayfalar Arası Boşluk</label>
+                <select
+                  value={manhwaSettings.pageGap}
+                  onChange={e => updateManhwaSettings({ pageGap: Number(e.target.value) })}
+                  className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-2 font-semibold outline-none focus:border-purple-400"
+                >
+                  <option value={0}>Kesintisiz (0px - Önerilen)</option>
+                  <option value={4}>İnce Çizgi (4px)</option>
+                  <option value={12}>Normal Boşluk (12px)</option>
+                  <option value={24}>Geniş Boşluk (24px)</option>
+                </select>
+              </div>
+
+              {/* Image Quality */}
+              <div>
+                <label className="block text-purple-300 font-bold mb-1">Görsel Kalitesi</label>
+                <select
+                  value={manhwaSettings.imageQuality}
+                  onChange={e =>
+                    updateManhwaSettings({
+                      imageQuality: e.target.value as ManhwaSettings['imageQuality']
+                    })
+                  }
+                  className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-2 font-semibold outline-none focus:border-purple-400"
+                >
+                  <option value="yuksek">Yüksek Kalite (HD)</option>
+                  <option value="dengeli">Dengeli (Hızlı Yükleme)</option>
+                  <option value="tasarruf">Veri Tasarrufu (Düşük Kota)</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Zoom Scale, Brightness / Eye Comfort & Auto-Scroll Speed */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-purple-500/20">
+              {/* Custom Zoom Scale */}
+              <div>
+                <label className="block text-purple-300 font-bold text-xs mb-1">
+                  Görsel Yakınlaştırma (%{manhwaSettings.zoomPercent})
+                </label>
+                <div className="flex items-center gap-1.5 bg-gray-950 p-1.5 rounded-xl border border-purple-500/30">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateManhwaSettings({
+                        zoomPercent: Math.max(50, manhwaSettings.zoomPercent - 10)
+                      })
+                    }
+                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                  >
+                    <ZoomOut size={13} /> -
+                  </button>
+                  <span className="font-extrabold px-2 text-xs text-white min-w-[46px] text-center">
+                    %{manhwaSettings.zoomPercent}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateManhwaSettings({
+                        zoomPercent: Math.min(150, manhwaSettings.zoomPercent + 10)
+                      })
+                    }
+                    className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-bold py-1.5 rounded-lg text-xs flex items-center justify-center gap-1 transition cursor-pointer"
+                  >
+                    <ZoomIn size={13} /> +
+                  </button>
+                </div>
+              </div>
+
+              {/* Brightness / Eye Comfort Filter */}
+              <div>
+                <label className="block text-purple-300 font-bold text-xs mb-1 flex items-center gap-1">
+                  <Sun size={12} className="text-amber-400" />
+                  Görsel Parlaklığı (%{manhwaSettings.brightness})
+                </label>
+                <div className="flex gap-1 bg-gray-950 p-1.5 rounded-xl border border-purple-500/30">
+                  {[100, 85, 70, 55].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => updateManhwaSettings({ brightness: val })}
+                      className={`flex-1 py-1.5 rounded-lg font-bold text-[11px] transition cursor-pointer ${
+                        manhwaSettings.brightness === val
+                          ? 'bg-purple-600 text-white shadow-sm'
+                          : 'bg-gray-900 text-gray-300 hover:bg-purple-900/50'
+                      }`}
+                    >
+                      %{val}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Scroll Speed Selector */}
+              <div>
+                <label className="block text-purple-300 font-bold text-xs mb-1">
+                  Otomatik Kaydırma Hızı ({manhwaSettings.scrollSpeed}x)
+                </label>
+                <div className="flex gap-1 bg-gray-950 p-1.5 rounded-xl border border-purple-500/30">
+                  {[1, 2, 3, 4].map(speed => (
+                    <button
+                      key={speed}
+                      type="button"
+                      onClick={() => updateManhwaSettings({ scrollSpeed: speed })}
+                      className={`flex-1 py-1.5 rounded-lg font-bold text-xs transition cursor-pointer ${
+                        manhwaSettings.scrollSpeed === speed
+                          ? 'bg-purple-600 text-white shadow-sm'
+                          : 'bg-gray-900 text-gray-300 hover:bg-purple-900/50'
+                      }`}
+                    >
+                      {speed}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Action & Toggle Buttons Row */}
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-purple-500/20">
+              {readerMode === 'webtoon' && (
+                <button
+                  type="button"
+                  onClick={() => setIsAutoScrolling(!isAutoScrolling)}
+                  className={`flex-1 min-w-[140px] py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow transition cursor-pointer ${
+                    isAutoScrolling
+                      ? 'bg-amber-500 text-gray-950'
+                      : 'bg-purple-600 hover:bg-purple-500 text-white'
+                  }`}
+                >
+                  {isAutoScrolling ? <Pause size={14} /> : <Play size={14} />}
+                  {isAutoScrolling ? 'Kaydırmayı Durdur' : 'Otomatik Kaydır'}
+                </button>
+              )}
+
+              {readerMode === 'webtoon' && (
+                <button
+                  type="button"
+                  onClick={() => updateManhwaSettings({ tapToScroll: !manhwaSettings.tapToScroll })}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                    manhwaSettings.tapToScroll
+                      ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                      : 'bg-gray-950 border-purple-500/30 text-gray-300 hover:text-white'
+                  }`}
+                  title="Webtoon modunda görsele tıkladığınızda aşağı doğru kaydırır"
+                >
+                  <MousePointerClick size={14} />
+                  {manhwaSettings.tapToScroll ? 'Tıkla Kaydır (Açık)' : 'Tıkla Kaydır'}
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={() => updateManhwaSettings({ showProgressBar: !manhwaSettings.showProgressBar })}
+                className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 border transition cursor-pointer ${
+                  manhwaSettings.showProgressBar
+                    ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                    : 'bg-gray-950 border-purple-500/30 text-gray-300 hover:text-white'
+                }`}
+              >
+                <Eye size={14} />
+                {manhwaSettings.showProgressBar ? 'İlerleme Çubuğu (Açık)' : 'İlerleme Çubuğu'}
+              </button>
+
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                className="py-2 px-3 rounded-xl font-bold text-xs bg-gray-950 border border-purple-500/30 text-gray-200 hover:text-white hover:border-purple-400 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <Maximize size={14} />
+                Tam Ekran
+              </button>
+
+              <button
+                type="button"
+                onClick={resetManhwaSettings}
+                className="py-2 px-3 rounded-xl font-bold text-xs bg-red-950/50 hover:bg-red-900/70 border border-red-500/40 text-red-200 flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <RotateCcw size={14} />
+                Varsayılan
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Floating Stop Auto Scroll button */}
+      {isAutoScrolling && (
+        <button
+          onClick={() => setIsAutoScrolling(false)}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-red-600 hover:bg-red-500 text-white font-extrabold px-6 py-2.5 rounded-full shadow-2xl border-2 border-white/20 flex items-center gap-2 text-sm animate-pulse cursor-pointer"
+        >
+          <Pause size={18} />
+          Kaydırmayı Durdur
+        </button>
+      )}
+
       {/* Main Chapter Content Container */}
-      <div className="max-w-3xl mx-auto px-2 sm:px-4 py-6 space-y-4">
+      <div className="max-w-3xl mx-auto px-2 sm:px-4 pt-6 pb-3 space-y-4">
         
         {/* Title Header Card */}
         <div className="bg-white dark:bg-gray-900/90 border border-purple-200 dark:border-purple-500/25 p-4 sm:p-5 rounded-3xl shadow-md dark:shadow-xl">
@@ -635,12 +1085,29 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
           </button>
         </div>
 
-        {/* Comic Images - Webtoon vs Manga Mode Rendering */}
+      </div>
+
+      {/* Comic Images - Webtoon vs Manga Mode Rendering (Dynamic Width & Settings) */}
+      <div
+        className="mx-auto px-0 sm:px-2 transition-all duration-200"
+        style={{
+          maxWidth: getContainerMaxWidth(),
+          width: `${manhwaSettings.zoomPercent}%`,
+          filter: manhwaSettings.brightness < 100 ? `brightness(${manhwaSettings.brightness}%)` : undefined
+        }}
+      >
         {readerMode === 'webtoon' ? (
-          /* Webtoon Mode: Continuous Vertical Scroll (Seamless / Kesintisiz) */
-          <div className="flex flex-col items-center py-4">
+          /* Webtoon Mode: Continuous Vertical Scroll */
+          <div
+            onClick={handleWebtoonImageTap}
+            className={`flex flex-col items-center py-2 ${manhwaSettings.tapToScroll ? 'cursor-pointer' : ''}`}
+            style={{ gap: `${manhwaSettings.pageGap}px` }}
+          >
             {chapterImageUrls.length > 0 ? (
-              <div className="w-full max-w-3xl flex flex-col items-center">
+              <div
+                className="w-full flex flex-col items-center"
+                style={{ gap: `${manhwaSettings.pageGap}px` }}
+              >
                 {chapterImageUrls.map((imgUrl, idx) => (
                   isIframeUrl(imgUrl) ? (
                     <iframe
@@ -653,9 +1120,9 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                   ) : (
                     <img
                       key={idx}
-                      src={getOptimizedImageUrl(imgUrl, { width: 1200, quality: 82 })}
+                      src={getOptimizedImageUrl(imgUrl, getImageOptimizationConfig())}
                       alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
-                      className="w-full block border-none rounded-none shadow-none bg-gray-900"
+                      className="w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
                       loading={idx < 2 ? 'eager' : 'lazy'}
                       decoding="async"
                       referrerPolicy="no-referrer"
@@ -678,7 +1145,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
           </div>
         ) : (
           /* Manga Mode: Single Page Slider with Page Controls */
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 px-2 sm:px-0">
             {chapterImageUrls.length > 0 ? (
               <div className="flex flex-col items-center">
                 
@@ -733,7 +1200,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                 </div>
 
                 {/* Single Page Image display */}
-                <div className="relative group w-full max-w-2xl">
+                <div className="relative group w-full">
                   {isIframeUrl(chapterImageUrls[currentPage]) ? (
                     <iframe
                       src={chapterImageUrls[currentPage]}
@@ -743,7 +1210,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                     />
                   ) : (
                     <img
-                      src={getOptimizedImageUrl(chapterImageUrls[currentPage], { width: 1200, quality: 82 })}
+                      src={getOptimizedImageUrl(chapterImageUrls[currentPage], getImageOptimizationConfig())}
                       alt={`${currentChapter.title} - Sayfa ${currentPage + 1}`}
                       loading="lazy"
                       decoding="async"
@@ -806,7 +1273,10 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             )}
           </div>
         )}
+      </div>
 
+      {/* Bottom Container for Ads, Navigation & Comments */}
+      <div className="max-w-3xl mx-auto px-2 sm:px-4 space-y-4">
         {/* Reader Ad (If enabled in Admin) */}
         {adSettings?.readerAdEnabled && (
           <AdBannerBlock
@@ -872,9 +1342,6 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </div>
           )}
         </div>
-
-        {/* Recruitment / Lessons Banner */}
-        <RecruitmentBanner />
 
         {/* Comments */}
         <div className="mt-8">

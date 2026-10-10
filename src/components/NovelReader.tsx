@@ -28,7 +28,6 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
-import { RecruitmentBanner } from './RecruitmentBanner';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { AdBannerBlock } from './AdScriptRunner';
 import { sortChapters, formatChapterDate, cleanNoticeText } from '../utils/chapterUtils';
@@ -937,9 +936,6 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             </div>
           )}
         </div>
-
-        {/* Recruitment / Lessons Banner */}
-        <RecruitmentBanner />
 
         {/* Comments Section */}
         <div className="mt-12">
