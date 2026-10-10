@@ -60,7 +60,8 @@ export async function onRequest(context: any) {
                 images_json TEXT,
                 content TEXT,
                 notice TEXT,
-                created_at INTEGER
+                created_at INTEGER,
+                is_18_plus INTEGER DEFAULT 0
               );
             `),
             db.prepare(`
@@ -159,6 +160,7 @@ export async function onRequest(context: any) {
               );
             `),
           ]);
+          await db.prepare(`ALTER TABLE chapters ADD COLUMN is_18_plus INTEGER DEFAULT 0;`).run().catch(() => {});
         } catch (e) {
           console.error('Error initializing tables:', e);
         }
@@ -317,6 +319,7 @@ export async function onRequest(context: any) {
               title: ch.title,
               publishedDate: ch.published_date,
               specialTag: ch.special_tag,
+              is18Plus: Boolean(ch.is_18_plus),
               images: ch.images_json ? JSON.parse(ch.images_json) : [],
               content: ch.content,
               notice: ch.notice,
@@ -369,7 +372,7 @@ export async function onRequest(context: any) {
           return new Response(JSON.stringify({ error: 'Series object or seriesList required' }), { status: 400, headers });
         }
 
-        if (r2) {
+        if (false && r2) {
           try {
             let existingList: any[] = [];
             const item = await r2.get('data/series.json');
@@ -397,7 +400,7 @@ export async function onRequest(context: any) {
           }
         }
 
-        if (kv) {
+        if (false && kv) {
           try {
             let existingList: any[] = (await kv.get('data/series.json', 'json')) || [];
             const seriesMap = new Map<string, any>();
@@ -445,12 +448,12 @@ export async function onRequest(context: any) {
                   db.prepare(`
                     INSERT OR REPLACE INTO chapters (
                       id, series_id, chapter_number, title, published_date, special_tag,
-                      images_json, content, notice, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      images_json, content, notice, created_at, is_18_plus
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).bind(
                     ch.id, s.id, ch.number, ch.title || '', ch.publishedDate || '',
                     ch.specialTag || '', JSON.stringify(ch.images || []), ch.content || '',
-                    ch.notice || '', ch.createdAt || Date.now()
+                    ch.notice || '', ch.createdAt || Date.now(), ch.is18Plus ? 1 : 0
                   )
                 );
               }
@@ -460,7 +463,12 @@ export async function onRequest(context: any) {
           const BATCH_SIZE = 50;
           for (let i = 0; i < statements.length; i += BATCH_SIZE) {
             const chunk = statements.slice(i, i + BATCH_SIZE);
-            await db.batch(chunk);
+            try {
+              await db.batch(chunk);
+            } catch (batchErr: any) {
+              await db.prepare(`ALTER TABLE chapters ADD COLUMN is_18_plus INTEGER DEFAULT 0;`).run().catch(() => {});
+              await db.batch(chunk);
+            }
           }
 
           return new Response(JSON.stringify({

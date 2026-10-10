@@ -426,6 +426,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Helper to read/write persistent chapter 18+ flags map
+  const getChapter18PlusMap = (): Record<string, boolean> => {
+    try {
+      const raw = localStorage.getItem('mk_chapter_18plus_map');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const applyChapter18PlusMap = (list: Series[]): Series[] => {
+    const ch18Map = getChapter18PlusMap();
+    return list.map(s => ({
+      ...s,
+      chapters: (s.chapters || []).map(ch => ({
+        ...ch,
+        is18Plus: ch.id in ch18Map ? ch18Map[ch.id] : Boolean(ch.is18Plus)
+      }))
+    }));
+  };
+
   // Series List
   const [seriesList, setSeriesList] = useState<Series[]>(() => {
     const saved = localStorage.getItem('mk_series_list');
@@ -433,7 +454,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return sortSeriesByLatestRelease(parsed);
+          return sortSeriesByLatestRelease(applyChapter18PlusMap(parsed));
         }
       } catch (e) {}
     }
@@ -1529,11 +1550,31 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   // Attempt to fetch live Cloudflare R2/KV data on mount
   useEffect(() => {
-    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; adSettings?: any; siteBranding?: any; globalNotifications?: any[] }>('/api/series')
+    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; adSettings?: any; siteBranding?: any; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
       .then(data => {
         setIsLoadingSeries(false);
         if (data && data.success && Array.isArray(data.data)) {
-          setSeriesList(sortSeriesByLatestRelease(data.data));
+          const ch18Map = getChapter18PlusMap();
+          let mapUpdated = false;
+          const mergedSeries = data.data.map((s: Series) => ({
+            ...s,
+            chapters: (s.chapters || []).map((ch: Chapter) => {
+              if (ch.is18Plus && !(ch.id in ch18Map)) {
+                ch18Map[ch.id] = true;
+                mapUpdated = true;
+              }
+              return {
+                ...ch,
+                is18Plus: ch.id in ch18Map ? ch18Map[ch.id] : Boolean(ch.is18Plus)
+              };
+            })
+          }));
+          if (mapUpdated) {
+            try {
+              localStorage.setItem('mk_chapter_18plus_map', JSON.stringify(ch18Map));
+            } catch (e) {}
+          }
+          setSeriesList(sortSeriesByLatestRelease(mergedSeries));
           if (data.announcement) {
             setAnnouncementState(data.announcement);
             try {
@@ -1743,6 +1784,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
             title: ch.title,
             publishedDate: ch.publishedDate,
             specialTag: ch.specialTag,
+            is18Plus: ch.is18Plus,
+            notice: ch.notice,
             createdAt: ch.createdAt,
             images: [],
             content: undefined
@@ -2268,6 +2311,18 @@ const deleteShopItemAndStyle = (itemId: string) => {
         }
       }
     }
+
+    try {
+      const ch18Map = getChapter18PlusMap();
+      (newSeries.chapters || []).forEach(ch => {
+        if (ch.is18Plus) {
+          ch18Map[ch.id] = true;
+        } else {
+          ch18Map[ch.id] = false;
+        }
+      });
+      localStorage.setItem('mk_chapter_18plus_map', JSON.stringify(ch18Map));
+    } catch (e) {}
 
     setSeriesList(prev => {
       const filtered = prev.filter(s => s.id !== newSeries.id);

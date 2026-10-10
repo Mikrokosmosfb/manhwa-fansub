@@ -66,6 +66,7 @@ CREATE TABLE IF NOT EXISTS chapters (
     notice TEXT,
     views INTEGER DEFAULT 0,
     created_at INTEGER DEFAULT (unixepoch()),
+    is_18_plus INTEGER DEFAULT 0,
     FOREIGN KEY(series_id) REFERENCES series(id) ON DELETE CASCADE
 );
 

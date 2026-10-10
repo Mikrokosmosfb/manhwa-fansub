@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS chapters (
     content TEXT,
     notice TEXT,
     created_at INTEGER,
+    is_18_plus INTEGER DEFAULT 0,
     FOREIGN KEY(series_id) REFERENCES series(id) ON DELETE CASCADE
 );
 
@@ -131,11 +132,11 @@ CREATE TABLE IF NOT EXISTS theme_styles (
       const imagesJson = JSON.stringify(ch.images || []);
       sql += `INSERT OR REPLACE INTO chapters (
         id, series_id, chapter_number, title, published_date, special_tag,
-        images_json, content, notice, created_at
+        images_json, content, notice, created_at, is_18_plus
       ) VALUES (
         ${esc(ch.id)}, ${esc(s.id)}, ${ch.number}, ${esc(ch.title)}, ${esc(ch.publishedDate)},
         ${esc(ch.specialTag)}, ${esc(imagesJson)}, ${esc(ch.content)}, ${esc(ch.notice)},
-        ${ch.createdAt || Date.now()}
+        ${ch.createdAt || Date.now()}, ${ch.is18Plus ? 1 : 0}
       );\n`;
     });
   });
