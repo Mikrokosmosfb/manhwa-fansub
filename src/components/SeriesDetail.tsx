@@ -477,45 +477,69 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   const isLongSynopsis = synopsisText.length > 220 || synopsisText.split('\n').length > 3;
 
                   return (
-                    <div className="mt-4 pt-3 border-t border-purple-500/15">
-                      <div className="border-l-2 border-purple-500/70 bg-purple-950/20 rounded-r-xl pl-3.5 pr-3 py-2.5 sm:pl-4 sm:pr-4 sm:py-3 transition-colors">
-                        <div className="flex items-center gap-1.5 mb-1.5">
-                          <span className="text-[11px] uppercase font-extrabold tracking-wider text-purple-400">
-                            Hikaye Özeti
-                          </span>
-                        </div>
+                    <div className="mt-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-950/50 via-gray-950/90 to-indigo-950/50 border border-purple-500/35 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(168,85,247,0.2)] p-4 sm:p-5 transition-all duration-300">
+                      {/* Top glowing highlight line */}
+                      <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-purple-400/80 to-transparent pointer-events-none" />
 
+                      {/* Subtle ambient glow & watermark */}
+                      <div className="absolute -top-10 -right-10 w-28 h-28 bg-purple-600/15 rounded-full blur-2xl pointer-events-none" />
+                      <BookOpen
+                        size={72}
+                        className="absolute -bottom-3 -right-3 text-purple-400/[0.04] -rotate-12 pointer-events-none select-none"
+                      />
+
+                      {/* Card Header */}
+                      <div className="flex items-center gap-2.5 mb-2.5 pb-2 border-b border-purple-500/20">
+                        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-purple-600/40 to-indigo-600/40 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-inner flex-shrink-0">
+                          <Sparkles size={14} className="text-purple-300" />
+                        </div>
+                        <h3 className="text-xs sm:text-[13px] font-black uppercase tracking-wider bg-gradient-to-r from-white via-purple-200 to-purple-400 bg-clip-text text-transparent">
+                          Hikaye Özeti
+                        </h3>
+                      </div>
+
+                      {/* Story Content */}
+                      <div
+                        onClick={() => {
+                          if (isLongSynopsis && !isSynopsisExpanded) {
+                            setIsSynopsisExpanded(true);
+                          }
+                        }}
+                        className={`relative ${!isSynopsisExpanded && isLongSynopsis ? 'cursor-pointer' : ''}`}
+                      >
                         <p
-                          onClick={() => {
-                            if (isLongSynopsis && !isSynopsisExpanded) {
-                              setIsSynopsisExpanded(true);
-                            }
-                          }}
-                          className={`text-[13px] sm:text-sm text-gray-200/95 leading-relaxed whitespace-pre-line text-left break-words transition-all duration-200 ${
+                          className={`text-[13px] sm:text-sm text-gray-200/95 leading-[1.75] whitespace-pre-line text-left break-words font-normal transition-all duration-300 ${
                             !isSynopsisExpanded && isLongSynopsis
-                              ? 'line-clamp-3 sm:line-clamp-4 overflow-hidden cursor-pointer'
+                              ? 'line-clamp-3 sm:line-clamp-4 overflow-hidden'
                               : ''
                           }`}
                         >
                           {synopsisText}
                         </p>
 
-                        {isLongSynopsis && (
+                        {!isSynopsisExpanded && isLongSynopsis && (
+                          <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-gray-950/90 via-gray-950/40 to-transparent pointer-events-none" />
+                        )}
+                      </div>
+
+                      {/* Single Expand / Collapse Pill Button */}
+                      {isLongSynopsis && (
+                        <div className="mt-3 pt-2.5 border-t border-purple-500/20 flex items-center justify-center">
                           <button
                             type="button"
                             onClick={() => setIsSynopsisExpanded(!isSynopsisExpanded)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs font-extrabold text-purple-400 hover:text-purple-200 transition-colors cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gradient-to-r from-purple-600/30 via-indigo-600/30 to-purple-600/30 hover:from-purple-600/50 hover:to-indigo-600/50 border border-purple-400/40 hover:border-purple-300/70 text-purple-200 hover:text-white text-xs font-extrabold tracking-wide shadow-[0_0_15px_rgba(168,85,247,0.2)] transition-all duration-200 active:scale-95 cursor-pointer group/btn"
                             aria-expanded={isSynopsisExpanded}
                           >
                             <span>{isSynopsisExpanded ? 'Daha Az Göster' : 'Devamını Oku'}</span>
                             {isSynopsisExpanded ? (
-                              <ChevronUp size={14} className="text-purple-400" />
+                              <ChevronUp size={14} className="text-purple-300 group-hover/btn:-translate-y-0.5 transition-transform" />
                             ) : (
-                              <ChevronDown size={14} className="text-purple-400" />
+                              <ChevronDown size={14} className="text-purple-300 group-hover/btn:translate-y-0.5 transition-transform" />
                             )}
                           </button>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
