@@ -29,7 +29,8 @@ import {
   GraduationCap,
   Share2,
   LayoutGrid,
-  Layers
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 
 import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
@@ -212,6 +213,18 @@ export const Header: React.FC = () => {
             >
               <LayoutGrid size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'categories' ? 'text-white' : 'text-purple-300'}`} />
               <span>Kategoriler</span>
+            </button>
+
+            <button
+              onClick={() => setView({ type: 'wallpapers' })}
+              className={`group flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
+                view.type === 'wallpapers'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-[0_0_12px_rgba(168,85,247,0.4)] border border-purple-400/40'
+                  : 'text-purple-200/90 hover:text-white hover:bg-purple-800/40 hover:border-purple-500/20 border border-transparent'
+              }`}
+            >
+              <ImageIcon size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'wallpapers' ? 'text-white' : 'text-pink-300'}`} />
+              <span>Wallpaper</span>
             </button>
           </nav>
 
@@ -615,6 +628,18 @@ export const Header: React.FC = () => {
                 {unreadNotificationsCount} yeni
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => { setView({ type: 'wallpapers' }); setIsMobileMenuOpen(false); }}
+            className="w-full text-left px-3.5 py-2 rounded-xl text-sm font-extrabold text-pink-200 bg-purple-950/50 border border-pink-500/30 hover:bg-purple-900/60 flex items-center justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <ImageIcon size={16} className="text-pink-400" /> Duvar Kağıtları (Wallpaper)
+            </span>
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30">
+              HD
+            </span>
           </button>
 
           <button

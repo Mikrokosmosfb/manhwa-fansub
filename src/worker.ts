@@ -838,6 +838,21 @@ ${seriesXml}
                     claimed_checkin_days TEXT DEFAULT '[]'
                   );
                 `),
+                db.prepare(`
+                  CREATE TABLE IF NOT EXISTS wallpapers (
+                    id TEXT PRIMARY KEY,
+                    title TEXT,
+                    image_url TEXT NOT NULL,
+                    series_id TEXT,
+                    series_title TEXT,
+                    category TEXT DEFAULT 'genel',
+                    tags_json TEXT DEFAULT '[]',
+                    likes INTEGER DEFAULT 0,
+                    downloads INTEGER DEFAULT 0,
+                    uploaded_by TEXT,
+                    created_at TEXT
+                  );
+                `),
               ]).catch((e: any) => console.error('Error initializing main DB tables:', e))
             );
           }
@@ -1884,6 +1899,154 @@ ${seriesXml}
             }
           }
           return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
+        // WALLPAPERS API
+        if (path.startsWith('/api/wallpapers')) {
+          const activeDb = db || usersDb;
+          if (request.method === 'GET') {
+            if (activeDb) {
+              try {
+                const { results } = await activeDb.prepare("SELECT * FROM wallpapers ORDER BY created_at DESC LIMIT 2000").all();
+                const list = (results || []).map((w: any) => ({
+                  id: w.id,
+                  title: w.title || '',
+                  imageUrl: w.image_url,
+                  seriesId: w.series_id || '',
+                  seriesTitle: w.series_title || '',
+                  category: w.category || 'genel',
+                  tags: w.tags_json ? JSON.parse(w.tags_json) : [],
+                  likes: Number(w.likes) || 0,
+                  downloads: Number(w.downloads) || 0,
+                  uploadedBy: w.uploaded_by || '',
+                  createdAt: w.created_at || new Date().toISOString()
+                }));
+                return new Response(JSON.stringify({ success: true, storage: 'D1', wallpapers: list }), { headers });
+              } catch (e) {}
+            }
+            if (r2) {
+              try {
+                const item = await r2.get('data/wallpapers.json');
+                const wallpapers = item ? await item.json() : [];
+                return new Response(JSON.stringify({ success: true, storage: 'R2', wallpapers }), { headers });
+              } catch (e) {}
+            }
+            if (kv) {
+              try {
+                const wallpapers = (await kv.get('data/wallpapers.json', 'json')) || [];
+                return new Response(JSON.stringify({ success: true, storage: 'KV', wallpapers }), { headers });
+              } catch (e) {}
+            }
+            return new Response(JSON.stringify({ success: true, wallpapers: [] }), { headers });
+          }
+
+          if (request.method === 'POST') {
+            const body: any = await request.json();
+            const itemsInput = Array.isArray(body.wallpapers) ? body.wallpapers : body.wallpaper ? [body.wallpaper] : [];
+            if (itemsInput.length === 0) {
+              return new Response(JSON.stringify({ success: false, message: 'Eklenecek wallpaper bulunamadı.' }), { status: 400, headers });
+            }
+
+            if (activeDb) {
+              try {
+                const stmts = itemsInput.map((w: any) =>
+                  activeDb.prepare(`
+                    INSERT OR REPLACE INTO wallpapers (
+                      id, title, image_url, series_id, series_title, category, tags_json, likes, downloads, uploaded_by, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                  `).bind(
+                    w.id || ('wp-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6)),
+                    w.title || '',
+                    w.imageUrl,
+                    w.seriesId || '',
+                    w.seriesTitle || '',
+                    w.category || 'genel',
+                    JSON.stringify(w.tags || []),
+                    Number(w.likes) || 0,
+                    Number(w.downloads) || 0,
+                    w.uploadedBy || '',
+                    w.createdAt || new Date().toISOString()
+                  )
+                );
+                const BATCH_SIZE = 40;
+                for (let i = 0; i < stmts.length; i += BATCH_SIZE) {
+                  await activeDb.batch(stmts.slice(i, i + BATCH_SIZE));
+                }
+                return new Response(JSON.stringify({ success: true, storage: 'D1', count: itemsInput.length }), { headers });
+              } catch (e: any) {
+                console.error('Error saving wallpapers to D1:', e);
+              }
+            }
+
+            if (r2) {
+              try {
+                const item = await r2.get('data/wallpapers.json');
+                let existing: any[] = item ? await item.json() : [];
+                const map = new Map<string, any>();
+                existing.forEach(x => map.set(x.id, x));
+                itemsInput.forEach((x: any) => map.set(x.id, x));
+                const merged = Array.from(map.values());
+                await r2.put('data/wallpapers.json', JSON.stringify(merged), { httpMetadata: { contentType: 'application/json' } });
+                return new Response(JSON.stringify({ success: true, storage: 'R2' }), { headers });
+              } catch (e) {}
+            }
+
+            if (kv) {
+              try {
+                let existing: any[] = (await kv.get('data/wallpapers.json', 'json')) || [];
+                const map = new Map<string, any>();
+                existing.forEach(x => map.set(x.id, x));
+                itemsInput.forEach((x: any) => map.set(x.id, x));
+                const merged = Array.from(map.values());
+                await kv.put('data/wallpapers.json', JSON.stringify(merged));
+                return new Response(JSON.stringify({ success: true, storage: 'KV' }), { headers });
+              } catch (e) {}
+            }
+
+            return new Response(JSON.stringify({ success: true }), { headers });
+          }
+
+          if (request.method === 'PUT' || request.method === 'PATCH') {
+            const body: any = await request.json();
+            const { id, action } = body;
+            if (id && activeDb) {
+              try {
+                if (action === 'like') {
+                  await activeDb.prepare("UPDATE wallpapers SET likes = COALESCE(likes, 0) + 1 WHERE id = ?").bind(id).run();
+                } else if (action === 'unlike') {
+                  await activeDb.prepare("UPDATE wallpapers SET likes = MAX(0, COALESCE(likes, 0) - 1) WHERE id = ?").bind(id).run();
+                } else if (action === 'download') {
+                  await activeDb.prepare("UPDATE wallpapers SET downloads = COALESCE(downloads, 0) + 1 WHERE id = ?").bind(id).run();
+                }
+              } catch (e) {}
+            }
+            return new Response(JSON.stringify({ success: true }), { headers });
+          }
+
+          if (request.method === 'DELETE') {
+            const id = url.searchParams.get('id');
+            if (id && activeDb) {
+              try {
+                await activeDb.prepare("DELETE FROM wallpapers WHERE id = ?").bind(id).run();
+              } catch (e) {}
+            }
+            if (id && r2) {
+              try {
+                const item = await r2.get('data/wallpapers.json');
+                if (item) {
+                  const list = await item.json();
+                  await r2.put('data/wallpapers.json', JSON.stringify(list.filter((w: any) => w.id !== id)), { httpMetadata: { contentType: 'application/json' } });
+                }
+              } catch (e) {}
+            }
+            if (id && kv) {
+              try {
+                const list = (await kv.get('data/wallpapers.json', 'json')) || [];
+                await kv.put('data/wallpapers.json', JSON.stringify(list.filter((w: any) => w.id !== id)));
+              } catch (e) {}
+            }
+            return new Response(JSON.stringify({ success: true }), { headers });
+          }
         }
 
           if (path.startsWith('/api/admin/grant-points')) {

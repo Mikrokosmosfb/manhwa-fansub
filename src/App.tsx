@@ -53,6 +53,7 @@ const ShopView = React.lazy(() => import('./components/ShopModal').then(m => ({ 
 const UserProfileModal = React.lazy(() => import('./components/UserProfileModal').then(m => ({ default: m.UserProfileModal })));
 const DailyRewardModal = React.lazy(() => import('./components/DailyRewardModal').then(m => ({ default: m.DailyRewardModal })));
 const PublicProfileView = React.lazy(() => import('./components/PublicProfileView').then(m => ({ default: m.PublicProfileView })));
+const WallpapersView = React.lazy(() => import('./components/WallpapersView').then(m => ({ default: m.WallpapersView })));
 
 const ViewLoadingFallback: React.FC = () => (
   <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 space-y-4">
@@ -262,6 +263,14 @@ const MainContent: React.FC = () => {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         <LeaderboardView />
+      </Suspense>
+    );
+  }
+
+  if (view.type === 'wallpapers') {
+    return (
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <WallpapersView initialSeriesId={view.seriesId} />
       </Suspense>
     );
   }

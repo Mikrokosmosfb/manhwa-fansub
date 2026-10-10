@@ -150,9 +150,26 @@ CREATE TABLE IF NOT EXISTS user_bookmarks (
     PRIMARY KEY(user_id, series_id)
 );
 
+-- 10. Duvar Kağıtları (Wallpapers Table)
+CREATE TABLE IF NOT EXISTS wallpapers (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    image_url TEXT NOT NULL,
+    series_id TEXT,
+    series_title TEXT,
+    category TEXT DEFAULT 'genel',
+    tags_json TEXT DEFAULT '[]',
+    likes INTEGER DEFAULT 0,
+    downloads INTEGER DEFAULT 0,
+    uploaded_by TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Hızlı Sorgulama İndeksleri (Indexes for High Performance)
 CREATE INDEX IF NOT EXISTS idx_comments_series ON comments(series_id);
 CREATE INDEX IF NOT EXISTS idx_comments_chapter ON comments(chapter_id);
 CREATE INDEX IF NOT EXISTS idx_chapters_series ON chapters(series_id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_verifications_email ON email_verifications(email);
+CREATE INDEX IF NOT EXISTS idx_wallpapers_series ON wallpapers(series_id);
+

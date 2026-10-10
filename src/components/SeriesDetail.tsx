@@ -31,7 +31,8 @@ import {
   Tag,
   Lock,
   Bell,
-  BellRing
+  BellRing,
+  Image as ImageIcon
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 import { checkIsChapterNew } from '../utils/dateUtils';
@@ -367,6 +368,16 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     <span>Takip Et</span>
                   </>
                 )}
+              </button>
+
+              {/* Serinin Duvar Kağıtları (Wallpapers) Button */}
+              <button
+                onClick={() => setView({ type: 'wallpapers', seriesId: series.id })}
+                className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm shadow-md transition-all active:scale-95 bg-gray-950/90 hover:bg-purple-950/80 border border-pink-500/30 text-pink-200 hover:text-white hover:border-pink-400 cursor-pointer"
+                title="Bu serinin yüksek çözünürlüklü duvar kağıtlarını görüntüle"
+              >
+                <ImageIcon size={15} className="text-pink-400" />
+                <span>Serinin Wallpaperları</span>
               </button>
 
               {/* Status & Type info badges */}

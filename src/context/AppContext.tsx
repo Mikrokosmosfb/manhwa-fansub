@@ -49,7 +49,8 @@ type ViewState =
   | { type: 'management' }
   | { type: 'advanced-search' }
   | { type: 'notifications' }
-  | { type: 'leaderboard' };
+  | { type: 'leaderboard' }
+  | { type: 'wallpapers'; seriesId?: string };
 
 export const viewToHash = (v: ViewState): string => {
   switch (v.type) {
@@ -98,6 +99,8 @@ export const viewToHash = (v: ViewState): string => {
       return '#/gelismis-arama';
     case 'notifications':
       return '#/bildirimler';
+    case 'wallpapers':
+      return v.seriesId ? `#/duvar-kagitlari/${encodeURIComponent(v.seriesId)}` : '#/duvar-kagitlari';
     default:
       return '#/';
   }
@@ -168,6 +171,10 @@ export const hashToView = (hash: string): ViewState => {
     case 'siralama':
     case 'leaderboard':
       return { type: 'leaderboard' };
+    case 'duvar-kagitlari':
+    case 'wallpapers':
+    case 'wallpaper':
+      return { type: 'wallpapers', seriesId: parts[1] || undefined };
     default:
       return { type: 'home' };
   }

@@ -13,7 +13,8 @@ import {
   SlidersHorizontal,
   GraduationCap,
   Share2,
-  Trophy
+  Trophy,
+  Image as ImageIcon
 } from 'lucide-react';
 
 export const QuickNav: React.FC = () => {
@@ -25,6 +26,11 @@ export const QuickNav: React.FC = () => {
       icon: <Trophy className="w-3.5 h-3.5 text-amber-400 animate-pulse" />,
       onClick: () => setView({ type: 'leaderboard' }),
       highlight: true
+    },
+    {
+      title: 'Wallpaper',
+      icon: <ImageIcon className="w-3.5 h-3.5 text-pink-300" />,
+      onClick: () => setView({ type: 'wallpapers' })
     },
     {
       title: 'Yayın Takvimi',

@@ -40,7 +40,8 @@ import {
   Palette,
   Smile,
   Coins,
-  DollarSign
+  DollarSign,
+  Image as ImageIcon
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { downloadProjectZip } from '../utils/exportZip';
@@ -49,11 +50,13 @@ import { AdminBrandingManager } from './AdminBrandingManager';
 import { AdminAdManager } from './AdminAdManager';
 import { AdminEmojiManager } from './AdminEmojiManager';
 import { AdminPointsManager } from './AdminPointsManager';
+import { WallpapersView } from './WallpapersView';
 
 export type ManagementNavTab =
   | 'manage-series'
   | 'add-series'
   | 'add-chapter'
+  | 'wallpapers-management'
   | 'points-management'
   | 'branding-settings'
   | 'ad-management'
@@ -240,6 +243,14 @@ export const ManagementPanel: React.FC = () => {
           icon: Zap,
           badge: `${totalChapters} Bölüm`,
           badgeColor: 'bg-indigo-950 text-indigo-300 border-indigo-500/40'
+        },
+        {
+          id: 'wallpapers-management' as ManagementNavTab,
+          label: 'Duvar Kağıtları (Wallpaper)',
+          desc: 'Mevcut serilere HD wallpaper yükle',
+          icon: ImageIcon,
+          badge: 'Pinterest',
+          badgeColor: 'bg-pink-950 text-pink-300 border-pink-500/40'
         },
         {
           id: 'announcements-notifications' as ManagementNavTab,
@@ -671,6 +682,11 @@ export const ManagementPanel: React.FC = () => {
             {/* ANNOUNCEMENTS & NOTIFICATIONS BROADCAST TAB */}
             {activeNav === 'announcements-notifications' && (
               <AdminNotificationsManager />
+            )}
+
+            {/* WALLPAPERS MANAGEMENT TAB */}
+            {activeNav === 'wallpapers-management' && (
+              <WallpapersView isAdminPanel={true} />
             )}
 
             {/* BRANDING & LOGO / FAVICON SETTINGS TAB */}

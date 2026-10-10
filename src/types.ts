@@ -296,3 +296,20 @@ export interface ReadingList {
   name: string;
   seriesIds: string[];
 }
+
+export type WallpaperCategory = 'mobil' | 'masaustu' | 'kare' | 'genel';
+
+export interface WallpaperItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  seriesId?: string;
+  seriesTitle: string;
+  category?: WallpaperCategory;
+  tags?: string[];
+  likes?: number;
+  downloads?: number;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
