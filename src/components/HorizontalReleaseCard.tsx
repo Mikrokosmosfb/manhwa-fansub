@@ -219,10 +219,10 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
                 >
                   {isNovel && isChapterNew && (
                     <span
-                      className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 text-gray-950 border border-white/80 shadow-[0_0_8px_rgba(251,191,36,0.75)] flex items-center justify-center animate-pulse"
+                      className="absolute -top-2 -right-1.5 z-10 text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.85)] animate-pulse pointer-events-none"
                       title="Yeni Bölüm!"
                     >
-                      <Bell size={9} className="fill-current stroke-[2.5] -rotate-12" />
+                      <Bell size={14} className="fill-red-500 stroke-red-400 stroke-[2.2] rotate-12" />
                     </span>
                   )}
 
