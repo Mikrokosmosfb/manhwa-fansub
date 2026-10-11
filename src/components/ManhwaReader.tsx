@@ -550,12 +550,12 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </button>
           </div>
 
-          {/* Settings, Privacy Blur & Prev / Next Header Buttons */}
+          {/* Settings, Privacy Blur (Desktop Only) & Prev / Next Header Buttons */}
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
               onClick={togglePrivacyBlur}
-              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl border flex items-center justify-center transition cursor-pointer ${
+              className={`hidden sm:flex h-9 w-9 sm:h-10 sm:w-10 rounded-xl border items-center justify-center transition cursor-pointer ${
                 isPrivacyBlurred
                   ? 'bg-rose-600 border-rose-400 text-white shadow-md shadow-rose-900/50 animate-pulse'
                   : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -1062,25 +1062,22 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
-      {/* Always-Reachable Floating Quick Panic Blur Button (Bottom-Right Corner) */}
+      {/* Mobile-Only Bottom-Left Corner Panic Blur Button */}
       <button
         type="button"
         onClick={togglePrivacyBlur}
-        className={`fixed bottom-5 right-4 z-[60] flex items-center gap-1.5 px-3.5 py-2.5 rounded-full font-extrabold text-xs shadow-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
+        className={`sm:hidden fixed bottom-4 left-4 z-[60] w-11 h-11 rounded-2xl flex items-center justify-center shadow-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
           isPrivacyBlurred
             ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
-            : 'bg-gray-900/85 hover:bg-purple-900/90 text-purple-200 hover:text-white border-purple-500/40 backdrop-blur-md opacity-75 hover:opacity-100'
+            : 'bg-purple-900/85 hover:bg-purple-800 text-purple-100 border-purple-400/40 backdrop-blur-md'
         }`}
         title={
           isPrivacyBlurred
-            ? 'Gizlilik Bulanıklaştırmasını Kaldır (B)'
-            : 'Panik / Gizlilik: Ekranı Anında Bulanıklaştır (B)'
+            ? 'Gizlilik Bulanıklaştırmasını Kaldır'
+            : 'Ekranı Anında Bulanıklaştır'
         }
       >
-        {isPrivacyBlurred ? <Eye size={16} /> : <EyeOff size={16} />}
-        <span className="hidden xs:inline">
-          {isPrivacyBlurred ? 'Görünümü Aç' : 'Bulanıklaştır'}
-        </span>
+        {isPrivacyBlurred ? <Eye size={18} /> : <EyeOff size={18} />}
       </button>
 
       {/* Privacy Blur Overlay Banner when Active */}
