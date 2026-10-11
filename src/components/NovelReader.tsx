@@ -489,21 +489,21 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       detectedBadges.push({ label: 'Çevirmen', value: series.translator.trim() });
     }
 
-    let cardImageUrl = extractedProfileImg || '';
     let usedFirstChapterImg = false;
 
-    if (!cardImageUrl) {
-      if (hasExplicitChapterMeta && allChapterImgs.length > 0) {
-        cardImageUrl = allChapterImgs[0];
-        usedFirstChapterImg = true;
-      } else if (inheritedImg) {
-        cardImageUrl = inheritedImg;
-      } else {
-        cardImageUrl = series.coverImage;
-      }
-    } else if (allChapterImgs.length > 0 && allChapterImgs[0] === extractedProfileImg) {
+    if (
+      extractedProfileImg &&
+      allChapterImgs.length > 0 &&
+      allChapterImgs[0] === extractedProfileImg
+    ) {
+      usedFirstChapterImg = true;
+    } else if (hasExplicitChapterMeta && allChapterImgs.length === 1) {
+      // Single image at top of a Blogger-imported novel chapter is the legacy profile avatar
       usedFirstChapterImg = true;
     }
+
+    // Always prefer the full high-res vertical series cover on the card so the artwork is never cut off
+    const cardImageUrl = series.coverImage || extractedProfileImg || inheritedImg || allChapterImgs[0] || '';
 
     const profileCard =
       hasExplicitChapterMeta || detectedBadges.length > 0
@@ -1343,16 +1343,13 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                 alt=""
                 aria-hidden="true"
                 referrerPolicy="no-referrer"
-                className="w-full h-full object-cover blur-2xl scale-125 opacity-20"
+                className="w-full h-full object-cover blur-2xl scale-125 opacity-25"
               />
               <div className="absolute inset-0 bg-gradient-to-r from-[#120724]/90 via-[#150929]/85 to-purple-950/75" />
             </div>
 
-            {/* Left Gradient Accent Bar */}
-            <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-purple-400 via-fuchsia-500 to-amber-400" />
-
-            {/* Left Cover / Profile Artwork */}
-            <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-purple-400/40 shadow-[0_8px_24px_rgba(0,0,0,0.65)] bg-purple-950">
+            {/* Left Full Book-Cover Artwork (3:4 Portrait Ratio — Never Cropped) */}
+            <div className="relative z-10 w-20 h-28 sm:w-24 sm:h-32 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-purple-400/45 shadow-[0_8px_24px_rgba(0,0,0,0.7)] bg-purple-950">
               <img
                 src={chapterProfileCard.imageUrl}
                 alt={chapterProfileCard.seriesTitle}
@@ -1362,7 +1359,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                     (e.target as HTMLImageElement).src = series.coverImage;
                   }
                 }}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-top"
               />
             </div>
 
