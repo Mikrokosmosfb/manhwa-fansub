@@ -40,9 +40,14 @@ const REACTION_OPTIONS = [
 interface CommentsSectionProps {
   seriesId: string;
   chapterId?: string;
+  isParagraphMode?: boolean;
 }
 
-export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chapterId }) => {
+export const CommentsSection: React.FC<CommentsSectionProps> = ({
+  seriesId,
+  chapterId,
+  isParagraphMode = false
+}) => {
   const {
     comments,
     addComment,
@@ -202,10 +207,10 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   };
 
-  // Filter comments for this series and chapter
+  // Filter comments for this series and chapter (exclude paragraph-anchored comments from general series feed)
   const filteredComments = comments.filter(c => {
     if (chapterId) return c.seriesId === seriesId && c.chapterId === chapterId;
-    return c.seriesId === seriesId;
+    return c.seriesId === seriesId && !String(c.chapterId || '').includes('__p__');
   });
 
   const unlockedEmojiPacks = user?.unlockedEmojiPacks || [];
@@ -642,10 +647,16 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
     });
 
   return (
-    <div className="bg-gray-900/95 border border-purple-500/20 rounded-3xl p-5 sm:p-8 shadow-xl space-y-6">
-      
-      {/* 5-Emoji Reaction Bar (Chapter vs Series) */}
-      <div className="bg-gradient-to-br from-purple-950/60 via-gray-950/90 to-indigo-950/60 border border-purple-500/30 rounded-2xl p-4 sm:p-5 shadow-lg">
+    <div
+      className={
+        isParagraphMode
+          ? 'space-y-4'
+          : 'bg-gray-900/95 border border-purple-500/20 rounded-3xl p-5 sm:p-8 shadow-xl space-y-6'
+      }
+    >
+      {/* 5-Emoji Reaction Bar (Chapter vs Series - Hidden in Paragraph Drawer Mode) */}
+      {!isParagraphMode && (
+        <div className="bg-gradient-to-br from-purple-950/60 via-gray-950/90 to-indigo-950/60 border border-purple-500/30 rounded-2xl p-4 sm:p-5 shadow-lg">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
           <div>
             <h4 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
@@ -707,65 +718,70 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({ seriesId, chap
             );
           })}
         </div>
-      </div>
+        </div>
+      )}
 
-      {/* Title & Auth Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <MessageSquare className="text-purple-400" size={20} />
-          Yorumlar ({filteredComments.length})
-        </h3>
+      {/* Title & Auth Header (Compact in Paragraph Mode) */}
+      {!isParagraphMode && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <MessageSquare className="text-purple-400" size={20} />
+            Yorumlar ({filteredComments.length})
+          </h3>
 
-        <div className="flex items-center gap-2">
-          {/* Shop Quick Shortcut Button */}
-          <button
-            type="button"
-            onClick={openShop}
-            className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95"
-          >
-            <ShoppingBag size={14} className="stroke-[2.5]" />
-            <span>Mağaza {user ? ((user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? '(∞ CP)' : `(${user.coins ?? 250} CP)`) : ''}</span>
-          </button>
-
-          {user ? (
-            <div className="flex items-center gap-2 bg-purple-950/80 border border-purple-800 px-3 py-1.5 rounded-xl text-xs">
-              <UserAvatar
-                avatar={user.avatar}
-                name={user.name}
-                frameId={user.equippedFrame}
-                size="xs"
-              />
-              <span className="font-semibold text-purple-200">{user.name}</span>
-              <button
-                type="button"
-                onClick={logout}
-                className="ml-2 text-gray-400 hover:text-red-400 transition"
-                title="Çıkış Yap"
-              >
-                <LogOut size={14} />
-              </button>
-            </div>
-          ) : (
+          <div className="flex items-center gap-2">
+            {/* Shop Quick Shortcut Button */}
             <button
               type="button"
-              onClick={() => openAuthModal('login')}
-              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+              onClick={openShop}
+              className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 transition active:scale-95"
             >
-              <LogIn size={14} />
-              Giriş Yap / Kayıt Ol
+              <ShoppingBag size={14} className="stroke-[2.5]" />
+              <span>Mağaza {user ? ((user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? '(∞ CP)' : `(${user.coins ?? 250} CP)`) : ''}</span>
             </button>
-          )}
+
+            {user ? (
+              <div className="flex items-center gap-2 bg-purple-950/80 border border-purple-800 px-3 py-1.5 rounded-xl text-xs">
+                <UserAvatar
+                  avatar={user.avatar}
+                  name={user.name}
+                  frameId={user.equippedFrame}
+                  size="xs"
+                />
+                <span className="font-semibold text-purple-200">{user.name}</span>
+                <button
+                  type="button"
+                  onClick={logout}
+                  className="ml-2 text-gray-400 hover:text-red-400 transition"
+                  title="Çıkış Yap"
+                >
+                  <LogOut size={14} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openAuthModal('login')}
+                className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 shadow transition"
+              >
+                <LogIn size={14} />
+                Giriş Yap / Kayıt Ol
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rules Notice */}
-      <div className="bg-purple-950/40 border border-purple-500/20 rounded-2xl p-4 text-xs text-purple-200 space-y-1">
-        <span className="font-bold text-amber-300 block uppercase tracking-wider mb-1 flex items-center gap-1.5">
-          <ShieldAlert size={14} className="text-amber-400" /> YORUM KURALLARIMIZ
-        </span>
-        <p>• Spoiler içeren yorumlarda mutlaka "Spoiler" kutucuğunu işaretleyiniz.</p>
-        <p>• Saygılı ve nazik bir üslup kullanınız; hakaret ve küfür yasaktır.</p>
-      </div>
+      {!isParagraphMode && (
+        <div className="bg-purple-950/40 border border-purple-500/20 rounded-2xl p-4 text-xs text-purple-200 space-y-1">
+          <span className="font-bold text-amber-300 block uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <ShieldAlert size={14} className="text-amber-400" /> YORUM KURALLARIMIZ
+          </span>
+          <p>• Spoiler içeren yorumlarda mutlaka "Spoiler" kutucuğunu işaretleyiniz.</p>
+          <p>• Saygılı ve nazik bir üslup kullanınız; hakaret ve küfür yasaktır.</p>
+        </div>
+      )}
 
       {/* Comment Submission Form */}
       <form onSubmit={handleSubmit} className="space-y-3">

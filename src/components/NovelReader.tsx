@@ -25,7 +25,12 @@ import {
   Calendar,
   Layers,
   ChevronDown,
-  CheckCircle2
+  CheckCircle2,
+  MessageCircle,
+  X,
+  Eye,
+  EyeOff,
+  Quote
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
@@ -51,7 +56,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     user,
     openAuthModal,
     loginWithGoogle,
-    adSettings
+    adSettings,
+    comments
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -71,6 +77,37 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   const currentChapterItemRef = useRef<HTMLButtonElement>(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Paragraph Comments State (Webnovel / Wattpad style inline comments)
+  const [showParagraphComments, setShowParagraphComments] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('mk_novel_para_comments');
+      return saved !== null ? saved === 'true' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [activeParagraph, setActiveParagraph] = useState<{
+    key: string;
+    text: string;
+    index: number;
+  } | null>(null);
+
+  const toggleParagraphCommentsVisibility = () => {
+    setShowParagraphComments(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('mk_novel_para_comments', String(next));
+      } catch {}
+      if (!next) setActiveParagraph(null);
+      return next;
+    });
+  };
+
+  // Close active paragraph drawer when changing chapter
+  useEffect(() => {
+    setActiveParagraph(null);
+  }, [seriesId, chapterId]);
 
   // Close dropdown on Escape key
   useEffect(() => {
@@ -114,6 +151,140 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     ? currentChapter.content.trim().split(/\s+/).length
     : 0;
   const estimatedMinutes = Math.max(1, Math.round(wordCount / 200));
+
+  // Deterministic content hash (FNV-1a) so editing/inserting paragraphs never shifts comments to wrong lines
+  const parsedParagraphs = useMemo(() => {
+    const raw = (currentChapter?.content || '').replace(/mikrokosmosdeposu/g, 'mediadepo');
+    if (!raw.trim()) return [];
+
+    const computeHash = (text: string, occurrence: number): string => {
+      const normalized = text
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 160);
+      let h = 0x811c9dc5;
+      for (let i = 0; i < normalized.length; i++) {
+        h ^= normalized.charCodeAt(i);
+        h = Math.imul(h, 0x01000193);
+      }
+      const base = (h >>> 0).toString(36);
+      return occurrence > 0 ? `${base}_${occurrence}` : base;
+    };
+
+    const occurrenceMap = new Map<string, number>();
+    const makeItem = (plainText: string, htmlContent?: string, isMediaOnly = false) => {
+      const cleanText = plainText.replace(/\s+/g, ' ').trim();
+      const normKey = cleanText.toLowerCase().slice(0, 160);
+      const occ = occurrenceMap.get(normKey) || 0;
+      occurrenceMap.set(normKey, occ + 1);
+      const key = cleanText ? computeHash(cleanText, occ) : `media_${occurrenceMap.size}`;
+      return {
+        key,
+        text: cleanText,
+        html: htmlContent,
+        isMediaOnly
+      };
+    };
+
+    if (isHtmlContent(raw)) {
+      try {
+        // Normalize double <br> into paragraph breaks before parsing
+        const normalizedHtml = raw.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(normalizedHtml, 'text/html');
+        const results: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
+
+        const extractNodes = (parent: Element | Document['body']) => {
+          const children = Array.from(parent.childNodes);
+          for (const node of children) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              const txt = (node.textContent || '').trim();
+              if (txt) {
+                results.push(makeItem(txt));
+              }
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+              const el = node as HTMLElement;
+              const tag = el.tagName.toLowerCase();
+              if (tag === 'style' || tag === 'script' || tag === 'baslik') continue;
+              if (
+                el.classList?.contains('manga-alert') ||
+                el.style?.display === 'none'
+              ) {
+                continue;
+              }
+              const hasBlockChildren = Array.from(el.children).some(c =>
+                ['P', 'DIV', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR'].includes(
+                  c.tagName
+                )
+              );
+              if (hasBlockChildren && (tag === 'div' || tag === 'section' || tag === 'article')) {
+                extractNodes(el);
+              } else {
+                const txt = (el.textContent || '').trim();
+                const hasMedia = Boolean(el.querySelector('img, iframe, hr')) || tag === 'img' || tag === 'hr';
+                if (txt) {
+                  results.push(makeItem(txt, el.innerHTML));
+                } else if (hasMedia) {
+                  results.push(makeItem('', el.outerHTML, true));
+                }
+              }
+            }
+          }
+        };
+
+        extractNodes(doc.body);
+        if (results.length > 0) return results;
+      } catch {}
+    }
+
+    // Plaintext fallback: split by newline blocks
+    return raw
+      .split(/\n+/)
+      .map(p => p.trim())
+      .filter(Boolean)
+      .map(p => makeItem(p));
+  }, [currentChapter?.content]);
+
+  // Single-pass comment count map per paragraph for this chapter (zero network overhead)
+  const paragraphCommentCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!currentChapter) return map;
+    const prefix = `${currentChapter.id}__p__`;
+    for (const c of comments) {
+      if (c.seriesId === seriesId && c.chapterId && c.chapterId.startsWith(prefix)) {
+        const pKey = c.chapterId.slice(prefix.length);
+        map[pKey] = (map[pKey] || 0) + 1;
+      }
+    }
+    return map;
+  }, [comments, seriesId, currentChapter?.id]);
+
+  const totalParagraphCommentsInChapter = useMemo(() => {
+    return Object.values(paragraphCommentCounts).reduce((sum, n) => sum + n, 0);
+  }, [paragraphCommentCounts]);
+
+  // Auto-open and scroll to paragraph if navigated from Recent Comments
+  useEffect(() => {
+    if (parsedParagraphs.length === 0) return;
+    try {
+      const targetParaKey = sessionStorage.getItem('mk_open_para_key');
+      if (!targetParaKey) return;
+      sessionStorage.removeItem('mk_open_para_key');
+      const foundIdx = parsedParagraphs.findIndex(p => p.key === targetParaKey);
+      if (foundIdx !== -1) {
+        const found = parsedParagraphs[foundIdx];
+        setShowParagraphComments(true);
+        setActiveParagraph({ key: found.key, text: found.text, index: foundIdx + 1 });
+        setTimeout(() => {
+          const el = document.querySelector(`[data-para-key="${found.key}"]`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 120);
+      }
+    } catch {}
+  }, [parsedParagraphs, seriesId, chapterId]);
 
   const prevChapter = chapterIndex > 0 ? sortedChapters[chapterIndex - 1] : null;
   const nextChapter =
@@ -338,6 +509,28 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
           {/* Settings & Nav */}
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={toggleParagraphCommentsVisibility}
+              className={`h-9 px-2 sm:h-10 sm:px-2.5 rounded-xl border flex items-center justify-center gap-1 transition cursor-pointer ${
+                showParagraphComments
+                  ? 'bg-purple-600/20 dark:bg-purple-900/70 border-purple-400/50 text-purple-800 dark:text-purple-100'
+                  : 'bg-slate-100 dark:bg-gray-900/60 border-slate-300 dark:border-gray-800 text-slate-400 dark:text-gray-500'
+              }`}
+              title={
+                showParagraphComments
+                  ? 'Paragraf Yorum Balonları Açık (Gizlemek için tıkla)'
+                  : 'Paragraf Yorum Balonları Gizli (Açmak için tıkla)'
+              }
+            >
+              <MessageCircle size={15} className={showParagraphComments ? 'text-purple-600 dark:text-amber-300' : ''} />
+              {totalParagraphCommentsInChapter > 0 && (
+                <span className="text-[10px] font-extrabold font-mono">
+                  {totalParagraphCommentsInChapter}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -756,6 +949,31 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               </button>
             </div>
 
+            {/* Paragraph Comments Visibility Toggle inside Settings */}
+            <div className="pt-2 border-t border-purple-200 dark:border-purple-800 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span className="text-[11px] font-bold text-slate-800 dark:text-purple-100 flex items-center gap-1.5">
+                  <MessageCircle size={13} className="text-purple-500 dark:text-amber-300 shrink-0" />
+                  <span>Satır İçi (Paragraf) Yorum Balonları</span>
+                </span>
+                <p className="text-[10px] text-slate-500 dark:text-purple-300/70 truncate">
+                  Her paragrafın yanındaki yorum sayısını ve baloncuğunu göster veya gizle.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleParagraphCommentsVisibility}
+                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1 shrink-0 transition cursor-pointer ${
+                  showParagraphComments
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'bg-slate-200 dark:bg-gray-800 text-slate-700 dark:text-gray-300'
+                }`}
+              >
+                {showParagraphComments ? <Eye size={12} /> : <EyeOff size={12} />}
+                <span>{showParagraphComments ? 'Gösteriliyor' : 'Gizli'}</span>
+              </button>
+            </div>
+
           </div>
         </>
       )}
@@ -842,9 +1060,9 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           </div>
         )}
 
-        {/* Text Content Area (HTML or Plaintext) */}
+        {/* Text Content Area with Webnovel-Style Inline Paragraph Comments */}
         <div
-          className="prose max-w-none space-y-6 leading-relaxed transition-all"
+          className="prose max-w-none space-y-5 leading-relaxed transition-all"
           style={{
             fontFamily: novelSettings.fontFamily,
             fontSize: `${novelSettings.fontSize}px`,
@@ -854,21 +1072,78 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             fontWeight: novelSettings.isBold ? 'bold' : 'normal'
           }}
         >
-          {currentChapter.content ? (
-            isHtmlContent(currentChapter.content) ? (
-              <div
-                className="chapter-html-content space-y-4"
-                dangerouslySetInnerHTML={{
-                  __html: currentChapter.content.replace(/mikrokosmosdeposu/g, 'mediadepo')
-                }}
-              />
-            ) : (
-              currentChapter.content.split('\n\n').map((paragraph, idx) => (
-                <p key={idx} className="mb-4">
-                  {paragraph}
-                </p>
-              ))
-            )
+          {parsedParagraphs.length > 0 ? (
+            parsedParagraphs.map((para, idx) => {
+              if (para.isMediaOnly && para.html) {
+                return (
+                  <div
+                    key={`${para.key}-${idx}`}
+                    className="my-4"
+                    dangerouslySetInnerHTML={{ __html: para.html }}
+                  />
+                );
+              }
+
+              const commentCount = paragraphCommentCounts[para.key] || 0;
+              const isSelected = activeParagraph?.key === para.key;
+
+              return (
+                <div
+                  key={`${para.key}-${idx}`}
+                  data-para-key={para.key}
+                  onClick={() => {
+                    if (showParagraphComments && activeParagraph) {
+                      setActiveParagraph({ key: para.key, text: para.text, index: idx + 1 });
+                    }
+                  }}
+                  className={`group relative rounded-xl transition-all duration-200 ${
+                    isSelected
+                      ? 'bg-indigo-500/15 dark:bg-purple-500/20 ring-1 ring-indigo-500/40 dark:ring-purple-400/50 px-3 py-2 -mx-3 shadow-sm'
+                      : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.02] px-1 -mx-1'
+                  }`}
+                >
+                  <p className="inline leading-relaxed">
+                    {para.html ? (
+                      <span dangerouslySetInnerHTML={{ __html: para.html }} />
+                    ) : (
+                      para.text
+                    )}
+                  </p>
+
+                  {showParagraphComments && (
+                    <button
+                      type="button"
+                      onClick={e => {
+                        e.stopPropagation();
+                        setActiveParagraph(prev =>
+                          prev?.key === para.key
+                            ? null
+                            : { key: para.key, text: para.text, index: idx + 1 }
+                        );
+                      }}
+                      className={`inline-flex items-center gap-1 ml-2 px-2 py-0.5 rounded-full text-[11px] font-extrabold align-middle select-none transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-purple-600 text-white shadow-md scale-105 ring-2 ring-purple-300/60'
+                          : commentCount > 0
+                          ? 'bg-slate-500/20 dark:bg-purple-500/25 hover:bg-purple-600 hover:text-white text-slate-700 dark:text-purple-200 border border-slate-400/30 dark:border-purple-400/30'
+                          : 'bg-slate-500/10 dark:bg-white/10 hover:bg-purple-600 hover:text-white text-slate-500 dark:text-gray-400 opacity-35 sm:opacity-0 group-hover:opacity-100 focus:opacity-100'
+                      }`}
+                      title={
+                        commentCount > 0
+                          ? `Bu paragraftaki ${commentCount} yorumu gör / yorum yaz`
+                          : 'Bu paragrafa ilk yorumu yaz'
+                      }
+                    >
+                      <MessageCircle
+                        size={11}
+                        className={commentCount > 0 || isSelected ? 'fill-current' : ''}
+                      />
+                      <span>{commentCount > 0 ? commentCount : '+'}</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })
           ) : (
             <p className="text-center italic opacity-60">
               Bu bölümde henüz metin içerik bulunmuyor.
@@ -948,6 +1223,76 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </div>
 
       </div>
+
+      {/* WEBNOVEL-STYLE PARAGRAPH COMMENTS DRAWER (Desktop Right Sidebar / Mobile Bottom Sheet) */}
+      {activeParagraph && (
+        <>
+          {/* Subtle Backdrop on Mobile */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[65] md:bg-black/25"
+            onClick={() => setActiveParagraph(null)}
+          />
+
+          <aside
+            className="fixed z-[70] inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl md:inset-y-0 md:right-0 md:left-auto md:w-[430px] lg:w-[470px] md:max-h-none md:rounded-none bg-gray-950/98 border-t md:border-t-0 md:border-l border-purple-500/40 shadow-2xl flex flex-col text-white animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Mobile Drag Handle */}
+            <div className="md:hidden w-12 h-1.5 bg-gray-700 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
+
+            {/* Drawer Header */}
+            <div className="px-4 py-3.5 border-b border-gray-800/90 flex items-center justify-between gap-3 bg-gray-900/70 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shrink-0">
+                  <MessageCircle size={16} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-white truncate">
+                      Paragraf Yorumları
+                    </h3>
+                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 font-mono">
+                      {paragraphCommentCounts[activeParagraph.key] || 0}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {activeParagraph.index}. Paragraf • Seçili cümle hakkındaki tepkiler
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveParagraph(null)}
+                className="p-2 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white transition cursor-pointer shrink-0"
+                title="Kapat"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Quoted Paragraph Preview Box */}
+            <div className="px-4 py-3 bg-purple-950/25 border-b border-purple-500/20 shrink-0">
+              <div className="flex items-start gap-2 border-l-2 border-purple-400 pl-3 py-0.5">
+                <Quote size={14} className="text-purple-400 shrink-0 mt-0.5 opacity-80" />
+                <p className="text-xs text-purple-100/90 italic line-clamp-3 leading-relaxed">
+                  {activeParagraph.text}
+                </p>
+              </div>
+            </div>
+
+            {/* Scrollable Paragraph Comments Body (Full Cosmetics, Emojis, Replies, Likes) */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <CommentsSection
+                key={`${currentChapter.id}__p__${activeParagraph.key}`}
+                seriesId={series.id}
+                chapterId={`${currentChapter.id}__p__${activeParagraph.key}`}
+                isParagraphMode={true}
+              />
+            </div>
+          </aside>
+        </>
+      )}
 
     </div>
   );

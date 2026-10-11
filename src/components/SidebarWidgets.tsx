@@ -264,16 +264,25 @@ export const RecentCommentsWidget: React.FC = () => {
         ) : (
           recentComments.map(c => {
             const matchedSeries = seriesList.find(s => s.id === c.seriesId);
-            const matchedChapter = matchedSeries?.chapters.find(ch => ch.id === c.chapterId);
+            const rawChapterId = String(c.chapterId || '');
+            const isParaComment = rawChapterId.includes('__p__');
+            const baseChapterId = isParaComment ? rawChapterId.split('__p__')[0] : rawChapterId;
+            const paraKey = isParaComment ? rawChapterId.split('__p__')[1] : '';
+            const matchedChapter = matchedSeries?.chapters.find(ch => ch.id === baseChapterId);
             const chapterLabel = matchedChapter
-              ? `Bölüm ${matchedChapter.number}`
-              : c.chapterId
-              ? 'Bölüm Yorumu'
+              ? `Bölüm ${matchedChapter.number}${isParaComment ? ' • Satır Yorumu' : ''}`
+              : baseChapterId
+              ? (isParaComment ? 'Satır Yorumu' : 'Bölüm Yorumu')
               : 'Genel Yorum';
 
             const handleClick = () => {
-              if (matchedSeries && c.chapterId && matchedChapter) {
-                setView({ type: 'reader', seriesId: matchedSeries.id, chapterId: c.chapterId });
+              if (matchedSeries && baseChapterId && matchedChapter) {
+                if (paraKey) {
+                  try {
+                    sessionStorage.setItem('mk_open_para_key', paraKey);
+                  } catch {}
+                }
+                setView({ type: 'reader', seriesId: matchedSeries.id, chapterId: baseChapterId });
               } else if (matchedSeries) {
                 setView({ type: 'series-detail', seriesId: matchedSeries.id });
               }

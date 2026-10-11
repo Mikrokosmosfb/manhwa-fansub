@@ -3007,10 +3007,13 @@ const deleteShopItemAndStyle = (itemId: string) => {
     if (!target) return false;
 
     const matchedSeries = seriesList.find(s => s.id === target.seriesId);
-    const matchedChapter = matchedSeries?.chapters?.find(ch => ch.id === target.chapterId);
+    const rawChapterId = String(target.chapterId || '');
+    const isParaComment = rawChapterId.includes('__p__');
+    const baseChapterId = isParaComment ? rawChapterId.split('__p__')[0] : rawChapterId;
+    const matchedChapter = matchedSeries?.chapters?.find(ch => ch.id === baseChapterId);
     const chapterLabel = matchedChapter
-      ? `Bölüm ${matchedChapter.number}${matchedChapter.title ? ' - ' + matchedChapter.title : ''}`
-      : target.chapterId || '';
+      ? `Bölüm ${matchedChapter.number}${matchedChapter.title ? ' - ' + matchedChapter.title : ''}${isParaComment ? ' (Paragraf Yorumu)' : ''}`
+      : baseChapterId;
 
     try {
       const res = await fetch('/api/comments/report', {
@@ -3025,7 +3028,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           commentImageUrl: target.imageUrl || '',
           seriesId: target.seriesId,
           seriesTitle: matchedSeries?.title || target.seriesId,
-          chapterId: target.chapterId || '',
+          chapterId: baseChapterId,
           chapterTitle: chapterLabel,
           reason: reason || 'Okuyucu Bildirimi / Uygunsuz Yorum',
           details: details || '',
