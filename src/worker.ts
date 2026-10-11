@@ -1914,11 +1914,29 @@ ${seriesXml}
         // WALLPAPERS API
         if (path.startsWith('/api/wallpapers')) {
           const activeDb = db || usersDb;
+          if (activeDb) {
+            await activeDb.prepare(`
+              CREATE TABLE IF NOT EXISTS wallpapers (
+                id TEXT PRIMARY KEY,
+                title TEXT,
+                image_url TEXT NOT NULL,
+                series_id TEXT,
+                series_title TEXT,
+                category TEXT DEFAULT 'genel',
+                tags_json TEXT DEFAULT '[]',
+                likes INTEGER DEFAULT 0,
+                downloads INTEGER DEFAULT 0,
+                uploaded_by TEXT,
+                created_at TEXT
+              );
+            `).run().catch(() => {});
+          }
+
           if (request.method === 'GET') {
             if (activeDb) {
               try {
                 const { results } = await activeDb.prepare("SELECT * FROM wallpapers ORDER BY created_at DESC LIMIT 2000").all();
-                const list = (results || []).map((w: any) => ({
+                let list = (results || []).map((w: any) => ({
                   id: w.id,
                   title: w.title || '',
                   imageUrl: w.image_url,
@@ -1931,6 +1949,16 @@ ${seriesXml}
                   uploadedBy: w.uploaded_by || '',
                   createdAt: w.created_at || new Date().toISOString()
                 }));
+                if (list.length === 0) {
+                  const backupRow: any = await activeDb
+                    .prepare("SELECT value FROM site_settings WHERE key = 'wallpapers_backup'")
+                    .first()
+                    .catch(() => null);
+                  if (backupRow && backupRow.value) {
+                    const parsed = JSON.parse(backupRow.value);
+                    if (Array.isArray(parsed)) list = parsed;
+                  }
+                }
                 return new Response(JSON.stringify({ success: true, storage: 'D1', wallpapers: list }), { headers });
               } catch (e) {}
             }
@@ -1986,6 +2014,24 @@ ${seriesXml}
                 for (let i = 0; i < stmts.length; i += BATCH_SIZE) {
                   await activeDb.batch(stmts.slice(i, i + BATCH_SIZE));
                 }
+
+                // Also update site_settings backup for extra durability
+                try {
+                  const backupRow: any = await activeDb
+                    .prepare("SELECT value FROM site_settings WHERE key = 'wallpapers_backup'")
+                    .first()
+                    .catch(() => null);
+                  const existing: any[] = backupRow && backupRow.value ? JSON.parse(backupRow.value) : [];
+                  const map = new Map<string, any>();
+                  existing.forEach(x => x && x.id && map.set(x.id, x));
+                  itemsInput.forEach((x: any) => x && x.id && map.set(x.id, x));
+                  const merged = Array.from(map.values()).slice(0, 500);
+                  await activeDb
+                    .prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('wallpapers_backup', ?)")
+                    .bind(JSON.stringify(merged))
+                    .run();
+                } catch {}
+
                 return new Response(JSON.stringify({ success: true, storage: 'D1', count: itemsInput.length }), { headers });
               } catch (e: any) {
                 console.error('Error saving wallpapers to D1:', e);
@@ -2046,6 +2092,19 @@ ${seriesXml}
             if (id && activeDb) {
               try {
                 await activeDb.prepare("DELETE FROM wallpapers WHERE id = ?").bind(id).run();
+                const backupRow: any = await activeDb
+                  .prepare("SELECT value FROM site_settings WHERE key = 'wallpapers_backup'")
+                  .first()
+                  .catch(() => null);
+                if (backupRow && backupRow.value) {
+                  const list = JSON.parse(backupRow.value);
+                  if (Array.isArray(list)) {
+                    await activeDb
+                      .prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('wallpapers_backup', ?)")
+                      .bind(JSON.stringify(list.filter((w: any) => w && w.id !== id)))
+                      .run();
+                  }
+                }
               } catch (e) {}
             }
             if (id && r2) {

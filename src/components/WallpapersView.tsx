@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { WallpaperItem, WallpaperCategory, isAuthorizedAdmin, isSeries18Plus } from '../types';
+import { WallpaperItem, WallpaperCategory, isAuthorizedAdmin } from '../types';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
+import { extractImageUrls, isIframeUrl, normalizeImageUrl } from '../utils/imageParser';
 import {
   Search,
   Sparkles,
@@ -103,7 +104,7 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
 
   // Admin Upload Modal state (only active inside Admin Panel)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(isAdminPanel);
-  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('file');
+  const [uploadMode, setUploadMode] = useState<'file' | 'url'>('url');
   const [uploadSeriesId, setUploadSeriesId] = useState<string>(initialSeriesId || '');
   const [uploadSeriesSearch, setUploadSeriesSearch] = useState('');
   const [customSeriesTitle, setCustomSeriesTitle] = useState('');
@@ -153,16 +154,76 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     }
   };
 
-  // Fetch wallpapers from Cloudflare D1 API
+  const getDeletedWallpaperIds = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem('mk_deleted_wallpapers_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return new Set(parsed);
+      }
+    } catch {}
+    return new Set();
+  };
+
+  // Fetch wallpapers from Cloudflare D1 API and merge with local cache so uploads never disappear
   const fetchWallpapers = async () => {
     try {
+      const deletedSet = getDeletedWallpaperIds();
+      let localList: WallpaperItem[] = [];
+      try {
+        const cached = localStorage.getItem('mk_wallpapers_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            localList = parsed.filter(
+              (w: any) => w && w.id && !String(w.id).startsWith('series-') && !deletedSet.has(w.id)
+            );
+          }
+        }
+      } catch {}
+
       const data = await safeFetchWallpapersJson<{ success?: boolean; wallpapers?: WallpaperItem[] }>('/api/wallpapers');
       if (data && Array.isArray(data.wallpapers)) {
-        const cleanWallpapers = data.wallpapers.filter(w => !String(w.id || '').startsWith('series-'));
-        setWallpapers(cleanWallpapers);
+        const serverWallpapers = data.wallpapers.filter(
+          w => w && w.id && !String(w.id || '').startsWith('series-') && !deletedSet.has(w.id)
+        );
+
+        const mergedMap = new Map<string, WallpaperItem>();
+        // Keep local items first so newly uploaded items are never lost if backend hasn't synced yet
+        for (const item of localList) {
+          mergedMap.set(item.id, {
+            ...item,
+            imageUrl: normalizeImageUrl(item.imageUrl) || item.imageUrl
+          });
+        }
+        for (const item of serverWallpapers) {
+          mergedMap.set(item.id, {
+            ...item,
+            imageUrl: normalizeImageUrl(item.imageUrl) || item.imageUrl
+          });
+        }
+
+        const mergedList = Array.from(mergedMap.values()).sort(
+          (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+        );
+
+        setWallpapers(mergedList);
         try {
-          localStorage.setItem('mk_wallpapers_v1', JSON.stringify(cleanWallpapers));
+          localStorage.setItem('mk_wallpapers_v1', JSON.stringify(mergedList));
         } catch {}
+
+        // If local cache has wallpapers that aren't on the server yet, push them to backend in background
+        const serverIds = new Set(serverWallpapers.map(w => w.id));
+        const unsyncedLocal = localList.filter(w => !serverIds.has(w.id));
+        if (unsyncedLocal.length > 0) {
+          safeFetchWallpapersJson('/api/wallpapers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ wallpapers: unsyncedLocal, adminEmail: user?.email || '' })
+          }).catch(() => {});
+        }
+      } else if (localList.length > 0) {
+        setWallpapers(localList);
       }
     } catch {
       // Quietly fallback to localStorage cache when API is unavailable
@@ -173,27 +234,48 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
 
   useEffect(() => {
     fetchWallpapers();
-    const handleSync = () => fetchWallpapers();
+    const handleSync = () => {
+      try {
+        const cached = localStorage.getItem('mk_wallpapers_v1');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed)) {
+            const deletedSet = getDeletedWallpaperIds();
+            setWallpapers(
+              parsed.filter(
+                (w: any) => w && w.id && !String(w.id).startsWith('series-') && !deletedSet.has(w.id)
+              )
+            );
+          }
+        }
+      } catch {}
+    };
     window.addEventListener('mk-wallpapers-updated', handleSync);
-    return () => window.removeEventListener('mk-wallpapers-updated', handleSync);
+    window.addEventListener('storage', handleSync);
+    return () => {
+      window.removeEventListener('mk-wallpapers-updated', handleSync);
+      window.removeEventListener('storage', handleSync);
+    };
   }, []);
 
+  // Show all series in Wallpaper section so wallpapers of 18+ series are never hidden
   const visibleSeries = useMemo(() => {
-    return showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
-  }, [seriesList, showNsfw]);
+    return seriesList;
+  }, [seriesList]);
 
-  // Sadece yönetim panelinden yüklenen gerçek wallpaperlar gösterilir (seri kapakları/bannerları dahil edilmez)
+  // Sadece yönetim panelinden yüklenen gerçek wallpaperlar gösterilir (18+ filtresi yüzünden gizlenmez)
   const allDisplayWallpapers = useMemo(() => {
-    const nsIdSet = new Set(
-      seriesList.filter(s => !showNsfw && isSeries18Plus(s)).map(s => s.id)
-    );
-
     return wallpapers.filter(w => {
+      if (!w || !w.imageUrl) return false;
       if (String(w.id || '').startsWith('series-')) return false;
-      if (!showNsfw && w.seriesId && nsIdSet.has(w.seriesId)) return false;
       return true;
     });
-  }, [wallpapers, showNsfw, seriesList]);
+  }, [wallpapers]);
+
+  // Live preview of URLs/embed codes pasted into the admin textarea
+  const detectedUploadUrls = useMemo(() => {
+    return extractImageUrls(uploadUrlText);
+  }, [uploadUrlText]);
 
   // Count wallpapers per series
   const wallpaperCountBySeries = useMemo(() => {
@@ -487,17 +569,21 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     e.preventDefault();
     if (!canUploadInAdminPanel) return;
 
-    const selectedSeries = seriesList.find(s => s.id === uploadSeriesId);
-    const finalSeriesTitle = selectedSeries ? selectedSeries.title : customSeriesTitle.trim();
-
-    if (!finalSeriesTitle) {
-      showToast({
-        title: 'Seri Seçilmedi',
-        message: 'Lütfen mevcut serilerden birini seçin veya seri adını yazın.',
-        type: 'warning'
-      });
-      return;
+    // Resolve series: explicit selection -> exact/single match from search box -> custom title -> fallback
+    let selectedSeries = seriesList.find(s => s.id === uploadSeriesId);
+    if (!selectedSeries && uploadSeriesSearch.trim()) {
+      const q = normalizeSearchText(uploadSeriesSearch);
+      selectedSeries =
+        seriesList.find(s => normalizeSearchText(s.title) === q) ||
+        (filteredUploadSeries.length === 1 ? filteredUploadSeries[0] : undefined);
     }
+
+    const finalSeriesTitle =
+      selectedSeries?.title ||
+      customSeriesTitle.trim() ||
+      uploadSeriesSearch.trim() ||
+      uploadTitle.trim() ||
+      'Mikrokosmos Wallpaper';
 
     const parsedTags = uploadTagsInput
       .split(',')
@@ -508,33 +594,35 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
       ? Array.from(new Set([...parsedTags, ...(selectedSeries.genres || []).slice(0, 3)]))
       : parsedTags;
 
+    const urls = extractImageUrls(uploadUrlText);
+
+    if (pendingFiles.length === 0 && urls.length === 0) {
+      showToast({
+        title: 'Görsel veya Embed Kodu Bulunamadı',
+        message: 'Lütfen cihazdan görsel seçin veya geçerli bir resim linki / HTML embed kodu yapıştırın.',
+        type: 'warning'
+      });
+      return;
+    }
+
     const newItems: WallpaperItem[] = [];
     setIsUploading(true);
 
     try {
-      if (uploadMode === 'file') {
-        if (pendingFiles.length === 0) {
-          showToast({
-            title: 'Görsel Seçilmedi',
-            message: 'Lütfen yüklenecek en az 1 duvar kağıdı görseli seçin.',
-            type: 'warning'
-          });
-          setIsUploading(false);
-          return;
-        }
-
+      // 1. Process any selected files from device
+      if (pendingFiles.length > 0) {
         for (let i = 0; i < pendingFiles.length; i++) {
           const item = pendingFiles[i];
-          setUploadProgressText(`Görsel yükleniyor (${i + 1} / ${pendingFiles.length})...`);
+          setUploadProgressText(`Dosya yükleniyor (${i + 1} / ${pendingFiles.length})...`);
           const uploadedUrl = await uploadSingleImageFile(item.file);
           const cat: WallpaperCategory =
             uploadCategory === 'auto' ? item.detectedCategory : uploadCategory;
 
           newItems.push({
-            id: `wp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${i}`,
+            id: `wp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-f${i}`,
             title:
               uploadTitle.trim() ||
-              `${finalSeriesTitle} ${pendingFiles.length > 1 ? `#${i + 1}` : 'Wallpaper'}`,
+              `${finalSeriesTitle} ${pendingFiles.length + urls.length > 1 ? `#${newItems.length + 1}` : 'Wallpaper'}`,
             imageUrl: uploadedUrl,
             seriesId: selectedSeries?.id || '',
             seriesTitle: finalSeriesTitle,
@@ -546,33 +634,25 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
             createdAt: new Date().toISOString()
           });
         }
-      } else {
-        const urls = uploadUrlText
-          .split('\n')
-          .map(u => u.trim())
-          .filter(u => u.startsWith('http') || u.startsWith('data:image') || u.startsWith('/api/'));
+      }
 
-        if (urls.length === 0) {
-          showToast({
-            title: 'Geçerli Link Yok',
-            message: 'Lütfen en az bir geçerli resim URL bağlantısı girin.',
-            type: 'warning'
-          });
-          setIsUploading(false);
-          return;
-        }
-
+      // 2. Process any pasted URLs or HTML/BBCode/Drive/Pinterest/Worker embed codes
+      if (urls.length > 0) {
         for (let i = 0; i < urls.length; i++) {
-          setUploadProgressText(`Görsel kontrol ediliyor (${i + 1} / ${urls.length})...`);
+          setUploadProgressText(`Görsel / Embed ekleniyor (${i + 1} / ${urls.length})...`);
           const url = urls[i];
           const cat: WallpaperCategory =
-            uploadCategory === 'auto' ? await detectUrlCategory(url) : uploadCategory;
+            uploadCategory === 'auto'
+              ? isIframeUrl(url)
+                ? 'mobil'
+                : await detectUrlCategory(url)
+              : uploadCategory;
 
           newItems.push({
-            id: `wp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-${i}`,
+            id: `wp-${Date.now()}-${Math.random().toString(36).substring(2, 7)}-u${i}`,
             title:
               uploadTitle.trim() ||
-              `${finalSeriesTitle} ${urls.length > 1 ? `#${i + 1}` : 'Wallpaper'}`,
+              `${finalSeriesTitle} ${pendingFiles.length + urls.length > 1 ? `#${newItems.length + 1}` : 'Wallpaper'}`,
             imageUrl: url,
             seriesId: selectedSeries?.id || '',
             seriesTitle: finalSeriesTitle,
@@ -586,6 +666,12 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
         }
       }
 
+      const updatedList = [...newItems, ...wallpapers];
+      setWallpapers(updatedList);
+      try {
+        localStorage.setItem('mk_wallpapers_v1', JSON.stringify(updatedList));
+      } catch {}
+
       setUploadProgressText('Veritabanına kaydediliyor...');
       await safeFetchWallpapersJson('/api/wallpapers', {
         method: 'POST',
@@ -593,12 +679,18 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
         body: JSON.stringify({ wallpapers: newItems, adminEmail: user?.email || '' })
       });
 
-      const updatedList = [...newItems, ...wallpapers];
-      setWallpapers(updatedList);
-      try {
-        localStorage.setItem('mk_wallpapers_v1', JSON.stringify(updatedList));
-      } catch {}
       window.dispatchEvent(new Event('mk-wallpapers-updated'));
+
+      // Ensure filters don't hide the newly added wallpaper
+      if (selectedSeriesId !== 'all' && selectedSeriesId !== (selectedSeries?.id || '')) {
+        setSelectedSeriesId('all');
+      }
+      if (selectedCategory !== 'all') {
+        setSelectedCategory('all');
+      }
+      if (searchQuery) {
+        setSearchQuery('');
+      }
 
       // Reset form
       pendingFiles.forEach(p => URL.revokeObjectURL(p.previewUrl));
@@ -628,6 +720,12 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
   const handleDeleteWallpaper = async (w: WallpaperItem, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!isAdmin) return;
+
+    try {
+      const deletedSet = getDeletedWallpaperIds();
+      deletedSet.add(w.id);
+      localStorage.setItem('mk_deleted_wallpapers_v1', JSON.stringify(Array.from(deletedSet)));
+    } catch {}
 
     const updated = wallpapers.filter(item => item.id !== w.id);
     setWallpapers(updated);
@@ -887,6 +985,18 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                     <div className="flex items-center gap-2 bg-gray-900 p-1 rounded-xl border border-gray-800">
                       <button
                         type="button"
+                        onClick={() => setUploadMode('url')}
+                        className={`flex-1 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          uploadMode === 'url'
+                            ? 'bg-purple-600 text-white shadow'
+                            : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <LinkIcon size={14} />
+                        <span>Link / Embed Kodu Ekle</span>
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => setUploadMode('file')}
                         className={`flex-1 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
                           uploadMode === 'file'
@@ -896,18 +1006,6 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                       >
                         <Upload size={14} />
                         <span>Cihazdan Çoklu Yükle</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setUploadMode('url')}
-                        className={`flex-1 py-2 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
-                          uploadMode === 'url'
-                            ? 'bg-purple-600 text-white shadow'
-                            : 'text-gray-400 hover:text-white'
-                        }`}
-                      >
-                        <LinkIcon size={14} />
-                        <span>Resim URL / Link Ekle</span>
                       </button>
                     </div>
 
@@ -983,17 +1081,68 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                         )}
                       </div>
                     ) : (
-                      <div className="space-y-2">
-                        <label className="block text-xs font-bold text-gray-300">
-                          Resim URL Bağlantıları (Her satıra 1 link yazarak toplu ekleyebilirsiniz)
-                        </label>
+                      <div className="space-y-2.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="block text-xs font-bold text-gray-300">
+                            Resim Linki veya HTML / Embed Kodu (Toplu ekleyebilirsiniz)
+                          </label>
+                          {detectedUploadUrls.length > 0 && (
+                            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-950/90 text-emerald-300 border border-emerald-500/40">
+                              ✓ {detectedUploadUrls.length} Görsel Algılandı
+                            </span>
+                          )}
+                        </div>
                         <textarea
-                          rows={6}
+                          rows={5}
                           value={uploadUrlText}
                           onChange={e => setUploadUrlText(e.target.value)}
-                          placeholder={'https://ornek.com/wallpaper1.jpg\nhttps://ornek.com/wallpaper2.png'}
+                          placeholder={
+                            'Direkt resim linki, Blogger/HTML <img src="..."> kodu, <iframe src="..."> embed kodu, Google Drive, Pinterest veya BBCode [img]...[/img] yapıştırabilirsiniz...'
+                          }
                           className="w-full bg-gray-900 border border-gray-800 rounded-xl p-3 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-mono"
                         />
+
+                        {detectedUploadUrls.length > 0 && (
+                          <div className="bg-gray-900/90 border border-purple-500/30 rounded-xl p-2.5 space-y-2">
+                            <div className="flex items-center justify-between text-[11px] text-purple-200 font-bold">
+                              <span>Algılanan Önizleme ({detectedUploadUrls.length} Adet)</span>
+                              <button
+                                type="button"
+                                onClick={() => setUploadUrlText('')}
+                                className="text-rose-400 hover:underline text-[10px]"
+                              >
+                                Temizle
+                              </button>
+                            </div>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-40 overflow-y-auto p-0.5">
+                              {detectedUploadUrls.map((u, idx) => (
+                                <div
+                                  key={idx}
+                                  className="relative rounded-lg overflow-hidden border border-purple-500/30 bg-gray-950 aspect-[3/4]"
+                                >
+                                  {isIframeUrl(u) ? (
+                                    <iframe
+                                      src={u}
+                                      title={`Embed ${idx + 1}`}
+                                      className="w-full h-full border-0 pointer-events-none"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={getOptimizedImageUrl(u, 240)}
+                                      onError={e => handleImageError(e, u, 'Wallpaper')}
+                                      alt=""
+                                      referrerPolicy="no-referrer"
+                                      className="w-full h-full object-cover"
+                                    />
+                                  )}
+                                  <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-bold text-purple-200">
+                                    #{idx + 1}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1349,14 +1498,27 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                 onClick={() => setActiveWallpaper(w)}
                 className="break-inside-avoid group relative rounded-2xl overflow-hidden bg-gray-900 border border-purple-500/20 hover:border-purple-400/70 shadow-lg hover:shadow-purple-950/60 transition-all duration-300 cursor-pointer"
               >
-                {/* Image with natural Pinterest aspect ratio */}
-                <img
-                  src={getOptimizedImageUrl(w.imageUrl, 600)}
-                  onError={handleImageError}
-                  alt={w.title || w.seriesTitle}
-                  loading="lazy"
-                  className="w-full h-auto block object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                />
+                {/* Image or Iframe Embed with natural Pinterest aspect ratio */}
+                {isIframeUrl(w.imageUrl) ? (
+                  <div className="relative w-full aspect-[3/4] bg-gray-950 overflow-hidden">
+                    <iframe
+                      src={w.imageUrl}
+                      title={w.title || w.seriesTitle}
+                      className="w-full h-full border-0 pointer-events-none"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-transparent" />
+                  </div>
+                ) : (
+                  <img
+                    src={getOptimizedImageUrl(w.imageUrl, 600)}
+                    onError={e => handleImageError(e, w.imageUrl, w.title || w.seriesTitle)}
+                    alt={w.title || w.seriesTitle}
+                    referrerPolicy="no-referrer"
+                    loading="lazy"
+                    className="w-full h-auto block object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                  />
+                )}
 
                 {/* Top Badges */}
                 <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
@@ -1462,14 +1624,24 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
             {/* Modal Content Scrollable Area */}
             <div className="overflow-y-auto p-4 sm:p-6 space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* High-Res Image Preview */}
+                {/* High-Res Image / Embed Preview */}
                 <div className="lg:col-span-7 bg-black/60 border border-gray-800 rounded-2xl p-2 flex items-center justify-center">
-                  <img
-                    src={activeWallpaper.imageUrl}
-                    onError={handleImageError}
-                    alt={activeWallpaper.title}
-                    className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl"
-                  />
+                  {isIframeUrl(activeWallpaper.imageUrl) ? (
+                    <iframe
+                      src={activeWallpaper.imageUrl}
+                      title={activeWallpaper.title || activeWallpaper.seriesTitle}
+                      className="w-full h-[65vh] rounded-xl border-0 shadow-2xl"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <img
+                      src={getOptimizedImageUrl(activeWallpaper.imageUrl, 1600)}
+                      onError={e => handleImageError(e, activeWallpaper.imageUrl, activeWallpaper.title || activeWallpaper.seriesTitle)}
+                      alt={activeWallpaper.title}
+                      referrerPolicy="no-referrer"
+                      className="max-h-[70vh] w-auto object-contain rounded-xl shadow-2xl"
+                    />
+                  )}
                 </div>
 
                 {/* Details & Actions Column */}

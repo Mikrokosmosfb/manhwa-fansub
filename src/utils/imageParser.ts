@@ -29,9 +29,24 @@ export function normalizeImageUrl(url: string): string {
     return clean;
   }
 
+  // Handle protocol-relative URLs (e.g. //i.imgur.com/...)
+  if (clean.startsWith('//')) {
+    clean = 'https:' + clean;
+  }
+
   // Eski mikrokosmosdeposu adresini otomatik olarak yeni mediadepo adresine yönlendirir:
   if (clean.includes('mikrokosmosdeposu')) {
     clean = clean.replace(/mikrokosmosdeposu/g, 'mediadepo');
+  }
+
+  // Normalize Blogger / GoogleUserContent thumbnail sizes (/s320/, /s640/, etc.) to /s1600/ so <a href> and <img src> deduplicate cleanly
+  if (
+    clean.includes('blogger.googleusercontent.com') ||
+    clean.includes('bp.blogspot.com')
+  ) {
+    clean = clean
+      .replace(/\/(s|w)\d{2,4}(-h\d{2,4})?(-rw(-l\d+)?)?\//g, '/s1600/')
+      .replace(/=(s|w)\d{2,4}(-h\d{2,4})?(-rw(-l\d+)?)?$/g, '=s1600');
   }
 
   // 1. Google Drive direct image conversion
@@ -66,6 +81,12 @@ export function normalizeImageUrl(url: string): string {
     }
   }
 
+  // 4. Pinterest Pin URL to Pinterest embed URL
+  const pinMatch = clean.match(/^https?:\/\/(?:[a-z]{2,3}\.)?pinterest\.(?:com|co\.uk|de|fr|ca|jp|kr|ru)\/pin\/(?:[^/?#]*--)?(\d{8,25})\/?/i);
+  if (pinMatch && pinMatch[1]) {
+    return `https://assets.pinterest.com/ext/embed.html?id=${pinMatch[1]}`;
+  }
+
   return clean;
 }
 
@@ -78,7 +99,7 @@ export function isHtmlContent(text: string | undefined | null): boolean {
 }
 
 /**
- * Checks if a URL is an iframe embed URL (e.g. YouTube, player embed, video embed)
+ * Checks if a URL is an iframe embed URL (e.g. YouTube, Pinterest embed, player embed, video embed)
  */
 export function isIframeUrl(url: string): boolean {
   if (!url) return false;
@@ -86,6 +107,7 @@ export function isIframeUrl(url: string): boolean {
   
   // Note: Google Drive links are normalized to direct lh3.googleusercontent.com/d/... images
   return (
+    lower.includes('assets.pinterest.com/ext/embed.html') ||
     lower.includes('youtube.com/embed') ||
     lower.includes('youtube-nocookie.com/embed') ||
     lower.includes('player.vimeo.com') ||
@@ -93,7 +115,7 @@ export function isIframeUrl(url: string): boolean {
     lower.includes('ok.ru/videoembed') ||
     lower.includes('vidoza') ||
     lower.includes('mega.nz/embed') ||
-    (lower.includes('/embed/') && !lower.includes('googleusercontent.com'))
+    (lower.includes('/embed') && !lower.includes('googleusercontent.com'))
   );
 }
 
@@ -142,8 +164,8 @@ export function extractImageUrls(input: string | string[] | undefined | null): s
     if (match[1]) addUrl(match[1]);
   }
 
-  // 3. Match HTML <embed ... src="..." />
-  const embedTagRegex = /<embed\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi;
+  // 3. Match HTML <embed ... src="..." /> and <source ... src="..." />
+  const embedTagRegex = /<(?:embed|source|video)\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi;
   while ((match = embedTagRegex.exec(rawText)) !== null) {
     if (match[1]) addUrl(match[1]);
   }
@@ -154,8 +176,8 @@ export function extractImageUrls(input: string | string[] | undefined | null): s
     if (match[1]) addUrl(match[1]);
   }
 
-  // 5. Match HTML <a ... href="image/drive link">
-  const aTagRegex = /<a\b[^>]*?\bhref=["']?([^"'\s>]+\.(?:jpg|jpeg|png|webp|gif|bmp|svg)(?:\?[^"'\s>]*)?|https?:\/\/(?:drive|docs)\.google\.com\/[^"'\s>]+)["']?[^>]*>/gi;
+  // 5. Match HTML <a ... href="image/drive/pinterest link">
+  const aTagRegex = /<a\b[^>]*?\bhref=["']?([^"'\s>]+\.(?:jpg|jpeg|png|webp|gif|bmp|svg)(?:\?[^"'\s>]*)?|https?:\/\/(?:drive|docs)\.google\.com\/[^"'\s>]+|https?:\/\/(?:[a-z]{2,3}\.)?pinterest\.[^"'\s>]+\/pin\/[^"'\s>]+)["']?[^>]*>/gi;
   while ((match = aTagRegex.exec(rawText)) !== null) {
     if (match[1]) addUrl(match[1]);
   }
@@ -178,14 +200,19 @@ export function extractImageUrls(input: string | string[] | undefined | null): s
     if (match[1]) addUrl(match[1]);
   }
 
-  // 9. Always also parse line-by-line / text URLs in case of mixed content or raw URL lists
+  // 9. Also parse line-by-line / text URLs for lines that do not already contain HTML/BBCode/Markdown media tags
   const lines = rawText.split(/[\n\r]+/);
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    // Direct Google Drive, Blogger, Discord, or web URLs
-    const urlMatches = trimmed.match(/(https?:\/\/[^\s"'<>]+|data:image\/[^\s"'<>]+)/gi);
+    // Skip raw URL scraping on lines that already had structured embed/img tags parsed above
+    if (/<(?:img|iframe|embed|object|source|video)\b|\[img\]|!\[.*?\]\(/i.test(trimmed)) {
+      continue;
+    }
+
+    // Direct Google Drive, Blogger, Discord, Worker, Pinterest, or web URLs
+    const urlMatches = trimmed.match(/(https?:\/\/[^\s"'<>\])]+|data:image\/[^\s"'<>\])]+|\/api\/[^\s"'<>\])]+)/gi);
     if (urlMatches && urlMatches.length > 0) {
       urlMatches.forEach(u => addUrl(u));
     }
