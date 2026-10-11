@@ -33,7 +33,8 @@ import {
   ChevronDown,
   CheckCircle2,
   MousePointerClick,
-  Eye
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 
@@ -128,7 +129,18 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [isPrivacyBlurred, setIsPrivacyBlurred] = useState(false);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
+
+  const togglePrivacyBlur = () => {
+    setIsPrivacyBlurred(prev => {
+      const next = !prev;
+      if (next) {
+        setIsAutoScrolling(false);
+      }
+      return next;
+    });
+  };
 
   // Current page index for Manga (single page) mode (0-indexed)
   const [currentPage, setCurrentPage] = useState(0);
@@ -235,6 +247,15 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   // Keyboard navigation for Manga Mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        togglePrivacyBlur();
+        return;
+      }
+
       if (readerMode !== 'manga' || totalPages === 0) return;
 
       if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') {
@@ -529,8 +550,25 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </button>
           </div>
 
-          {/* Settings & Prev / Next Header Buttons */}
+          {/* Settings, Privacy Blur & Prev / Next Header Buttons */}
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={togglePrivacyBlur}
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl border flex items-center justify-center transition cursor-pointer ${
+                isPrivacyBlurred
+                  ? 'bg-rose-600 border-rose-400 text-white shadow-md shadow-rose-900/50 animate-pulse'
+                  : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+              }`}
+              title={
+                isPrivacyBlurred
+                  ? 'Bulanıklaştırmayı Kaldır (Kısayol: B)'
+                  : 'Ekranı Anında Bulanıklaştır / Gizle (Kısayol: B)'
+              }
+            >
+              {isPrivacyBlurred ? <Eye size={17} /> : <EyeOff size={17} />}
+            </button>
+
             <button
               type="button"
               onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -1005,10 +1043,66 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                 <Maximize size={13} />
                 <span className="truncate">Tam Ekran</span>
               </button>
+
+              <button
+                type="button"
+                onClick={togglePrivacyBlur}
+                className={`py-1.5 px-2.5 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 border transition cursor-pointer ${
+                  isPrivacyBlurred
+                    ? 'bg-rose-600 text-white border-rose-400 shadow-sm'
+                    : 'bg-gray-950 border-purple-500/30 text-gray-200 hover:text-white'
+                }`}
+              >
+                {isPrivacyBlurred ? <Eye size={13} /> : <EyeOff size={13} />}
+                <span className="truncate">{isPrivacyBlurred ? 'Bulanıklığı Aç' : 'Anında Bulanıklaştır'}</span>
+              </button>
             </div>
 
           </div>
         </>
+      )}
+
+      {/* Always-Reachable Floating Quick Panic Blur Button (Bottom-Right Corner) */}
+      <button
+        type="button"
+        onClick={togglePrivacyBlur}
+        className={`fixed bottom-5 right-4 z-[60] flex items-center gap-1.5 px-3.5 py-2.5 rounded-full font-extrabold text-xs shadow-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
+          isPrivacyBlurred
+            ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
+            : 'bg-gray-900/85 hover:bg-purple-900/90 text-purple-200 hover:text-white border-purple-500/40 backdrop-blur-md opacity-75 hover:opacity-100'
+        }`}
+        title={
+          isPrivacyBlurred
+            ? 'Gizlilik Bulanıklaştırmasını Kaldır (B)'
+            : 'Panik / Gizlilik: Ekranı Anında Bulanıklaştır (B)'
+        }
+      >
+        {isPrivacyBlurred ? <Eye size={16} /> : <EyeOff size={16} />}
+        <span className="hidden xs:inline">
+          {isPrivacyBlurred ? 'Görünümü Aç' : 'Bulanıklaştır'}
+        </span>
+      </button>
+
+      {/* Privacy Blur Overlay Banner when Active */}
+      {isPrivacyBlurred && (
+        <div
+          onClick={togglePrivacyBlur}
+          className="fixed inset-x-0 top-14 bottom-0 z-40 bg-gray-950/65 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center cursor-pointer select-none animate-fade-in"
+        >
+          <div className="max-w-xs w-full bg-gray-900/95 border border-purple-500/40 rounded-3xl p-6 shadow-2xl space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-purple-950/90 border border-purple-500/40 flex items-center justify-center mx-auto text-purple-300 shadow-lg">
+              <EyeOff size={28} />
+            </div>
+            <h3 className="text-base font-black text-white">Gizlilik Modu Aktif</h3>
+            <p className="text-xs text-gray-400 leading-relaxed">
+              Bölüm görselleri gizlendi. Okumaya devam etmek için ekrana dokunun veya <strong className="text-purple-300">B</strong> tuşuna basın.
+            </p>
+            <span className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-lg transition">
+              <Eye size={14} />
+              <span>Bulanıklığı Kaldır</span>
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Floating Stop Auto Scroll button */}
@@ -1094,11 +1188,16 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
       {/* Comic Images - Webtoon vs Manga Mode Rendering (Dynamic Width & Settings) */}
       <div
-        className="mx-auto px-0 sm:px-2 transition-all duration-200"
+        className={`mx-auto px-0 sm:px-2 transition-all duration-200 ${
+          isPrivacyBlurred ? 'blur-3xl brightness-[0.2] select-none pointer-events-none' : ''
+        }`}
         style={{
           maxWidth: getContainerMaxWidth(),
           width: `${manhwaSettings.zoomPercent}%`,
-          filter: manhwaSettings.brightness < 100 ? `brightness(${manhwaSettings.brightness}%)` : undefined
+          filter:
+            !isPrivacyBlurred && manhwaSettings.brightness < 100
+              ? `brightness(${manhwaSettings.brightness}%)`
+              : undefined
         }}
       >
         {readerMode === 'webtoon' ? (
