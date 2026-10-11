@@ -42,6 +42,17 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
     }
   };
 
+  const isNovel = series.type === 'Web Novel';
+
+  const formatDateCompact = (dateStr?: string) => {
+    if (!dateStr) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const parts = dateStr.split('-');
+      return `${parts[2]}.${parts[1]}`; // e.g. "10.10"
+    }
+    return dateStr.replace(' saat ', 's ').replace(' gün ', 'g ').replace(' önce', '');
+  };
+
   if (layout === 'horizontal') {
     return (
       <div className="bg-gray-900/90 border border-purple-500/20 rounded-2xl p-3 flex gap-3 shadow-md hover:shadow-purple-500/10 hover:border-purple-500/40 transition group">
@@ -89,17 +100,30 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
           </div>
 
           {/* Chapters Preview */}
-          <div className="space-y-1 mt-2">
-            {recentChapters.map(ch => (
-              <button
-                key={ch.id}
-                onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
-                className="w-full flex items-center justify-between text-[11px] bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/40 px-2 py-1 rounded text-purple-200 transition"
-              >
-                <span className="truncate max-w-[130px] font-medium">{ch.title}</span>
-                <span className="text-[10px] text-gray-400">{ch.publishedDate}</span>
-              </button>
-            ))}
+          <div className="space-y-1.5 mt-2">
+            {recentChapters.map(ch => {
+              const isNew = checkIsChapterNew(ch, 24);
+              return (
+                <button
+                  key={ch.id}
+                  onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
+                  className="relative w-full flex items-center justify-between text-[11px] bg-purple-950/40 hover:bg-purple-900/60 border border-purple-800/40 px-2 py-1 rounded text-purple-200 transition"
+                >
+                  {isNovel && isNew && (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 text-gray-950 border border-white/70 shadow-[0_0_8px_rgba(251,191,36,0.75)] flex items-center justify-center animate-pulse"
+                      title="Yeni Bölüm"
+                    >
+                      <Bell size={9} className="fill-current stroke-[2.5]" />
+                    </span>
+                  )}
+                  <span className="truncate max-w-[130px] font-medium">{ch.title}</span>
+                  <span className="text-[9px] text-gray-400/90 tracking-tighter shrink-0 ml-1">
+                    {isNovel ? formatDateCompact(ch.publishedDate) : ch.publishedDate}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -201,34 +225,49 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
         </div>
 
         {/* Chapters list */}
-        <div className="space-y-1.5 pt-1 border-t border-gray-800/80">
+        <div className="space-y-2 pt-1.5 border-t border-gray-800/80">
           {recentChapters.length === 0 ? (
             <div className="text-[11px] text-gray-500 italic">Bölüm eklenmedi</div>
           ) : (
-            recentChapters.map(ch => (
-              <button
-                key={ch.id}
-                onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
-                className="w-full flex items-center justify-between text-[11px] bg-purple-950/40 hover:bg-purple-800/60 border border-purple-800/30 px-2 py-1 rounded-lg text-purple-200 transition group/btn"
-              >
-                <div className="flex items-center gap-1 min-w-0 flex-1">
-                  <span className="font-semibold truncate text-gray-200 group-hover/btn:text-purple-200">
-                    {ch.title}
-                  </span>
-                  {ch.specialTag && (
-                    <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
-                  )}
-                  {checkIsChapterNew(ch, 24) && (
-                    <span className="text-[9px] bg-emerald-600 text-white px-1 rounded font-bold uppercase flex-shrink-0 animate-pulse">
-                      YENİ
+            recentChapters.map(ch => {
+              const isNew = checkIsChapterNew(ch, 24);
+              return (
+                <button
+                  key={ch.id}
+                  onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
+                  className="relative w-full flex items-center justify-between gap-1 text-[11px] bg-purple-950/40 hover:bg-purple-800/60 border border-purple-800/30 px-2 py-1 rounded-lg text-purple-200 transition group/btn"
+                >
+                  {/* Novel-only Top-Right Corner Protruding Bell Badge for New Chapters */}
+                  {isNovel && isNew && (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 sm:w-[18px] sm:h-[18px] rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 text-gray-950 border border-white/80 shadow-[0_0_10px_rgba(251,191,36,0.8)] flex items-center justify-center animate-pulse"
+                      title="Yeni Bölüm!"
+                    >
+                      <Bell size={9} className="fill-current stroke-[2.5] -rotate-12" />
                     </span>
                   )}
-                </div>
-                <span className="text-[10px] text-gray-400 flex-shrink-0 ml-1">
-                  {ch.publishedDate}
-                </span>
-              </button>
-            ))
+
+                  <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+                    <span className="font-semibold truncate text-gray-200 group-hover/btn:text-purple-200">
+                      {ch.title}
+                    </span>
+                    {ch.specialTag && (
+                      <span className="shrink-0">
+                        <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                      </span>
+                    )}
+                    {!isNovel && isNew && (
+                      <span className="text-[9px] bg-emerald-600 text-white px-1 rounded font-bold uppercase flex-shrink-0 animate-pulse">
+                        YENİ
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[9px] text-gray-400/85 font-medium tracking-tighter flex-shrink-0 ml-0.5">
+                    {isNovel ? formatDateCompact(ch.publishedDate) : ch.publishedDate}
+                  </span>
+                </button>
+              );
+            })
           )}
         </div>
       </div>

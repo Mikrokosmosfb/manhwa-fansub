@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { useApp } from '../context/AppContext';
 import { Series } from '../types';
-import { Sparkles, Calendar, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, Calendar, Star, ChevronDown, ChevronUp, Bell } from 'lucide-react';
 import { checkIsChapterNew } from '../utils/dateUtils';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
@@ -209,6 +209,7 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
           <div className="flex flex-col gap-1.5">
             {recentChapters.map((ch) => {
               const isChapterNew = checkIsChapterNew(ch, 24);
+              const isNovel = series.type === 'Web Novel';
 
               return (
                 <div
@@ -216,6 +217,15 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
                   className="group/ch relative flex items-center justify-between px-2.5 py-1 sm:py-1.5 rounded-lg bg-gray-950/50 hover:bg-purple-950/70 border border-gray-800/70 hover:border-purple-500/40 cursor-pointer transition-all duration-200"
                   onClick={() => setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })}
                 >
+                  {isNovel && isChapterNew && (
+                    <span
+                      className="absolute -top-1.5 -right-1.5 z-10 w-4 h-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500 text-gray-950 border border-white/80 shadow-[0_0_8px_rgba(251,191,36,0.75)] flex items-center justify-center animate-pulse"
+                      title="Yeni Bölüm!"
+                    >
+                      <Bell size={9} className="fill-current stroke-[2.5] -rotate-12" />
+                    </span>
+                  )}
+
                   {/* Left: Indicator + Title + Special Tag + New Badge */}
                   <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 pr-2">
                     <span className="w-1.5 h-1.5 rounded-full bg-purple-400 group-hover/ch:bg-purple-300 group-hover/ch:scale-125 transition-transform flex-shrink-0" />
@@ -229,8 +239,8 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
                       <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
                     )}
 
-                    {/* Parıltılı Mor "YENİ" Etiketi */}
-                    {isChapterNew && (
+                    {/* Parıltılı Mor "YENİ" Etiketi (Manhwa/Manga için) */}
+                    {!isNovel && isChapterNew && (
                       <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded shadow-sm border border-purple-300/40 animate-pulse flex items-center gap-0.5 flex-shrink-0">
                         <Sparkles size={8} className="text-purple-100 fill-purple-100" />
                         YENİ
