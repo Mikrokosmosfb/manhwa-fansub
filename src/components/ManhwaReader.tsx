@@ -555,7 +555,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             <button
               type="button"
               onClick={togglePrivacyBlur}
-              className={`hidden sm:flex h-9 w-9 sm:h-10 sm:w-10 rounded-xl border items-center justify-center transition cursor-pointer ${
+              className={`hidden md:flex h-9 w-9 sm:h-10 sm:w-10 rounded-xl border items-center justify-center transition cursor-pointer ${
                 isPrivacyBlurred
                   ? 'bg-rose-600 border-rose-400 text-white shadow-md shadow-rose-900/50 animate-pulse'
                   : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -1062,22 +1062,23 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
-      {/* Mobile-Only Bottom-Left Corner Panic Blur Button */}
+      {/* Mobile-Only Bottom-Left Corner Panic Blur Button (Parallel with ScrollToTopBottom at bottom-20) */}
       <button
         type="button"
         onClick={togglePrivacyBlur}
-        className={`sm:hidden fixed bottom-4 left-4 z-[60] w-11 h-11 rounded-2xl flex items-center justify-center shadow-2xl border transition-all duration-200 active:scale-95 cursor-pointer ${
+        className={`md:hidden fixed bottom-20 left-3.5 sm:left-6 z-[60] p-2.5 sm:p-3 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
           isPrivacyBlurred
             ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
-            : 'bg-purple-900/85 hover:bg-purple-800 text-purple-100 border-purple-400/40 backdrop-blur-md'
+            : 'bg-purple-900/90 hover:bg-purple-600 text-white border-purple-400/50'
         }`}
         title={
           isPrivacyBlurred
             ? 'Gizlilik Bulanıklaştırmasını Kaldır'
             : 'Ekranı Anında Bulanıklaştır'
         }
+        aria-label="Ekranı Bulanıklaştır"
       >
-        {isPrivacyBlurred ? <Eye size={18} /> : <EyeOff size={18} />}
+        {isPrivacyBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
       </button>
 
       {/* Privacy Blur Overlay Banner when Active */}
