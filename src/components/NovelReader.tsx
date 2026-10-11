@@ -148,9 +148,46 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     return list;
   }, [sortedChapters, dropdownOrder, dropdownSearch]);
 
+  // Decode Blogger / HTML entities (including double-escaped &amp;nbsp; and numeric entities)
+  const decodeNovelEntities = (str: string): string => {
+    if (!str) return '';
+    let out = str;
+    // Two passes to handle double-encoded entities from Blogger XML (e.g., &amp;nbsp;)
+    for (let pass = 0; pass < 2; pass++) {
+      out = out
+        .replace(/&nbsp;|&#160;|&#xa0;/gi, ' ')
+        .replace(/&quot;|&#34;/gi, '"')
+        .replace(/&#39;|&#039;|&apos;/gi, "'")
+        .replace(/&lsquo;|&#8216;/gi, '‘')
+        .replace(/&rsquo;|&#8217;/gi, '’')
+        .replace(/&ldquo;|&#8220;/gi, '“')
+        .replace(/&rdquo;|&#8221;/gi, '”')
+        .replace(/&ndash;|&#8211;/gi, '–')
+        .replace(/&mdash;|&#8212;/gi, '—')
+        .replace(/&hellip;|&#8230;/gi, '…')
+        .replace(/&laquo;|&#171;/gi, '«')
+        .replace(/&raquo;|&#187;/gi, '»')
+        .replace(/&bull;|&#8226;/gi, '•')
+        .replace(/&lt;|&#60;/gi, '<')
+        .replace(/&gt;|&#62;/gi, '>')
+        .replace(/&#(\d+);/g, (_, dec) => {
+          const code = Number(dec);
+          if (code === 160) return ' ';
+          return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+        })
+        .replace(/&#x([0-9a-f]+);/gi, (_, hex) => {
+          const code = parseInt(hex, 16);
+          if (code === 160) return ' ';
+          return Number.isFinite(code) ? String.fromCodePoint(code) : _;
+        })
+        .replace(/&amp;|&#38;/gi, '&');
+    }
+    return out.replace(/\u00A0/g, ' ');
+  };
+
   // Word count & estimated reading time calculation
   const wordCount = currentChapter?.content
-    ? currentChapter.content.trim().split(/\s+/).length
+    ? decodeNovelEntities(currentChapter.content).trim().split(/\s+/).filter(Boolean).length
     : 0;
   const estimatedMinutes = Math.max(1, Math.round(wordCount / 200));
 
@@ -176,23 +213,31 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
     const occurrenceMap = new Map<string, number>();
     const makeItem = (plainText: string, htmlContent?: string, isMediaOnly = false) => {
-      const cleanText = plainText.replace(/\s+/g, ' ').trim();
+      const cleanText = decodeNovelEntities(plainText).replace(/\s+/g, ' ').trim();
       const normKey = cleanText.toLowerCase().slice(0, 160);
       const occ = occurrenceMap.get(normKey) || 0;
       occurrenceMap.set(normKey, occ + 1);
       const key = cleanText ? computeHash(cleanText, occ) : `media_${occurrenceMap.size}`;
+      const cleanedHtml = htmlContent
+        ? htmlContent
+            .replace(/(&amp;)+nbsp;|&nbsp;|&#160;|&#xa0;/gi, ' ')
+            .replace(/\u00A0/g, ' ')
+            .trim()
+        : undefined;
       return {
         key,
         text: cleanText,
-        html: htmlContent,
+        html: cleanedHtml,
         isMediaOnly
       };
     };
 
     if (isHtmlContent(raw)) {
       try {
-        // Normalize double <br> into paragraph breaks before parsing
-        const normalizedHtml = raw.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
+        // Normalize double <br> into paragraph breaks and clean double-encoded &amp;nbsp; before parsing
+        const normalizedHtml = raw
+          .replace(/(&amp;)+nbsp;/gi, '&nbsp;')
+          .replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
         const parser = new DOMParser();
         const doc = parser.parseFromString(normalizedHtml, 'text/html');
         const results: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
@@ -201,7 +246,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           const children = Array.from(parent.childNodes);
           for (const node of children) {
             if (node.nodeType === Node.TEXT_NODE) {
-              const txt = (node.textContent || '').trim();
+              const txt = decodeNovelEntities(node.textContent || '').replace(/\s+/g, ' ').trim();
               if (txt) {
                 results.push(makeItem(txt));
               }
@@ -223,7 +268,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               if (hasBlockChildren && (tag === 'div' || tag === 'section' || tag === 'article')) {
                 extractNodes(el);
               } else {
-                const txt = (el.textContent || '').trim();
+                const txt = decodeNovelEntities(el.textContent || '').replace(/\s+/g, ' ').trim();
                 const hasMedia = Boolean(el.querySelector('img, iframe, hr')) || tag === 'img' || tag === 'hr';
                 if (txt) {
                   results.push(makeItem(txt, el.innerHTML));
@@ -240,10 +285,10 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       } catch {}
     }
 
-    // Plaintext fallback: split by newline blocks
+    // Plaintext fallback: split by newline blocks and decode any HTML entities (&nbsp;, etc.)
     return raw
       .split(/\n+/)
-      .map(p => p.trim())
+      .map(p => decodeNovelEntities(p).replace(/\s+/g, ' ').trim())
       .filter(Boolean)
       .map(p => makeItem(p));
   }, [currentChapter?.content]);

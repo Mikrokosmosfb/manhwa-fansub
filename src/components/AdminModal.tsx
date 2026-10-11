@@ -752,7 +752,21 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           const cleanContent = post.contentHtml
             .replace(/<img[^>]*>/gi, '')
             .replace(/<[^>]+>/g, '\n')
-            .replace(/\n\s*\n/g, '\n\n')
+            .replace(/(&amp;)+nbsp;|&nbsp;|&#160;|&#xa0;/gi, ' ')
+            .replace(/&quot;|&#34;/gi, '"')
+            .replace(/&#39;|&#039;|&apos;/gi, "'")
+            .replace(/&lsquo;|&#8216;/gi, '‘')
+            .replace(/&rsquo;|&#8217;/gi, '’')
+            .replace(/&ldquo;|&#8220;/gi, '“')
+            .replace(/&rdquo;|&#8221;/gi, '”')
+            .replace(/&ndash;|&#8211;/gi, '–')
+            .replace(/&mdash;|&#8212;/gi, '—')
+            .replace(/&hellip;|&#8230;/gi, '…')
+            .replace(/&lt;|&#60;/gi, '<')
+            .replace(/&gt;|&#62;/gi, '>')
+            .replace(/&amp;|&#38;/gi, '&')
+            .replace(/\u00A0/g, ' ')
+            .replace(/\n[ \t]*\n/g, '\n\n')
             .trim();
 
           return {
@@ -873,7 +887,21 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       const cleanContent = post.contentHtml
         .replace(/<img[^>]*>/gi, '')
         .replace(/<[^>]+>/g, '\n')
-        .replace(/\n\s*\n/g, '\n\n')
+        .replace(/(&amp;)+nbsp;|&nbsp;|&#160;|&#xa0;/gi, ' ')
+        .replace(/&quot;|&#34;/gi, '"')
+        .replace(/&#39;|&#039;|&apos;/gi, "'")
+        .replace(/&lsquo;|&#8216;/gi, '‘')
+        .replace(/&rsquo;|&#8217;/gi, '’')
+        .replace(/&ldquo;|&#8220;/gi, '“')
+        .replace(/&rdquo;|&#8221;/gi, '”')
+        .replace(/&ndash;|&#8211;/gi, '–')
+        .replace(/&mdash;|&#8212;/gi, '—')
+        .replace(/&hellip;|&#8230;/gi, '…')
+        .replace(/&lt;|&#60;/gi, '<')
+        .replace(/&gt;|&#62;/gi, '>')
+        .replace(/&amp;|&#38;/gi, '&')
+        .replace(/\u00A0/g, ' ')
+        .replace(/\n[ \t]*\n/g, '\n\n')
         .trim();
 
       return {
