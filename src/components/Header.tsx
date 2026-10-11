@@ -201,30 +201,6 @@ export const Header: React.FC = () => {
               <Bookmark size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'library' ? 'text-white' : 'text-purple-300'}`} />
               <span>Kütüphane</span>
             </button>
-
-            <button
-              onClick={() => setView({ type: 'categories' })}
-              className={`group flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
-                view.type === 'categories'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-[0_0_12px_rgba(168,85,247,0.4)] border border-purple-400/40'
-                  : 'text-purple-200/90 hover:text-white hover:bg-purple-800/40 hover:border-purple-500/20 border border-transparent'
-              }`}
-            >
-              <LayoutGrid size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'categories' ? 'text-white' : 'text-purple-300'}`} />
-              <span>Kategoriler</span>
-            </button>
-
-            <button
-              onClick={() => setView({ type: 'wallpapers' })}
-              className={`group flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-3.5 lg:py-1.5 rounded-xl transition-all duration-200 active:scale-95 ${
-                view.type === 'wallpapers'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-[0_0_12px_rgba(168,85,247,0.4)] border border-purple-400/40'
-                  : 'text-purple-200/90 hover:text-white hover:bg-purple-800/40 hover:border-purple-500/20 border border-transparent'
-              }`}
-            >
-              <ImageIcon size={15} className={`transition-transform duration-200 group-hover:scale-110 ${view.type === 'wallpapers' ? 'text-white' : 'text-pink-300'}`} />
-              <span>Wallpaper</span>
-            </button>
           </nav>
 
           {/* Right Action Icons & Search */}
