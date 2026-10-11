@@ -41,6 +41,7 @@ import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { MangaAlertStack } from './MangaAlertBox';
 import { sortChapters, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
+import { extractImageUrls, isIframeUrl } from '../utils/imageParser';
 
 interface SeriesDetailProps {
   seriesId: string;
@@ -838,12 +839,50 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   const isNew24h = checkIsChapterNew(ch, 24);
                   const is18 = isChapter18Plus(ch);
 
-                  // Reuse the single optimized series cover URL across all chapter rows so browser cache serves it with 0 extra requests
-                  const previewImg = getOptimizedImageUrl(series.coverImage, {
-                    width: 96,
-                    height: 96,
-                    quality: 65
-                  });
+                  // Extract all individual page URLs (even if pasted as HTML <img> blocks)
+                  // and skip the first 2 images (cover / fansub credits) + last image (outro)
+                  const getChapterPreview = (chapter: Chapter): { thumb: string; raw: string } => {
+                    let urls = extractImageUrls(chapter.images).filter(u => !isIframeUrl(u));
+                    if (urls.length === 0 && chapter.content) {
+                      urls = extractImageUrls(chapter.content).filter(u => !isIframeUrl(u));
+                    }
+                    if (urls.length > 0) {
+                      let pool = urls;
+                      if (urls.length >= 5) {
+                        pool = urls.slice(2, urls.length - 1);
+                      } else if (urls.length === 4) {
+                        pool = urls.slice(2, 3);
+                      } else if (urls.length === 3) {
+                        pool = [urls[1]];
+                      } else if (urls.length === 2) {
+                        pool = [urls[1]];
+                      }
+                      let seed = Math.round((chapter.number || 1) * 31);
+                      for (let i = 0; i < chapter.id.length; i++) {
+                        seed += chapter.id.charCodeAt(i) * (i + 3);
+                      }
+                      const rawChosen =
+                        pool[seed % pool.length] ||
+                        urls[Math.floor(urls.length / 2)] ||
+                        urls[0];
+                      const optimized = getOptimizedImageUrl(rawChosen, {
+                        width: 120,
+                        height: 120,
+                        quality: 65
+                      })
+                        .replace(/\/s1600\//g, '/s320/')
+                        .replace(/=s1600$/g, '=s320');
+                      return { thumb: optimized, raw: rawChosen };
+                    }
+                    const fallback = getOptimizedImageUrl(series.coverImage, {
+                      width: 120,
+                      height: 120,
+                      quality: 65
+                    });
+                    return { thumb: fallback, raw: series.coverImage };
+                  };
+
+                  const { thumb: previewImg, raw: rawPreviewImg } = getChapterPreview(ch);
 
                   return (
                     <div
@@ -883,7 +922,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         >
                           <img
                             src={previewImg}
-                            onError={e => handleImageError(e, series.title)}
+                            onError={e => handleImageError(e, rawPreviewImg, series.title)}
                             alt={ch.title}
                             loading="lazy"
                             decoding="async"
