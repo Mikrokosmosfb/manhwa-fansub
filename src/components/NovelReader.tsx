@@ -191,10 +191,10 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     : 0;
   const estimatedMinutes = Math.max(1, Math.round(wordCount / 200));
 
-  // Deterministic content hash (FNV-1a) so editing/inserting paragraphs never shifts comments to wrong lines
-  const parsedParagraphs = useMemo(() => {
+  // Deterministic content hash (FNV-1a) + Blogger/Novel Chapter Profile Card extraction
+  const { parsedParagraphs, chapterProfileCard, remainingChapterImages } = useMemo(() => {
     const raw = (currentChapter?.content || '').replace(/mikrokosmosdeposu/g, 'mediadepo');
-    if (!raw.trim()) return [];
+    const allChapterImgs = extractImageUrls(currentChapter?.images);
 
     const computeHash = (text: string, occurrence: number): string => {
       const normalized = text
@@ -232,66 +232,233 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       };
     };
 
-    if (isHtmlContent(raw)) {
-      try {
-        // Normalize double <br> into paragraph breaks and clean double-encoded &amp;nbsp; before parsing
-        const normalizedHtml = raw
-          .replace(/(&amp;)+nbsp;/gi, '&nbsp;')
-          .replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(normalizedHtml, 'text/html');
-        const results: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
+    let extractedProfileImg = '';
+    let detectedSeriesTitle = '';
+    const detectedBadges: { label: string; value: string }[] = [];
 
-        const extractNodes = (parent: Element | Document['body']) => {
-          const children = Array.from(parent.childNodes);
-          for (const node of children) {
-            if (node.nodeType === Node.TEXT_NODE) {
-              const txt = decodeNovelEntities(node.textContent || '').replace(/\s+/g, ' ').trim();
-              if (txt) {
-                results.push(makeItem(txt));
-              }
-            } else if (node.nodeType === Node.ELEMENT_NODE) {
-              const el = node as HTMLElement;
-              const tag = el.tagName.toLowerCase();
-              if (tag === 'style' || tag === 'script' || tag === 'baslik') continue;
-              if (
-                el.classList?.contains('manga-alert') ||
-                el.style?.display === 'none'
-              ) {
-                continue;
-              }
-              const hasBlockChildren = Array.from(el.children).some(c =>
-                ['P', 'DIV', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR'].includes(
-                  c.tagName
-                )
-              );
-              if (hasBlockChildren && (tag === 'div' || tag === 'section' || tag === 'article')) {
-                extractNodes(el);
-              } else {
-                const txt = decodeNovelEntities(el.textContent || '').replace(/\s+/g, ' ').trim();
-                const hasMedia = Boolean(el.querySelector('img, iframe, hr')) || tag === 'img' || tag === 'hr';
+    const normalizeLabel = (lbl: string): string => {
+      const lower = lbl.toLowerCase().trim();
+      if (lower === 'seri' || lower === 'roman' || lower === 'kitap') return 'Seri';
+      if (lower === 'çevirmen' || lower === 'cevirmen' || lower === 'çeviren') return 'Çevirmen';
+      if (lower === 'çeviri' || lower === 'ceviri' || lower === 'dil' || lower === 'kaynak dil') return 'Çeviri';
+      if (lower === 'editör' || lower === 'editor') return 'Editör';
+      if (lower === 'redaktör' || lower === 'redaktor') return 'Redaktör';
+      if (lower === 'kontrol') return 'Kontrol';
+      return lbl.trim();
+    };
+
+    const addMetadataField = (rawLabel: string, rawValue: string) => {
+      const normLabel = normalizeLabel(rawLabel);
+      const cleanVal = decodeNovelEntities(rawValue).replace(/\s+/g, ' ').trim();
+      if (!cleanVal) return;
+      if (normLabel === 'Seri') {
+        if (!detectedSeriesTitle) detectedSeriesTitle = cleanVal;
+      } else {
+        if (!detectedBadges.some(b => b.label.toLowerCase() === normLabel.toLowerCase())) {
+          detectedBadges.push({ label: normLabel, value: cleanVal });
+        }
+      }
+    };
+
+    const parseMetadataTextChunk = (chunkText: string) => {
+      const decoded = decodeNovelEntities(chunkText).replace(/\s+/g, ' ').trim();
+      if (!decoded) return;
+      const parts = decoded
+        .split(/(?=\b(?:Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:)/i)
+        .map(s => s.trim())
+        .filter(Boolean);
+      for (const part of parts) {
+        const m = part.match(
+          /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.+)$/i
+        );
+        if (m) {
+          addMetadataField(m[1], m[2]);
+        }
+      }
+    };
+
+    let candidateParagraphs: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
+
+    if (raw.trim()) {
+      if (isHtmlContent(raw)) {
+        try {
+          const normalizedHtml = raw
+            .replace(/(&amp;)+nbsp;/gi, '&nbsp;')
+            .replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(normalizedHtml, 'text/html');
+
+          // 1. Extract and remove any <div class="profile"> blocks
+          doc.querySelectorAll('.profile, .profile-card').forEach(profileEl => {
+            const imgEl = profileEl.querySelector('img');
+            if (imgEl && imgEl.getAttribute('src') && !extractedProfileImg) {
+              extractedProfileImg = imgEl.getAttribute('src') || '';
+            }
+            parseMetadataTextChunk(profileEl.textContent || '');
+            profileEl.remove();
+          });
+
+          const results: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
+
+          const extractNodes = (parent: Element | Document['body']) => {
+            const children = Array.from(parent.childNodes);
+            for (const node of children) {
+              if (node.nodeType === Node.TEXT_NODE) {
+                const txt = decodeNovelEntities(node.textContent || '').replace(/\s+/g, ' ').trim();
                 if (txt) {
-                  results.push(makeItem(txt, el.innerHTML));
-                } else if (hasMedia) {
-                  results.push(makeItem('', el.outerHTML, true));
+                  results.push(makeItem(txt));
+                }
+              } else if (node.nodeType === Node.ELEMENT_NODE) {
+                const el = node as HTMLElement;
+                const tag = el.tagName.toLowerCase();
+                if (tag === 'style' || tag === 'script' || tag === 'baslik') continue;
+                if (
+                  el.classList?.contains('manga-alert') ||
+                  el.classList?.contains('profile') ||
+                  el.style?.display === 'none'
+                ) {
+                  continue;
+                }
+                const hasBlockChildren = Array.from(el.children).some(c =>
+                  ['P', 'DIV', 'BLOCKQUOTE', 'UL', 'OL', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HR'].includes(
+                    c.tagName
+                  )
+                );
+                if (hasBlockChildren && (tag === 'div' || tag === 'section' || tag === 'article')) {
+                  extractNodes(el);
+                } else {
+                  const txt = decodeNovelEntities(el.textContent || '').replace(/\s+/g, ' ').trim();
+                  const hasMedia = Boolean(el.querySelector('img, iframe, hr')) || tag === 'img' || tag === 'hr';
+                  if (txt) {
+                    results.push(makeItem(txt, el.innerHTML));
+                  } else if (hasMedia) {
+                    results.push(makeItem('', el.outerHTML, true));
+                  }
                 }
               }
             }
-          }
-        };
+          };
 
-        extractNodes(doc.body);
-        if (results.length > 0) return results;
-      } catch {}
+          extractNodes(doc.body);
+          candidateParagraphs = results;
+        } catch {}
+      }
+
+      if (candidateParagraphs.length === 0) {
+        candidateParagraphs = raw
+          .split(/\n+/)
+          .map(p => decodeNovelEntities(p).replace(/\s+/g, ' ').trim())
+          .filter(Boolean)
+          .map(p => makeItem(p));
+      }
     }
 
-    // Plaintext fallback: split by newline blocks and decode any HTML entities (&nbsp;, etc.)
-    return raw
-      .split(/\n+/)
-      .map(p => decodeNovelEntities(p).replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .map(p => makeItem(p));
-  }, [currentChapter?.content]);
+    // 2. Scan leading paragraphs for stripped Blogger profile lines (e.g., "Seri:", "Heaven Officials Blessing", "Çevirmen:", "Theia", "Çeviri:", "Çince-", "CN")
+    const labelHeadRegex =
+      /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.*)$/i;
+    const multiLabelRegex =
+      /\b(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:/gi;
+
+    let consumeCount = 0;
+    const maxScan = Math.min(candidateParagraphs.length, 12);
+
+    while (consumeCount < maxScan) {
+      const cur = candidateParagraphs[consumeCount];
+      if (!cur || cur.isMediaOnly || cur.text.length > 160) break;
+
+      const labelMatches = Array.from(cur.text.matchAll(multiLabelRegex));
+      if (labelMatches.length > 1 && labelHeadRegex.test(cur.text)) {
+        parseMetadataTextChunk(cur.text);
+        consumeCount++;
+        continue;
+      }
+
+      const match = cur.text.match(labelHeadRegex);
+      if (!match) break;
+
+      const rawLabel = match[1];
+      let val = match[2].trim();
+      consumeCount++;
+
+      // If label was alone on its line (e.g. "Seri:" or "Çevirmen:" or "Çeviri:"), take next line as value
+      if (
+        !val &&
+        consumeCount < maxScan &&
+        candidateParagraphs[consumeCount] &&
+        !candidateParagraphs[consumeCount].isMediaOnly &&
+        candidateParagraphs[consumeCount].text.length < 90 &&
+        !labelHeadRegex.test(candidateParagraphs[consumeCount].text)
+      ) {
+        val = candidateParagraphs[consumeCount].text.trim();
+        consumeCount++;
+      }
+
+      // If value ends with "-" (e.g. "Çince-") or next line is a short language code ("CN", "EN", "KR", "JP")
+      if (
+        val &&
+        consumeCount < maxScan &&
+        candidateParagraphs[consumeCount] &&
+        !candidateParagraphs[consumeCount].isMediaOnly
+      ) {
+        const nextTxt = candidateParagraphs[consumeCount].text.trim();
+        if (
+          (val.endsWith('-') && nextTxt.length <= 15 && !labelHeadRegex.test(nextTxt)) ||
+          /^-?\s*(CN|EN|KR|JP|TR|ENG|KOR|CHN)$/i.test(nextTxt)
+        ) {
+          const cleanSuffix = nextTxt.replace(/^-\s*/, '');
+          val = val.endsWith('-') ? `${val} ${cleanSuffix}` : `${val} - ${cleanSuffix}`;
+          consumeCount++;
+        }
+      }
+
+      if (val) {
+        addMetadataField(rawLabel, val);
+      }
+    }
+
+    const finalParagraphs =
+      consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
+
+    // 3. Build the Chapter Profile Card (works for both legacy Blogger chapters and newly added chapters)
+    const hasExplicitChapterMeta = Boolean(
+      extractedProfileImg || detectedSeriesTitle || detectedBadges.length > 0
+    );
+
+    if (!hasExplicitChapterMeta && series.translator && series.translator.trim() && series.translator !== 'Blogger') {
+      detectedBadges.push({ label: 'Çevirmen', value: series.translator.trim() });
+    }
+
+    let cardImageUrl = extractedProfileImg || '';
+    let usedFirstChapterImg = false;
+
+    if (!cardImageUrl) {
+      if (hasExplicitChapterMeta && allChapterImgs.length > 0) {
+        cardImageUrl = allChapterImgs[0];
+        usedFirstChapterImg = true;
+      } else {
+        cardImageUrl = series.coverImage;
+      }
+    } else if (allChapterImgs.length > 0 && allChapterImgs[0] === extractedProfileImg) {
+      usedFirstChapterImg = true;
+    }
+
+    const profileCard =
+      hasExplicitChapterMeta || detectedBadges.length > 0
+        ? {
+            imageUrl: cardImageUrl || series.coverImage,
+            seriesTitle: detectedSeriesTitle || series.title,
+            badges: detectedBadges
+          }
+        : null;
+
+    const remainingImgs = usedFirstChapterImg ? allChapterImgs.slice(1) : allChapterImgs;
+
+    return {
+      parsedParagraphs: finalParagraphs,
+      chapterProfileCard: profileCard,
+      remainingChapterImages: remainingImgs
+    };
+  }, [currentChapter?.content, currentChapter?.images, series.title, series.coverImage, series.translator]);
 
   // Single-pass comment count map per paragraph for this chapter (zero network overhead)
   const paragraphCommentCounts = useMemo(() => {
@@ -1103,10 +1270,53 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, false, series.synopsis, series.title)} />
         </div>
 
+        {/* Chapter / Translator Profile Card (Blogger <div class="profile"> & Automatic Novel Credits) */}
+        {chapterProfileCard && (
+          <div className="bg-white text-slate-900 rounded-[26px] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] border border-purple-200/80 border-l-[6px] border-l-[#9333ea] max-w-xl mx-auto my-6 flex items-center gap-4 sm:gap-6 text-left select-none">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden flex-shrink-0 shadow-[0_8px_20px_rgba(0,0,0,0.22)] bg-purple-100">
+              <img
+                src={chapterProfileCard.imageUrl}
+                alt={chapterProfileCard.seriesTitle}
+                referrerPolicy="no-referrer"
+                onError={e => {
+                  if (series.coverImage && (e.target as HTMLImageElement).src !== series.coverImage) {
+                    (e.target as HTMLImageElement).src = series.coverImage;
+                  }
+                }}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="flex-1 min-w-0 space-y-2">
+              <div>
+                <div className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                  SERİ:
+                </div>
+                <div className="text-sm sm:text-base font-extrabold text-[#a423c4] leading-snug break-words">
+                  {chapterProfileCard.seriesTitle}
+                </div>
+              </div>
+
+              {chapterProfileCard.badges.length > 0 && (
+                <div className="flex flex-col items-start gap-2 pt-0.5">
+                  {chapterProfileCard.badges.map((b, bIdx) => (
+                    <span
+                      key={bIdx}
+                      className="inline-flex items-center bg-[#f6eefb] border border-[#e6d4f5] text-[#6b21a8] font-extrabold text-xs sm:text-[13px] px-3.5 py-1.5 rounded-xl shadow-2xs"
+                    >
+                      {b.label}: {b.value}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Optional Chapter Images inside Novel */}
-        {currentChapter.images && currentChapter.images.length > 0 && (
+        {remainingChapterImages.length > 0 && (
           <div className="flex flex-col items-center space-y-4 my-6">
-            {extractImageUrls(currentChapter.images).map((imgUrl, idx) => (
+            {remainingChapterImages.map((imgUrl, idx) => (
               isIframeUrl(imgUrl) ? (
                 <iframe
                   key={idx}

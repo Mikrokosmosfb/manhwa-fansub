@@ -2356,12 +2356,32 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             </div>
 
             <div>
-              <label className="block text-purple-300 font-bold text-xs mb-1">
-                Web Novel Metin İçeriği (Romanlar için)
-              </label>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <label className="block text-purple-300 font-bold text-xs">
+                  Web Novel Metin İçeriği (Romanlar için)
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const selSeries = seriesList.find(s => s.id === selectedSeriesId);
+                    const sTitle = selSeries?.title || 'Seri Adı';
+                    const sTrans =
+                      selSeries?.translator && selSeries.translator !== 'Blogger'
+                        ? selSeries.translator
+                        : 'Theia';
+                    const headerTemplate = `Seri: ${sTitle}\nÇevirmen: ${sTrans}\nÇeviri: Çince-CN\n\n`;
+                    if (!chapterContent.trim().startsWith('Seri:')) {
+                      setChapterContent(headerTemplate + chapterContent);
+                    }
+                  }}
+                  className="text-[11px] bg-purple-900/70 hover:bg-purple-800 text-purple-200 border border-purple-500/40 px-2.5 py-1 rounded-lg font-extrabold transition cursor-pointer"
+                >
+                  + Künye Kartı Bilgisi Ekle (Seri / Çevirmen / Dil)
+                </button>
+              </div>
               <textarea
                 rows={6}
-                placeholder="Paragraflar halinde roman metnini buraya yapıştırın..."
+                placeholder="Paragraflar halinde roman metnini buraya yapıştırın... (İsterseniz en üste 'Çevirmen: İsim' ve 'Çeviri: Çince-CN' yazarak bölüm başındaki şık künye kartını özelleştirebilirsiniz)"
                 value={chapterContent}
                 onChange={e => setChapterContent(e.target.value)}
                 className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none resize-none"
@@ -2586,9 +2606,27 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 <div>
-                  <label className="block text-purple-300 font-bold text-xs mb-1">
-                    Web Novel Roman Metni (Roman Bölümleri İçin)
-                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                    <label className="block text-purple-300 font-bold text-xs">
+                      Web Novel Roman Metni (Roman Bölümleri İçin)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const headerTemplate = `Seri: ${series.title}\nÇevirmen: ${
+                          series.translator && series.translator !== 'Blogger'
+                            ? series.translator
+                            : 'Theia'
+                        }\nÇeviri: Çince-CN\n\n`;
+                        if (!editingChapterContentText.trim().startsWith('Seri:')) {
+                          setEditingChapterContentText(headerTemplate + editingChapterContentText);
+                        }
+                      }}
+                      className="text-[11px] bg-purple-900/70 hover:bg-purple-800 text-purple-200 border border-purple-500/40 px-2.5 py-1 rounded-lg font-extrabold transition cursor-pointer"
+                    >
+                      + Künye Kartı Bilgisi Ekle (Seri / Çevirmen / Dil)
+                    </button>
+                  </div>
                   <textarea
                     rows={5}
                     placeholder="Roman paragraf içeriği..."
