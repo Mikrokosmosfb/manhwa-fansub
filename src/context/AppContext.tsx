@@ -1071,14 +1071,17 @@ const deleteShopItemAndStyle = (itemId: string) => {
     const item = shopItems.find(i => i.id === itemId) || SHOP_ITEMS.find(i => i.id === itemId);
     if (!item) return { success: false, message: 'Ürün bulunamadı.' };
 
-    const userInventory = user.inventory || [];
+    const userInventory = Array.from(
+      new Set([...(user.inventory || []), ...(user.unlockedEmojiPacks || [])])
+    );
     if (userInventory.includes(itemId)) {
       if (item.category === 'emoji_pack') {
         const currentEmojiPacks = user.unlockedEmojiPacks || [];
-        if (!currentEmojiPacks.includes(itemId)) {
+        if (!currentEmojiPacks.includes(itemId) || !(user.inventory || []).includes(itemId)) {
           setUser({
             ...user,
-            unlockedEmojiPacks: [...currentEmojiPacks, itemId]
+            inventory: userInventory,
+            unlockedEmojiPacks: userInventory
           });
         }
         return {
@@ -1095,11 +1098,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return { success: false, message: `Yetersiz Cosmo-Puan! Bu ürün için ${item.price} CP gerekiyor, bakiyeniz: ${currentCoins} CP.` };
     }
 
-    const newInventory = [...userInventory, itemId];
+    const newInventory = Array.from(new Set([...userInventory, itemId]));
     let updatedUser: User = {
       ...user,
       coins: isUnlimited ? 999999999 : Math.max(0, currentCoins - item.price),
-      inventory: newInventory
+      inventory: newInventory,
+      unlockedEmojiPacks: Array.from(new Set([...(user.unlockedEmojiPacks || []), ...newInventory]))
     };
 
     if (item.category === 'theme') {
@@ -1119,27 +1123,22 @@ const deleteShopItemAndStyle = (itemId: string) => {
       }
     } else if (item.category === 'frame') {
       updatedUser.equippedFrame = itemId;
-    } else if (item.category === 'emoji_pack') {
-      const currentEmojiPacks = user.unlockedEmojiPacks || [];
-      if (!currentEmojiPacks.includes(itemId)) {
-        updatedUser.unlockedEmojiPacks = [...currentEmojiPacks, itemId];
-      }
     }
 
     setUser(updatedUser);
 
-    fetch('/api/auth/update-profile', {
+    fetch('/api/auth/library', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
       body: JSON.stringify({
         uid: user.uid,
-        name: user.name,
-        avatar: user.avatar,
-        coins: updatedUser.coins,
-        equippedTheme: updatedUser.equippedTheme,
-        equippedBadge: updatedUser.equippedBadge,
-        equippedBadges: updatedUser.equippedBadges,
-        equippedFrame: updatedUser.equippedFrame
+        cosmo_points: updatedUser.coins,
+        shop_items: JSON.stringify(newInventory),
+        equipped_theme: updatedUser.equippedTheme || null,
+        equipped_badge: updatedUser.equippedBadge || null,
+        equipped_badges: JSON.stringify(updatedUser.equippedBadges || (updatedUser.equippedBadge ? [updatedUser.equippedBadge] : [])),
+        equipped_frame: updatedUser.equippedFrame || null
       })
     }).catch(() => {});
 
@@ -2174,14 +2173,27 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 const safeInventory = Array.isArray(fetchedInventory)
                   ? fetchedInventory
                   : (prev.inventory || []);
+                const mergedInventory = Array.from(
+                  new Set([...(prev.inventory || []), ...(prev.unlockedEmojiPacks || []), ...safeInventory])
+                );
+
+                if (mergedInventory.length > safeInventory.length && prev.uid) {
+                  fetch('/api/auth/library', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    keepalive: true,
+                    body: JSON.stringify({
+                      uid: prev.uid,
+                      shop_items: JSON.stringify(mergedInventory)
+                    })
+                  }).catch(() => {});
+                }
 
                 return {
                   ...prev,
                   coins: typeof data.cosmo_points === 'number' ? data.cosmo_points : prev.coins,
-                  inventory: safeInventory,
-                  unlockedEmojiPacks: Array.from(
-                    new Set([...(prev.unlockedEmojiPacks || []), ...safeInventory])
-                  ),
+                  inventory: mergedInventory,
+                  unlockedEmojiPacks: mergedInventory,
                   equippedTheme: data.equipped_theme !== undefined ? data.equipped_theme : prev.equippedTheme,
                   equippedBadge: data.equipped_badge !== undefined ? data.equipped_badge : prev.equippedBadge,
                   equippedBadges: Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : [],
@@ -2225,6 +2237,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
         const packed = packListsAndPinsForCloud(readingLists, kosmosPins);
+        const combinedInventory = Array.from(
+          new Set([...(user.inventory || []), ...(user.unlockedEmojiPacks || [])])
+        );
         safeFetchJson('/api/auth/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -2237,7 +2252,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
             cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(user.inventory || []),
+            shop_items: JSON.stringify(combinedInventory),
             equipped_theme: user.equippedTheme || null,
             equipped_badge: user.equippedBadge || null,
             equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
@@ -2258,7 +2273,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           .catch(() => {});
       }, 300);
     }
-  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists, kosmosPins]);
+  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.unlockedEmojiPacks, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists, kosmosPins]);
 
   useEffect(() => {
     try {
@@ -3165,10 +3180,15 @@ const deleteShopItemAndStyle = (itemId: string) => {
     // Look up real coins from knownUsers registry
     const existingInRegistry = knownUsers.find(k => k.email.toLowerCase() === cleanEmail);
     const registryCoins = existingInRegistry?.coins;
+    const mergedInv = Array.from(
+      new Set([...(u.inventory || []), ...(u.unlockedEmojiPacks || [])])
+    );
 
     return {
       ...u,
-      coins: isUnlimited ? 999999999 : (registryCoins ?? u.coins ?? 10)
+      coins: isUnlimited ? 999999999 : (registryCoins ?? u.coins ?? 10),
+      inventory: mergedInv,
+      unlockedEmojiPacks: mergedInv
     };
   };
 

@@ -2906,8 +2906,9 @@ ${seriesXml}
                 let dailyCheckinDay = 0;
                 let lastDailyCheckin = null;
                 let claimedCheckinDays = [];
+                let userInventory: string[] = [];
                 try {
-                  const libRes = await userDb.prepare("SELECT cosmo_points, equipped_theme, equipped_badge, equipped_badges, equipped_frame, daily_checkin_day, last_daily_checkin, claimed_checkin_days FROM user_library WHERE uid = ?").bind(foundUser.uid).all();
+                  const libRes = await userDb.prepare("SELECT cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges, equipped_frame, daily_checkin_day, last_daily_checkin, claimed_checkin_days FROM user_library WHERE uid = ?").bind(foundUser.uid).all();
                   if (libRes.results && libRes.results.length > 0) {
                     const row: any = libRes.results[0];
                     if (row.cosmo_points !== undefined && row.cosmo_points !== null) {
@@ -2920,6 +2921,10 @@ ${seriesXml}
                     lastDailyCheckin = row.last_daily_checkin || null;
                     try { equippedBadges = JSON.parse(row.equipped_badges || '[]'); } catch(e) {}
                     try { claimedCheckinDays = JSON.parse(row.claimed_checkin_days || '[]'); } catch(e) {}
+                    try {
+                      const parsedInv = JSON.parse(row.shop_items || '[]');
+                      if (Array.isArray(parsedInv)) userInventory = parsedInv;
+                    } catch(e) {}
                   }
                 } catch(e) {}
 
@@ -2937,6 +2942,8 @@ ${seriesXml}
                     provider: foundUser.provider || 'email',
                     role: isAdmin ? 'admin' : 'user',
                     coins: userCoins,
+                    inventory: userInventory,
+                    unlockedEmojiPacks: userInventory,
                     equippedTheme,
                     equippedBadge,
                     equippedBadges,
@@ -3044,10 +3051,27 @@ ${seriesXml}
                 } catch(e) {}
 
                 let userCoins = isUnlimited ? 999999999 : 10;
+                let userInventory: string[] = [];
+                let equippedTheme = null;
+                let equippedBadge = null;
+                let equippedBadges: string[] = [];
+                let equippedFrame = null;
                 try {
-                  const libRes = await userDb.prepare("SELECT cosmo_points FROM user_library WHERE uid = ?").bind(existingUser.uid).all();
+                  const libRes = await userDb.prepare("SELECT cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges, equipped_frame FROM user_library WHERE uid = ?").bind(existingUser.uid).all();
                   if (libRes.results && libRes.results.length > 0) {
-                    userCoins = isUnlimited ? 999999999 : (Number((libRes.results[0] as any).cosmo_points) || 10);
+                    const row: any = libRes.results[0];
+                    userCoins = isUnlimited ? 999999999 : (Number(row.cosmo_points) || 10);
+                    equippedTheme = row.equipped_theme || null;
+                    equippedBadge = row.equipped_badge || null;
+                    equippedFrame = row.equipped_frame || null;
+                    try {
+                      const parsedInv = JSON.parse(row.shop_items || '[]');
+                      if (Array.isArray(parsedInv)) userInventory = parsedInv;
+                    } catch(e) {}
+                    try {
+                      const parsedBadges = JSON.parse(row.equipped_badges || '[]');
+                      if (Array.isArray(parsedBadges)) equippedBadges = parsedBadges;
+                    } catch(e) {}
                   }
                 } catch(e) {}
 
@@ -3062,6 +3086,12 @@ ${seriesXml}
                     provider: existingUser.provider || 'google',
                     role: (isAdmin || existingUser.role === 'admin') ? 'admin' : 'user',
                     coins: userCoins,
+                    inventory: userInventory,
+                    unlockedEmojiPacks: userInventory,
+                    equippedTheme,
+                    equippedBadge,
+                    equippedBadges,
+                    equippedFrame,
                     createdAt: existingUser.created_at
                   }
                 }), { headers });
@@ -3132,7 +3162,20 @@ ${seriesXml}
                 const finalHistory = reading_history !== undefined ? reading_history : (existingLib?.reading_history || '{}');
                 const finalNotifs = notifications !== undefined ? notifications : (existingLib?.notifications || '[]');
                 const finalPoints = cosmo_points !== undefined ? Number(cosmo_points) : (existingLib?.cosmo_points || 0);
-                const finalShop = shop_items !== undefined ? shop_items : (existingLib?.shop_items || '[]');
+                let finalShop = shop_items !== undefined ? shop_items : (existingLib?.shop_items || '[]');
+                try {
+                  const existingArr = JSON.parse(existingLib?.shop_items || '[]');
+                  const incomingArr = shop_items !== undefined
+                    ? (typeof shop_items === 'string' ? JSON.parse(shop_items) : shop_items)
+                    : [];
+                  if (Array.isArray(existingArr) || Array.isArray(incomingArr)) {
+                    const mergedShop = Array.from(new Set([
+                      ...(Array.isArray(existingArr) ? existingArr : []),
+                      ...(Array.isArray(incomingArr) ? incomingArr : [])
+                    ]));
+                    finalShop = JSON.stringify(mergedShop);
+                  }
+                } catch (eShop) {}
                 const finalTheme = equipped_theme !== undefined ? equipped_theme : (existingLib?.equipped_theme || null);
                 const finalBadge = equipped_badge !== undefined ? equipped_badge : (existingLib?.equipped_badge || null);
                 const finalBadges = equipped_badges !== undefined ? equipped_badges : (existingLib?.equipped_badges || '[]');

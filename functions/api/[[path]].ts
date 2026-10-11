@@ -260,6 +260,20 @@ export async function onRequest(context: any) {
       if (request.method === 'POST') {
         if (!db) return new Response(JSON.stringify({ success: false }), { status: 500, headers });
         const body = await request.json();
+        const existingUser: any = await db.prepare("SELECT * FROM users WHERE uid = ?").bind(body.uid).first().catch(() => null);
+        let finalShop = body.shop_items !== undefined ? body.shop_items : (existingUser?.inventory_json || '[]');
+        try {
+          const existingArr = JSON.parse(existingUser?.inventory_json || '[]');
+          const incomingArr = body.shop_items !== undefined
+            ? (typeof body.shop_items === 'string' ? JSON.parse(body.shop_items) : body.shop_items)
+            : [];
+          if (Array.isArray(existingArr) || Array.isArray(incomingArr)) {
+            finalShop = JSON.stringify(Array.from(new Set([
+              ...(Array.isArray(existingArr) ? existingArr : []),
+              ...(Array.isArray(incomingArr) ? incomingArr : [])
+            ])));
+          }
+        } catch (e) {}
         await db.prepare(`
           UPDATE users SET 
             bookmarks_json = ?, followed_series_json = ?, reading_history_json = ?, reading_lists_json = ?,
@@ -267,9 +281,17 @@ export async function onRequest(context: any) {
             equipped_theme = ?, equipped_badge = ?, equipped_badges_json = ?, equipped_frame = ?, updated_at = ?
           WHERE uid = ?
         `).bind(
-          body.bookmarks || '{}', body.followed_series || '[]', body.reading_history || '{}', body.reading_lists || '[]',
-          body.notifications || '[]', body.cosmo_points || 0, body.shop_items || '[]',
-          body.equipped_theme || null, body.equipped_badge || null, body.equipped_badges || '[]', body.equipped_frame || null,
+          body.bookmarks !== undefined ? body.bookmarks : (existingUser?.bookmarks_json || '{}'),
+          body.followed_series !== undefined ? body.followed_series : (existingUser?.followed_series_json || '[]'),
+          body.reading_history !== undefined ? body.reading_history : (existingUser?.reading_history_json || '{}'),
+          body.reading_lists !== undefined ? body.reading_lists : (existingUser?.reading_lists_json || '[]'),
+          body.notifications !== undefined ? body.notifications : (existingUser?.notifications_json || '[]'),
+          body.cosmo_points !== undefined ? body.cosmo_points : (existingUser?.cosmo_points || 0),
+          finalShop,
+          body.equipped_theme !== undefined ? body.equipped_theme : (existingUser?.equipped_theme || null),
+          body.equipped_badge !== undefined ? body.equipped_badge : (existingUser?.equipped_badge || null),
+          body.equipped_badges !== undefined ? body.equipped_badges : (existingUser?.equipped_badges_json || '[]'),
+          body.equipped_frame !== undefined ? body.equipped_frame : (existingUser?.equipped_frame || null),
           new Date().toLocaleString('tr-TR'), body.uid
         ).run();
         return new Response(JSON.stringify({ success: true }), { headers });

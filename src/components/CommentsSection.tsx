@@ -234,9 +234,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     new Set([...(user?.unlockedEmojiPacks || []), ...(user?.inventory || [])])
   );
   const emojiPackItems = currentShopItems.filter(i => i.category === 'emoji_pack');
+  const ownedEmojiPacks = emojiPackItems.filter(p => unlockedEmojiPacks.includes(p.id));
+  const lockedEmojiPacks = emojiPackItems.filter(p => !unlockedEmojiPacks.includes(p.id));
   const allKnownEmojis: ChibiEmoji[] = emojiPackItems.flatMap(p => p.emojis || []);
 
-  const handleInstantUnlockPack = (pack: ShopItem) => {
+  const handleInstantUnlockPack = (pack: ShopItem, emojiToInsert?: ChibiEmoji) => {
     if (!user) {
       openAuthModal('login');
       showToast?.({
@@ -249,25 +251,32 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
     const res = buyShopItem(pack.id);
     if (res.success) {
+      if (emojiToInsert) {
+        const token = emojiToInsert.code || emojiToInsert.symbol;
+        setCommentText(prev => (prev ? prev + ' ' + token : token));
+      }
       showToast?.({
         title: '🎉 Emoji Paketi Açıldı!',
         message: `"${pack.name}" artık kullanımınıza hazır! Keyifli yorumlar.`,
         type: 'success'
       });
     } else {
+      const isInsufficient = res.message.toLowerCase().includes('yetersiz');
       showToast?.({
-        title: 'Bakiye Yetersiz 🪙',
+        title: isInsufficient ? 'Bakiye Yetersiz 🪙' : 'Bilgi',
         message: res.message,
-        type: 'error'
+        type: isInsufficient ? 'error' : 'info'
       });
-      openShop();
+      if (isInsufficient) {
+        openShop();
+      }
     }
   };
 
   const handleInsertEmoji = (pack: ShopItem, em: ChibiEmoji) => {
     const isPackUnlocked = unlockedEmojiPacks.includes(pack.id);
     if (!isPackUnlocked) {
-      handleInstantUnlockPack(pack);
+      handleInstantUnlockPack(pack, em);
       return;
     }
 
@@ -898,8 +907,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
           {/* CHIBI EMOJI DRAWER */}
           {showEmojiPicker && (
-            <div className="mt-2 p-3 bg-gray-950 border border-purple-500/40 rounded-2xl space-y-3 animate-fadeIn shadow-2xl">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+            <div className="mt-2 p-3.5 bg-gray-950 border border-purple-500/40 rounded-2xl space-y-4 animate-fadeIn shadow-2xl">
+              <div className="flex items-center justify-between border-b border-gray-800 pb-2.5">
                 <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
                   <Sparkles size={14} className="text-amber-400" /> Özel Chibi Emojiler
                 </span>
@@ -912,10 +921,75 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                 </button>
               </div>
 
-              {/* Basic Free Emojis */}
-              <div>
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">
-                  Genel Okuyucu Emojileri
+              {/* 1. PURCHASED / OWNED CHIBIS SECTION (SEPARATE AT VERY TOP) */}
+              <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-gray-900/95 to-gray-950 border border-emerald-500/40 space-y-3 shadow-lg">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-1.5">
+                      <Check size={14} className="text-emerald-400 stroke-[3]" />
+                      Satın Alınan Chibilerim
+                    </span>
+                    <span className="text-[10px] font-extrabold bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                      {ownedEmojiPacks.length} Paket • {ownedEmojiPacks.reduce((acc, p) => acc + (p.emojis?.length || 0), 0)} Chibi
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-400/90 font-bold">
+                    Tıkla & Yorumuna Ekle ✨
+                  </span>
+                </div>
+
+                {ownedEmojiPacks.length > 0 ? (
+                  <div className="space-y-3">
+                    {ownedEmojiPacks.map(pack => (
+                      <div key={pack.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
+                            <span className="text-sm">{pack.icon || '✨'}</span> {pack.name}
+                          </span>
+                          <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                            <Check size={10} /> Açık
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                          {pack.emojis?.map((em, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => handleInsertEmoji(pack, em)}
+                              className="group p-2 rounded-xl bg-gray-900/95 hover:bg-purple-950/80 border border-emerald-500/30 hover:border-amber-400/70 transition flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.03]"
+                              title={`${em.label} ekle`}
+                            >
+                              <div className="w-11 h-11 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800">
+                                {em.imageUrl ? (
+                                  <img
+                                    src={em.imageUrl}
+                                    alt={em.label}
+                                    className="max-w-full max-h-full object-contain drop-shadow group-hover:scale-110 transition-transform"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                ) : (
+                                  <span className="text-sm font-bold text-amber-300">{em.symbol}</span>
+                                )}
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-100 truncate w-full">{em.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-3 px-2 rounded-xl bg-black/40 border border-white/5 text-xs text-gray-400">
+                    Henüz satın aldığınız bir Chibi paketi bulunmuyor. Aşağıdaki paketlerden dilediğinizi tek tıkla açabilirsiniz!
+                  </div>
+                )}
+              </div>
+
+              {/* 2. BASIC FREE EMOJIS */}
+              <div className="pt-1">
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">
+                  Genel Okuyucu Emojileri (Ücretsiz)
                 </span>
                 <div className="flex flex-wrap gap-1.5">
                   {['🔥', '✨', '💖', '😱', '😍', '😎', '👑', '🎉', '👏', '👀', '💯', '🚀'].map((em, idx) => (
@@ -931,69 +1005,62 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                 </div>
               </div>
 
-              {/* Chibi Emoji Packs */}
-              {emojiPackItems.map(pack => {
-                const isPackUnlocked = unlockedEmojiPacks.includes(pack.id);
-                return (
-                  <div key={pack.id} className="pt-2.5 border-t border-gray-800/80 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
-                        <span className="text-base">{pack.icon || '✨'}</span> {pack.name}
-                      </span>
-                      {isPackUnlocked ? (
-                        <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                          <Check size={10} /> Açık & Kullanıma Hazır
+              {/* 3. LOCKED / UNPURCHASED CHIBI PACKS SECTION */}
+              {lockedEmojiPacks.length > 0 && (
+                <div className="pt-3 border-t border-gray-800 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-extrabold text-amber-300/90 uppercase tracking-wider flex items-center gap-1.5">
+                      <Lock size={12} className="text-amber-400" />
+                      Mağazadaki Diğer Chibi Paketleri ({lockedEmojiPacks.length} Paket)
+                    </span>
+                  </div>
+
+                  {lockedEmojiPacks.map(pack => (
+                    <div key={pack.id} className="p-3 rounded-xl bg-gray-900/60 border border-gray-800/90 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+                          <span className="text-base">{pack.icon || '✨'}</span> {pack.name}
                         </span>
-                      ) : (
                         <button
                           type="button"
                           onClick={() => handleInstantUnlockPack(pack)}
-                          className="text-[10px] text-amber-300 bg-amber-950/90 border border-amber-500/50 hover:bg-amber-900 px-2.5 py-1 rounded-xl font-black flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer"
+                          className="text-[10px] text-amber-300 bg-amber-950/90 border border-amber-500/50 hover:bg-amber-900 px-2.5 py-1 rounded-xl font-black flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
                         >
                           <Lock size={11} className="text-amber-400" />
                           Hemen Aç ({pack.price} CP)
                         </button>
-                      )}
-                    </div>
+                      </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                      {pack.emojis?.map((em, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleInsertEmoji(pack, em)}
-                          className={`p-2 rounded-xl border text-left transition flex items-center gap-2 cursor-pointer ${
-                            isPackUnlocked
-                              ? 'bg-gray-900/90 hover:bg-purple-950/80 border-purple-500/30 hover:border-purple-500/70 text-purple-200 hover:scale-102 shadow-sm'
-                              : 'bg-gray-950/80 border-gray-800 hover:border-amber-500/50 text-gray-400 hover:text-amber-300'
-                          }`}
-                          title={isPackUnlocked ? `${em.label} (${em.code})` : `${pack.name} paketini ${pack.price} CP ile açmak için tıkla`}
-                        >
-                          <div className="w-8 h-8 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-0.5 shrink-0 border border-gray-800">
-                            {em.imageUrl ? (
-                              <img
-                                src={em.imageUrl}
-                                alt={em.label}
-                                className="max-w-full max-h-full object-contain"
-                                referrerPolicy="no-referrer"
-                              />
-                            ) : (
-                              <span className="text-xs font-bold text-amber-300">{em.symbol}</span>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-gray-200 truncate">{em.label}</p>
-                            <p className="text-[9px] text-purple-300 font-mono truncate">{em.code}</p>
-                          </div>
-                          {!isPackUnlocked && (
-                            <Lock size={12} className="text-amber-400 shrink-0" />
-                          )}
-                        </button>
-                      ))}
+                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        {pack.emojis?.map((em, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => handleInsertEmoji(pack, em)}
+                            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 hover:border-amber-500/50 text-gray-400 hover:text-amber-300 transition flex flex-col items-center justify-center text-center gap-1 cursor-pointer relative group"
+                            title={`${pack.name} paketini ${pack.price} CP ile açmak için tıkla`}
+                          >
+                            <Lock size={10} className="text-amber-400/80 absolute top-1.5 right-1.5" />
+                            <div className="w-10 h-10 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800 opacity-85 group-hover:opacity-100">
+                              {em.imageUrl ? (
+                                <img
+                                  src={em.imageUrl}
+                                  alt={em.label}
+                                  className="max-w-full max-h-full object-contain"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <span className="text-xs font-bold text-amber-300">{em.symbol}</span>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-300 truncate w-full">{em.label}</span>
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>

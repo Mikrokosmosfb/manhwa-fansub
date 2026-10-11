@@ -82,7 +82,9 @@ export const ShopContent: React.FC = () => {
   const [inputUrl, setInputUrl] = useState(lemonStoreUrl);
 
   const userCoins = (user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : (user?.coins ?? 10);
-  const userInventory = user?.inventory || [];
+  const userInventory = Array.from(
+    new Set([...(user?.inventory || []), ...(user?.unlockedEmojiPacks || [])])
+  );
   const equippedTheme = user?.equippedTheme || null;
   const equippedBadges: string[] = user?.equippedBadges && user.equippedBadges.length > 0
     ? user.equippedBadges
@@ -142,6 +144,8 @@ export const ShopContent: React.FC = () => {
     if (activeCategory === 'theme_aura') return item.category === 'theme' && item.themeType !== 'photo';
     return item.category === activeCategory;
   });
+  const ownedFilteredItems = filteredItems.filter(item => userInventory.includes(item.id));
+  const unownedFilteredItems = filteredItems.filter(item => !userInventory.includes(item.id));
 
   const handleBuy = (item: ShopItem) => {
     const res = buyShopItem(item.id);
@@ -572,10 +576,8 @@ export const ShopContent: React.FC = () => {
             ))}
           </div>
         </div>
-      ) : (
-        /* PRODUCT GRID */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredItems.map(item => {
+      ) : (() => {
+        const renderShopItemCard = (item: ShopItem) => {
           const isOwned = userInventory.includes(item.id);
           const badgeText = item.badgeText || item.name;
           const isEquipped =
@@ -822,7 +824,6 @@ export const ShopContent: React.FC = () => {
                             )}
                           </div>
                           <span className="text-[10px] font-bold text-gray-200 truncate w-full">{em.label}</span>
-                          <span className="text-[9px] text-purple-300 font-mono truncate w-full opacity-80">{em.code}</span>
                         </div>
                       ))}
                     </div>
@@ -959,9 +960,50 @@ export const ShopContent: React.FC = () => {
               </div>
             </div>
           );
-        })}
-      </div>
-      )}
+        };
+
+        return (
+          <div className="space-y-6">
+            {ownedFilteredItems.length > 0 && (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-950/30 via-gray-900/90 to-gray-950 border border-emerald-500/40 space-y-3.5 shadow-lg">
+                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-black text-emerald-300 flex items-center gap-1.5">
+                      <Check size={16} className="text-emerald-400 stroke-[3]" />
+                      {activeCategory === 'emoji_pack' ? 'Satın Alınan Chibi Paketleriniz' : 'Satın Aldıklarınız'}
+                    </span>
+                    <span className="text-[10px] font-extrabold bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full">
+                      {ownedFilteredItems.length} Ürün Açık
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-emerald-400/90 font-bold">
+                    Kullanıma Hazır ✨
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {ownedFilteredItems.map(item => renderShopItemCard(item))}
+                </div>
+              </div>
+            )}
+
+            {unownedFilteredItems.length > 0 && (
+              <div className="space-y-3">
+                {ownedFilteredItems.length > 0 && (
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-xs font-extrabold text-amber-300 uppercase tracking-wider flex items-center gap-1.5">
+                      <ShoppingBag size={14} className="text-amber-400" />
+                      {activeCategory === 'emoji_pack' ? `Mağazadaki Diğer Chibi Paketleri (${unownedFilteredItems.length})` : `Mağazadaki Diğer Ürünler (${unownedFilteredItems.length})`}
+                    </span>
+                  </div>
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {unownedFilteredItems.map(item => renderShopItemCard(item))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 };
