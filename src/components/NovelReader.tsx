@@ -30,7 +30,9 @@ import {
   X,
   Eye,
   EyeOff,
-  Quote
+  Quote,
+  Feather,
+  Globe
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
@@ -1333,8 +1335,24 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
         {/* Chapter / Translator Profile Card (Blogger <div class="profile"> & Automatic Novel Credits) */}
         {chapterProfileCard && (
-          <div className="bg-white text-slate-900 rounded-[26px] p-4 sm:p-5 shadow-[0_12px_32px_rgba(0,0,0,0.28)] border border-purple-200/80 border-l-[6px] border-l-[#9333ea] max-w-xl mx-auto my-6 flex items-center gap-4 sm:gap-6 text-left select-none">
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden flex-shrink-0 shadow-[0_8px_20px_rgba(0,0,0,0.22)] bg-purple-100">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#180b2e] via-[#110722] to-[#210d3a] text-white p-4 sm:p-5 shadow-[0_14px_38px_rgba(88,28,135,0.38)] border border-purple-500/35 max-w-xl mx-auto my-6 flex items-center gap-4 sm:gap-5 text-left select-none">
+            {/* Ambient Blurred Cover Glow */}
+            <div className="absolute inset-0 pointer-events-none overflow-hidden">
+              <img
+                src={chapterProfileCard.imageUrl}
+                alt=""
+                aria-hidden="true"
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover blur-2xl scale-125 opacity-20"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#120724]/90 via-[#150929]/85 to-purple-950/75" />
+            </div>
+
+            {/* Left Gradient Accent Bar */}
+            <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-purple-400 via-fuchsia-500 to-amber-400" />
+
+            {/* Left Cover / Profile Artwork */}
+            <div className="relative z-10 w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-purple-400/40 shadow-[0_8px_24px_rgba(0,0,0,0.65)] bg-purple-950">
               <img
                 src={chapterProfileCard.imageUrl}
                 alt={chapterProfileCard.seriesTitle}
@@ -1348,26 +1366,41 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               />
             </div>
 
-            <div className="flex-1 min-w-0 space-y-2">
+            {/* Right Metadata Details */}
+            <div className="relative z-10 flex-1 min-w-0 space-y-2">
               <div>
-                <div className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                  SERİ:
+                <div className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-purple-300/90 mb-0.5">
+                  <Sparkles size={11} className="text-amber-300" />
+                  <span>BÖLÜM ÇEVİRİ KÜNYESİ</span>
                 </div>
-                <div className="text-sm sm:text-base font-extrabold text-[#a423c4] leading-snug break-words">
+                <div className="text-sm sm:text-base font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-fuchsia-200 leading-snug break-words">
                   {chapterProfileCard.seriesTitle}
                 </div>
               </div>
 
               {chapterProfileCard.badges.length > 0 && (
-                <div className="flex flex-col items-start gap-2 pt-0.5">
-                  {chapterProfileCard.badges.map((b, bIdx) => (
-                    <span
-                      key={bIdx}
-                      className="inline-flex items-center bg-[#f6eefb] border border-[#e6d4f5] text-[#6b21a8] font-extrabold text-xs sm:text-[13px] px-3.5 py-1.5 rounded-xl shadow-2xs"
-                    >
-                      {b.label}: {b.value}
-                    </span>
-                  ))}
+                <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                  {chapterProfileCard.badges.map((b, bIdx) => {
+                    const isLang = /çeviri|dil/i.test(b.label);
+                    return (
+                      <div
+                        key={bIdx}
+                        className="inline-flex items-center gap-1.5 bg-purple-950/80 border border-purple-400/30 px-3 py-1.5 rounded-xl shadow-inner backdrop-blur-xs"
+                      >
+                        {isLang ? (
+                          <Globe size={12} className="text-fuchsia-300 shrink-0" />
+                        ) : (
+                          <Feather size={12} className="text-amber-300 shrink-0" />
+                        )}
+                        <span className="text-[11px] font-bold text-purple-300/90">
+                          {b.label}:
+                        </span>
+                        <span className="text-xs sm:text-[13px] font-extrabold text-amber-200">
+                          {b.value}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
