@@ -1174,8 +1174,22 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             <span>Hasarlı veya yüklenmeyen görsel mi var?</span>
           </span>
           <button
-            onClick={() => setView({ type: 'report' })}
-            className="bg-red-600 hover:bg-red-500 text-white font-extrabold px-3.5 py-1.5 rounded-xl transition text-[11px] uppercase tracking-wider shadow-md hover:shadow-red-900/50 flex-shrink-0"
+            onClick={() => {
+              try {
+                sessionStorage.setItem(
+                  'mk_report_prefill',
+                  JSON.stringify({
+                    seriesId: series.id,
+                    seriesTitle: series.title,
+                    chapterId: currentChapter.id,
+                    chapterTitle: currentChapter.title || `Bölüm ${currentChapter.number}`,
+                    pageUrl: typeof window !== 'undefined' ? window.location.href : ''
+                  })
+                );
+              } catch {}
+              setView({ type: 'report' });
+            }}
+            className="bg-red-600 hover:bg-red-500 text-white font-extrabold px-3.5 py-1.5 rounded-xl transition text-[11px] uppercase tracking-wider shadow-md hover:shadow-red-900/50 flex-shrink-0 cursor-pointer"
           >
             Hemen Bildir
           </button>

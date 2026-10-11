@@ -15,7 +15,30 @@ import {
 } from 'lucide-react';
 
 export const QuickNav: React.FC = () => {
-  const { setView } = useApp();
+  const { view, seriesList, setView } = useApp();
+
+  const handleOpenReport = () => {
+    try {
+      if (view.type === 'series' || view.type === 'reader') {
+        const s = seriesList.find(item => item.id === view.seriesId);
+        const ch =
+          view.type === 'reader'
+            ? s?.chapters.find(c => c.id === view.chapterId)
+            : undefined;
+        sessionStorage.setItem(
+          'mk_report_prefill',
+          JSON.stringify({
+            seriesId: s?.id || view.seriesId,
+            seriesTitle: s?.title || '',
+            chapterId: ch?.id || '',
+            chapterTitle: ch ? ch.title || `Bölüm ${ch.number}` : '',
+            pageUrl: typeof window !== 'undefined' ? window.location.href : ''
+          })
+        );
+      }
+    } catch {}
+    setView({ type: 'report' });
+  };
 
   const links = [
     {
@@ -72,7 +95,7 @@ export const QuickNav: React.FC = () => {
     {
       title: 'Sorun Bildir',
       icon: <Bug className="w-3.5 h-3.5 text-rose-300" />,
-      onClick: () => setView({ type: 'report' })
+      onClick: handleOpenReport
     }
   ];
 

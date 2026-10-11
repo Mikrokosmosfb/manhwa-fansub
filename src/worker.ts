@@ -1414,12 +1414,92 @@ ${seriesXml}
                   .replace(/>/g, '&gt;')
                   .replace(/"/g, '&quot;');
 
-              const subject = `🚨 [Yorum Şikayeti] ${seriesTitle || seriesId || 'Mikrokosmos'} - ${commentAuthorName || 'Kullanıcı'}`;
+              const isIssueReport =
+                payload?.reportCategory === 'issue' ||
+                String(commentId || '').startsWith('GENEL-SORUN-');
+
+              const subject = isIssueReport
+                ? `🛠️ [Sorun Bildirimi] ${seriesTitle || seriesId || 'Genel Site Bildirimi'} - ${reason || 'Teknik Sorun'}`
+                : `🚨 [Yorum Şikayeti] ${seriesTitle || seriesId || 'Mikrokosmos'} - ${commentAuthorName || 'Kullanıcı'}`;
               const directLink = pageUrl || (chapterId
                 ? `https://mikrokosmosfansub.com/#/oku/${encodeURIComponent(seriesId || '')}/${encodeURIComponent(chapterId)}`
-                : `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(seriesId || '')}`);
+                : seriesId
+                ? `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(seriesId || '')}`
+                : `https://mikrokosmosfansub.com/`);
 
-              const htmlContent = `
+              const htmlContent = isIssueReport
+                ? `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(subject)}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#090614;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#090614;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:600px;background:linear-gradient(180deg, #1b0e34 0%, #0d0722 100%);border:1px solid #f59e0b60;border-radius:20px;overflow:hidden;box-shadow:0 16px 36px rgba(0,0,0,0.85);" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="padding:28px 24px;">
+              <div style="display:inline-block;padding:6px 14px;background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.45);border-radius:999px;font-size:12px;font-weight:bold;color:#fcd34d;margin-bottom:14px;">
+                🛠️ TEKNİK / BÖLÜM SORUN BİLDİRİMİ
+              </div>
+              <h2 style="margin:0 0 8px;font-size:20px;font-weight:800;color:#ffffff;">
+                Sitede Bir Sorun Rapor Edildi
+              </h2>
+              <p style="margin:0 0 20px;font-size:13px;color:#c4b5fd;">
+                Bir okuyucu <strong>Sorun Bildir</strong> formu üzerinden <strong>mikrokosmosfansub@gmail.com</strong> adresine aşağıdaki hata/sorun raporunu iletti:
+              </p>
+
+              <!-- ISSUE DESCRIPTION BOX -->
+              <div style="background:#120924;border-left:4px solid #f59e0b;border-radius:12px;padding:16px;margin-bottom:18px;">
+                <div style="font-size:11px;color:#fbbf24;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">
+                  📝 Bildirilen Sorun Açıklaması:
+                </div>
+                <div style="font-size:15px;line-height:1.6;color:#f3f4f6;white-space:pre-wrap;word-break:break-word;background:#090514;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);">
+                  ${escapeHtml(details || commentText || '(Açıklama yok)')}
+                </div>
+              </div>
+
+              <!-- DETAILS TABLE -->
+              <table width="100%" cellspacing="0" cellpadding="8" style="background:#0d071b;border:1px solid rgba(168,85,247,0.25);border-radius:12px;font-size:13px;color:#e5e7eb;margin-bottom:20px;">
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;width:150px;border-bottom:1px solid rgba(255,255,255,0.06);">Sorun Türü:</td>
+                  <td style="color:#fcd34d;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(reason || 'Belirtilmedi')}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">İlgili Seri:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);"><strong>${escapeHtml(seriesTitle || seriesId || 'Genel Site Bildirimi')}</strong></td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Bölüm / Konum:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(chapterTitle || 'Belirtilmedi')}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">Bildiren Okuyucu:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(reporterName || commentAuthorName || 'Ziyaretçi / Misafir')} ${reporterEmail ? `(${escapeHtml(reporterEmail)})` : ''}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;">Rapor ID & Tarih:</td>
+                  <td style="font-family:monospace;font-size:12px;">${escapeHtml(commentId || '-')} • ${escapeHtml(commentDate || '-')}</td>
+                </tr>
+              </table>
+
+              <div style="text-align:center;margin-top:18px;">
+                <a href="${escapeHtml(directLink)}" style="display:inline-block;padding:12px 24px;background:linear-gradient(90deg,#9333ea,#db2777);color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;border-radius:12px;">
+                  🔗 İlgili Sayfaya Git ve İncele
+                </a>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim()
+                : `
 <!DOCTYPE html>
 <html>
 <head>
