@@ -32,7 +32,7 @@ type ViewState =
   | { type: 'series-detail'; seriesId: string }
   | { type: 'reader'; seriesId: string; chapterId: string }
   | { type: 'library' }
-  | { type: 'profile'; initialTab?: 'profile' | 'wardrobe' | 'badges' | 'library' }
+  | { type: 'profile'; initialTab?: 'profile' | 'wardrobe' | 'badges' | 'library' | 'kosmospins' }
   | { type: 'public-profile'; userId: string }
   | { type: 'shop' }
   | { type: 'az-list' }
@@ -48,7 +48,7 @@ type ViewState =
   | { type: 'advanced-search' }
   | { type: 'notifications' }
   | { type: 'leaderboard' }
-  | { type: 'wallpapers'; seriesId?: string };
+  | { type: 'wallpapers'; seriesId?: string; wallpaperId?: string };
 
 export const viewToHash = (v: ViewState): string => {
   switch (v.type) {
@@ -94,6 +94,9 @@ export const viewToHash = (v: ViewState): string => {
     case 'notifications':
       return '#/bildirimler';
     case 'wallpapers':
+      if (v.wallpaperId) {
+        return `#/duvar-kagitlari/pin/${encodeURIComponent(v.wallpaperId)}`;
+      }
       return v.seriesId ? `#/duvar-kagitlari/${encodeURIComponent(v.seriesId)}` : '#/duvar-kagitlari';
     default:
       return '#/';
@@ -121,7 +124,7 @@ export const hashToView = (hash: string): ViewState => {
     case 'profil':
     case 'profile': {
       const tab = parts[1] as any;
-      const validTabs = ['profile', 'wardrobe', 'badges', 'library'];
+      const validTabs = ['profile', 'wardrobe', 'badges', 'library', 'kosmospins'];
       return { type: 'profile', initialTab: validTabs.includes(tab) ? tab : 'profile' };
     }
     case 'kullanici':
@@ -163,6 +166,9 @@ export const hashToView = (hash: string): ViewState => {
     case 'duvar-kagitlari':
     case 'wallpapers':
     case 'wallpaper':
+      if (parts[1] === 'pin' && parts[2]) {
+        return { type: 'wallpapers', wallpaperId: parts[2] };
+      }
       return { type: 'wallpapers', seriesId: parts[1] || undefined };
     default:
       return { type: 'home' };
@@ -201,6 +207,9 @@ interface AppContextType {
   bookmarks: Record<string, BookmarkItem>;
   readingLists: import('../types').ReadingList[];
   setReadingLists: React.Dispatch<React.SetStateAction<import('../types').ReadingList[]>>;
+  kosmosPins: import('../types').KosmosPinItem[];
+  isWallpaperPinned: (wallpaperId: string) => boolean;
+  toggleKosmosPin: (wallpaper: import('../types').KosmosPinItem) => void;
   toggleBookmark: (seriesId: string, folders: string[]) => void;
   removeBookmark: (seriesId: string) => void;
   followedSeriesIds: string[];
@@ -486,8 +495,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [readingLists, setReadingListsState] = useState<import('../types').ReadingList[]>(() => {
     const saved = localStorage.getItem('mk_reading_lists');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((l: any) => l && l.id !== '__kosmospins__');
+        }
+      } catch (e) {}
     }
+    return [];
+  });
+
+  // KosmosPin'ler (Pinned Wallpapers)
+  const [kosmosPins, setKosmosPinsState] = useState<import('../types').KosmosPinItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('mk_kosmospins');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      // Fallback: check if embedded inside mk_reading_lists
+      const savedLists = localStorage.getItem('mk_reading_lists');
+      if (savedLists) {
+        const parsedLists = JSON.parse(savedLists);
+        if (Array.isArray(parsedLists)) {
+          const pinEntry = parsedLists.find((l: any) => l && l.id === '__kosmospins__');
+          if (pinEntry && Array.isArray(pinEntry.pins)) return pinEntry.pins;
+        }
+      }
+    } catch (e) {}
     return [];
   });
 
@@ -1812,9 +1847,27 @@ const deleteShopItemAndStyle = (itemId: string) => {
   const isLibraryFetchedRef = useRef(false);
   const syncTimeoutRef = useRef<any>(null);
 
+  const packListsAndPinsForCloud = (
+    lists: import('../types').ReadingList[],
+    pins: import('../types').KosmosPinItem[]
+  ): import('../types').ReadingList[] => {
+    const cleanLists = (Array.isArray(lists) ? lists : []).filter(l => l && l.id !== '__kosmospins__');
+    const cleanPins = Array.isArray(pins) ? pins : [];
+    return [
+      ...cleanLists,
+      {
+        id: '__kosmospins__',
+        name: '__kosmospins__',
+        seriesIds: [],
+        pins: cleanPins
+      }
+    ];
+  };
+
   const setReadingLists: React.Dispatch<React.SetStateAction<import('../types').ReadingList[]>> = (updater) => {
     setReadingListsState(prev => {
-      const next = typeof updater === 'function' ? (updater as any)(prev) : updater;
+      const rawNext = typeof updater === 'function' ? (updater as any)(prev) : updater;
+      const next = (Array.isArray(rawNext) ? rawNext : []).filter((l: any) => l && l.id !== '__kosmospins__');
       try {
         localStorage.setItem('mk_reading_lists', JSON.stringify(next));
         localStorage.setItem('mk_reading_lists_dirty', String(Date.now()));
@@ -1824,6 +1877,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       } catch (e) {}
 
       if (user && user.uid) {
+        const packed = packListsAndPinsForCloud(next, kosmosPins);
         fetch('/api/auth/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1831,7 +1885,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           body: JSON.stringify({
             uid: user.uid,
             bookmarks: JSON.stringify(bookmarks),
-            reading_lists: JSON.stringify(next),
+            reading_lists: JSON.stringify(packed),
             followed_series: JSON.stringify(followedSeriesIds),
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
@@ -1860,6 +1914,87 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
   };
 
+  const isWallpaperPinned = (wallpaperId: string): boolean => {
+    if (!wallpaperId) return false;
+    return kosmosPins.some(p => p.id === wallpaperId);
+  };
+
+  const toggleKosmosPin = (wallpaper: import('../types').KosmosPinItem) => {
+    if (!wallpaper || !wallpaper.id) return;
+    setKosmosPinsState(prev => {
+      const exists = prev.some(p => p.id === wallpaper.id);
+      const next: import('../types').KosmosPinItem[] = exists
+        ? prev.filter(p => p.id !== wallpaper.id)
+        : [
+            {
+              id: wallpaper.id,
+              title: wallpaper.title || wallpaper.seriesTitle || 'Wallpaper',
+              imageUrl: wallpaper.imageUrl,
+              seriesId: wallpaper.seriesId || '',
+              seriesTitle: wallpaper.seriesTitle || '',
+              category: wallpaper.category || 'mobil',
+              createdAt: wallpaper.createdAt || new Date().toISOString()
+            },
+            ...prev
+          ];
+
+      try {
+        localStorage.setItem('mk_kosmospins', JSON.stringify(next));
+        localStorage.setItem('mk_kosmospins_dirty', String(Date.now()));
+        if (user?.uid) {
+          localStorage.setItem(`mk_kosmospins_${user.uid}`, JSON.stringify(next));
+        }
+      } catch (e) {}
+
+      if (user && user.uid) {
+        const packed = packListsAndPinsForCloud(readingLists, next);
+        fetch('/api/auth/library', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            uid: user.uid,
+            bookmarks: JSON.stringify(bookmarks),
+            reading_lists: JSON.stringify(packed),
+            followed_series: JSON.stringify(followedSeriesIds),
+            reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
+            notifications: JSON.stringify(notifications),
+            cosmo_points: user.coins || 0,
+            shop_items: JSON.stringify(user.inventory || []),
+            equipped_theme: user.equippedTheme || null,
+            equipped_badge: user.equippedBadge || null,
+            equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
+            equipped_frame: user.equippedFrame || null,
+            daily_checkin_day: user.dailyCheckinDay || 0,
+            last_daily_checkin: user.lastDailyCheckin || null,
+            claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
+          })
+        })
+          .then(res => res.json())
+          .then(resData => {
+            if (resData && resData.success) {
+              try {
+                localStorage.removeItem('mk_kosmospins_dirty');
+              } catch (e) {}
+            }
+          })
+          .catch(() => {});
+      }
+
+      setTimeout(() => {
+        showToast({
+          title: exists ? 'KosmosPin Kaldırıldı' : "📌 KosmosPin'lere Eklendi!",
+          message: exists
+            ? `"${wallpaper.seriesTitle || wallpaper.title}" profilinizdeki KosmosPin'lerden çıkarıldı.`
+            : `"${wallpaper.seriesTitle || wallpaper.title}" profilinizdeki KosmosPin'lere kaydedildi.`,
+          type: exists ? 'info' : 'success'
+        });
+      }, 0);
+
+      return next;
+    });
+  };
+
   useEffect(() => {
     if (user && user.uid) {
       isLibraryFetchedRef.current = false;
@@ -1868,25 +2003,82 @@ const deleteShopItemAndStyle = (itemId: string) => {
           if (data && data.success) {
             try {
               const fetchedBookmarks = typeof data.bookmarks === 'string' ? JSON.parse(data.bookmarks) : data.bookmarks;
-              const fetchedReadingLists = data.reading_lists ? (typeof data.reading_lists === 'string' ? JSON.parse(data.reading_lists) : data.reading_lists) : [];
+              const rawFetchedReadingLists = data.reading_lists
+                ? typeof data.reading_lists === 'string'
+                  ? JSON.parse(data.reading_lists)
+                  : data.reading_lists
+                : [];
+
+              const fetchedPinCarrier = Array.isArray(rawFetchedReadingLists)
+                ? rawFetchedReadingLists.find((l: any) => l && l.id === '__kosmospins__')
+                : null;
+              const fetchedPins: import('../types').KosmosPinItem[] =
+                fetchedPinCarrier && Array.isArray(fetchedPinCarrier.pins) ? fetchedPinCarrier.pins : [];
+
+              const fetchedReadingLists = Array.isArray(rawFetchedReadingLists)
+                ? rawFetchedReadingLists.filter((l: any) => l && l.id !== '__kosmospins__')
+                : [];
 
               const isLocalDirty = Boolean(localStorage.getItem('mk_reading_lists_dirty'));
               const savedLocalStr = localStorage.getItem(`mk_reading_lists_${user.uid}`) || localStorage.getItem('mk_reading_lists');
               let localLists: any[] | null = null;
               try {
-                if (savedLocalStr) localLists = JSON.parse(savedLocalStr);
+                if (savedLocalStr) {
+                  const parsed = JSON.parse(savedLocalStr);
+                  if (Array.isArray(parsed)) {
+                    localLists = parsed.filter((l: any) => l && l.id !== '__kosmospins__');
+                  }
+                }
               } catch (e) {}
 
+              const isPinsDirty = Boolean(localStorage.getItem('mk_kosmospins_dirty'));
+              const savedPinsStr = localStorage.getItem(`mk_kosmospins_${user.uid}`) || localStorage.getItem('mk_kosmospins');
+              let localPins: import('../types').KosmosPinItem[] | null = null;
+              try {
+                if (savedPinsStr) {
+                  const parsed = JSON.parse(savedPinsStr);
+                  if (Array.isArray(parsed)) localPins = parsed;
+                }
+              } catch (e) {}
+
+              let finalLists = fetchedReadingLists;
               if (isLocalDirty && Array.isArray(localLists)) {
-                setReadingListsState(localLists);
-                localStorage.setItem('mk_reading_lists', JSON.stringify(localLists));
+                finalLists = localLists;
+              } else if (Array.isArray(fetchedReadingLists) && (fetchedReadingLists.length > 0 || !Array.isArray(localLists) || localLists.length === 0)) {
+                finalLists = fetchedReadingLists;
+              } else if (Array.isArray(localLists) && localLists.length > 0) {
+                finalLists = localLists;
+              }
+
+              let finalPins = fetchedPins;
+              if (isPinsDirty && Array.isArray(localPins)) {
+                finalPins = localPins;
+              } else if (Array.isArray(fetchedPins) && fetchedPins.length > 0) {
+                // If local also has pins and isn't empty, merge unique pins keeping local order first if dirty
+                finalPins = fetchedPins;
+              } else if (Array.isArray(localPins) && localPins.length > 0) {
+                finalPins = localPins;
+              }
+
+              setReadingListsState(finalLists);
+              setKosmosPinsState(finalPins);
+
+              try {
+                localStorage.setItem('mk_reading_lists', JSON.stringify(finalLists));
+                localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(finalLists));
+                localStorage.setItem('mk_kosmospins', JSON.stringify(finalPins));
+                localStorage.setItem(`mk_kosmospins_${user.uid}`, JSON.stringify(finalPins));
+              } catch (e) {}
+
+              if (isLocalDirty || isPinsDirty || (finalPins.length > 0 && fetchedPins.length === 0)) {
+                const packed = packListsAndPinsForCloud(finalLists, finalPins);
                 fetch('/api/auth/library', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   keepalive: true,
                   body: JSON.stringify({
                     uid: user.uid,
-                    reading_lists: JSON.stringify(localLists)
+                    reading_lists: JSON.stringify(packed)
                   })
                 })
                   .then(r => r.json())
@@ -1894,18 +2086,11 @@ const deleteShopItemAndStyle = (itemId: string) => {
                     if (resData && resData.success) {
                       try {
                         localStorage.removeItem('mk_reading_lists_dirty');
+                        localStorage.removeItem('mk_kosmospins_dirty');
                       } catch (e) {}
                     }
                   })
                   .catch(() => {});
-              } else if (Array.isArray(fetchedReadingLists) && (fetchedReadingLists.length > 0 || !Array.isArray(localLists) || localLists.length === 0)) {
-                setReadingListsState(fetchedReadingLists);
-                try {
-                  localStorage.setItem('mk_reading_lists', JSON.stringify(fetchedReadingLists));
-                  localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(fetchedReadingLists));
-                } catch (e) {}
-              } else if (Array.isArray(localLists) && localLists.length > 0) {
-                setReadingListsState(localLists);
               }
 
               const fetchedFollowed = typeof data.followed_series === 'string' ? JSON.parse(data.followed_series) : data.followed_series;
@@ -1977,14 +2162,17 @@ const deleteShopItemAndStyle = (itemId: string) => {
   useEffect(() => {
     localStorage.setItem('mk_bookmarks_v2', JSON.stringify(bookmarks));
     localStorage.setItem('mk_reading_lists', JSON.stringify(readingLists));
+    localStorage.setItem('mk_kosmospins', JSON.stringify(kosmosPins));
     if (user?.uid) {
       localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(readingLists));
+      localStorage.setItem(`mk_kosmospins_${user.uid}`, JSON.stringify(kosmosPins));
     }
     localStorage.setItem('mk_followed_series', JSON.stringify(followedSeriesIds));
 
     if (user && user.uid && isLibraryFetchedRef.current) {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
+        const packed = packListsAndPinsForCloud(readingLists, kosmosPins);
         safeFetchJson('/api/auth/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1992,7 +2180,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           body: JSON.stringify({
             uid: user.uid,
             bookmarks: JSON.stringify(bookmarks),
-            reading_lists: JSON.stringify(readingLists),
+            reading_lists: JSON.stringify(packed),
             followed_series: JSON.stringify(followedSeriesIds),
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
@@ -2011,13 +2199,14 @@ const deleteShopItemAndStyle = (itemId: string) => {
             if (resData && resData.success) {
               try {
                 localStorage.removeItem('mk_reading_lists_dirty');
+                localStorage.removeItem('mk_kosmospins_dirty');
               } catch (e) {}
             }
           })
           .catch(() => {});
       }, 300);
     }
-  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists]);
+  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists, kosmosPins]);
 
   useEffect(() => {
     try {
@@ -3234,6 +3423,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
         readingHistory,
         readingLists,
         setReadingLists,
+        kosmosPins,
+        isWallpaperPinned,
+        toggleKosmosPin,
         updateReadingProgress,
         markChapterCompleted,
         toggleChapterRead,

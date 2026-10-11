@@ -27,7 +27,8 @@ import {
   ChevronDown,
   Layers,
   RefreshCw,
-  FolderPlus
+  FolderPlus,
+  Pin
 } from 'lucide-react';
 
 interface WallpapersViewProps {
@@ -52,7 +53,17 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
   initialSeriesId,
   isAdminPanel = false
 }) => {
-  const { seriesList, user, isAdminLoggedIn, setView, showToast, showNsfw } = useApp();
+  const {
+    seriesList,
+    user,
+    isAdminLoggedIn,
+    setView,
+    showToast,
+    showNsfw,
+    isWallpaperPinned,
+    toggleKosmosPin,
+    openAuthModal
+  } = useApp();
 
   const isAdmin = isAuthorizedAdmin(user?.email) || isAdminLoggedIn;
   // Wallpaper yükleme işlemleri SADECE Yönetim Paneli (Admin Panel) içinden yapılabilir
@@ -347,6 +358,81 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
     if (!q) return seriesList;
     return seriesList.filter(s => normalizeSearchText(s.title).includes(q));
   }, [seriesList, uploadSeriesSearch]);
+
+  // Pin / Unpin a wallpaper to KosmosPin'ler in user profile
+  const handleTogglePin = (w: WallpaperItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!user) {
+      showToast({
+        title: 'Giriş Gerekli',
+        message: "KosmosPin'lere eklemek için lütfen hesabınıza giriş yapın.",
+        type: 'info'
+      });
+      openAuthModal('login');
+      return;
+    }
+    toggleKosmosPin({
+      id: w.id,
+      title: w.title || w.seriesTitle || 'Wallpaper',
+      imageUrl: w.imageUrl,
+      seriesId: w.seriesId || '',
+      seriesTitle: w.seriesTitle || '',
+      category: w.category || 'mobil',
+      createdAt: w.createdAt || new Date().toISOString()
+    });
+  };
+
+  // Automatically open a specific wallpaper when redirected from a user's KosmosPin'ler profile section
+  useEffect(() => {
+    const checkAndOpenTargetPin = () => {
+      try {
+        const rawTarget = localStorage.getItem('mk_target_wallpaper_pin');
+        if (!rawTarget) return;
+        const pin = JSON.parse(rawTarget);
+        if (!pin || (!pin.id && !pin.imageUrl)) return;
+
+        localStorage.removeItem('mk_target_wallpaper_pin');
+
+        setSelectedSeriesId('all');
+        setSelectedCategory('all');
+        setSearchQuery('');
+
+        const normalizedPinUrl = normalizeImageUrl(pin.imageUrl || '');
+        const matched = allDisplayWallpapers.find(
+          w =>
+            w.id === pin.id ||
+            (normalizedPinUrl && normalizeImageUrl(w.imageUrl) === normalizedPinUrl)
+        );
+
+        const targetWallpaper: WallpaperItem = matched || {
+          id: pin.id || `pin-${Date.now()}`,
+          title: pin.title || pin.seriesTitle || 'Wallpaper',
+          imageUrl: normalizedPinUrl || pin.imageUrl,
+          seriesId: pin.seriesId || '',
+          seriesTitle: pin.seriesTitle || '',
+          category: pin.category || 'mobil',
+          createdAt: pin.createdAt || new Date().toISOString(),
+          likes: 0,
+          downloads: 0
+        };
+
+        setActiveWallpaper(targetWallpaper);
+
+        setTimeout(() => {
+          const el = document.getElementById(`wallpaper-card-${targetWallpaper.id}`);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 250);
+      } catch {}
+    };
+
+    checkAndOpenTargetPin();
+    window.addEventListener('mk-open-target-wallpaper', checkAndOpenTargetPin);
+    return () => {
+      window.removeEventListener('mk-open-target-wallpaper', checkAndOpenTargetPin);
+    };
+  }, [allDisplayWallpapers]);
 
   // Like a wallpaper
   const handleToggleLike = async (w: WallpaperItem, e?: React.MouseEvent) => {
@@ -1491,10 +1577,12 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
         <div className="columns-2 sm:columns-3 md:columns-4 lg:columns-5 gap-3 sm:gap-4 space-y-3 sm:space-y-4">
           {filteredWallpapers.map(w => {
             const isLiked = likedIds.includes(w.id);
+            const isPinned = isWallpaperPinned(w.id);
             const isDownloading = isDownloadingId === w.id;
             return (
               <div
                 key={w.id}
+                id={`wallpaper-card-${w.id}`}
                 onClick={() => setActiveWallpaper(w)}
                 className="break-inside-avoid group relative rounded-2xl overflow-hidden bg-gray-900 border border-purple-500/20 hover:border-purple-400/70 shadow-lg hover:shadow-purple-950/60 transition-all duration-300 cursor-pointer"
               >
@@ -1520,10 +1608,22 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                   />
                 )}
 
-                {/* Top Badges */}
-                <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none">
+                {/* Top Badges & KosmosPin Quick Action */}
+                <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1 pointer-events-none z-10">
                   <div>{getCategoryBadge(w.category)}</div>
                   <div className="flex items-center gap-1 pointer-events-auto">
+                    <button
+                      onClick={e => handleTogglePin(w, e)}
+                      className={`px-2 py-1 rounded-full text-[10px] font-extrabold flex items-center gap-1 border backdrop-blur-md transition shadow-lg active:scale-90 cursor-pointer ${
+                        isPinned
+                          ? 'bg-amber-500 text-black border-amber-300'
+                          : 'bg-black/75 hover:bg-purple-600 text-white border-white/20 sm:opacity-0 sm:group-hover:opacity-100'
+                      }`}
+                      title={isPinned ? "KosmosPin'lerden Çıkar" : "KosmosPin'lere Kaydet"}
+                    >
+                      <Pin size={11} className={isPinned ? 'fill-current' : ''} />
+                      <span>{isPinned ? 'Pinlendi' : 'Pinle'}</span>
+                    </button>
                     {isAdmin && !w.id.startsWith('series-') && (
                       <button
                         onClick={e => handleDeleteWallpaper(w, e)}
@@ -1565,6 +1665,18 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
                       </p>
 
                       <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={e => handleTogglePin(w, e)}
+                          className={`p-2 rounded-full backdrop-blur-md border transition active:scale-90 ${
+                            isPinned
+                              ? 'bg-amber-500 text-black border-amber-300'
+                              : 'bg-black/60 hover:bg-purple-600 text-white border-white/20'
+                          }`}
+                          title={isPinned ? "KosmosPin'lerden Çıkar" : "KosmosPin'lere Kaydet"}
+                        >
+                          <Pin size={13} className={isPinned ? 'fill-current' : ''} />
+                        </button>
+
                         <button
                           onClick={e => handleToggleLike(w, e)}
                           className={`p-2 rounded-full backdrop-blur-md border transition active:scale-90 ${
@@ -1657,6 +1769,25 @@ export const WallpapersView: React.FC<WallpapersViewProps> = ({
 
                   {/* Primary Action Buttons */}
                   <div className="flex flex-wrap gap-2.5">
+                    <button
+                      onClick={e => handleTogglePin(activeWallpaper, e)}
+                      className={`py-3 px-4 rounded-xl font-black text-xs sm:text-sm border flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer shadow-lg ${
+                        isWallpaperPinned(activeWallpaper.id)
+                          ? 'bg-amber-500 hover:bg-amber-400 text-black border-amber-300 shadow-amber-950/40'
+                          : 'bg-purple-950/80 hover:bg-purple-800 text-purple-100 border-purple-500/40'
+                      }`}
+                    >
+                      <Pin
+                        size={16}
+                        className={isWallpaperPinned(activeWallpaper.id) ? 'fill-current' : ''}
+                      />
+                      <span>
+                        {isWallpaperPinned(activeWallpaper.id)
+                          ? "KosmosPin'de Kayıtlı"
+                          : "KosmosPin'e Ekle"}
+                      </span>
+                    </button>
+
                     <button
                       onClick={e => handleDownloadWallpaper(activeWallpaper, e)}
                       disabled={isDownloadingId === activeWallpaper.id}

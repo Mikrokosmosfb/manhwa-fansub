@@ -304,13 +304,24 @@ export const DEFAULT_AD_SETTINGS: AdSettings = {
   customHeadScript: ''
 };
 
+export type WallpaperCategory = 'mobil' | 'masaustu' | 'kare' | 'genel';
+
+export interface KosmosPinItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  seriesId?: string;
+  seriesTitle: string;
+  category?: WallpaperCategory;
+  createdAt?: string;
+}
+
 export interface ReadingList {
   id: string;
   name: string;
   seriesIds: string[];
+  pins?: KosmosPinItem[];
 }
-
-export type WallpaperCategory = 'mobil' | 'masaustu' | 'kare' | 'genel';
 
 export interface WallpaperItem {
   id: string;

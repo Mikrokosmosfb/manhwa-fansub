@@ -25,9 +25,10 @@ import {
   Feather,
   MessageSquare,
   MessageCircle,
-  CheckCircle2
+  CheckCircle2,
+  Pin
 } from 'lucide-react';
-import { ProfileReadingLists } from './ProfileReadingLists';
+import { ProfileReadingLists, ProfileKosmosPins, extractPinsFromReadingLists } from './ProfileReadingLists';
 
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
@@ -53,11 +54,11 @@ const formatJoinDate = (dateStr?: string) => {
 };
 
 export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
-  const { themeStyles, shopItems, setView, openShop, seriesList } = useApp();
+  const { themeStyles, shopItems, setView, openShop, seriesList, user, kosmosPins } = useApp();
   
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'library' | 'wardrobe' | 'badges'>('library');
+  const [activeTab, setActiveTab] = useState<'library' | 'pins' | 'wardrobe' | 'badges'>('library');
 
   useEffect(() => {
     const cacheKey = `mk_profile_${userId}`;
@@ -460,7 +461,7 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
           <button
             type="button"
             onClick={() => setActiveTab('library')}
-            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'library'
                 ? 'bg-slate-800 text-white shadow-md border border-white/10'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
@@ -470,8 +471,25 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
           </button>
           <button
             type="button"
+            onClick={() => setActiveTab('pins')}
+            className={`flex-1 min-w-[125px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === 'pins'
+                ? 'bg-slate-800 text-white shadow-md border border-white/10'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Pin size={15} className="text-amber-400" />
+            <span>KosmosPin'ler</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {user?.uid === profile.uid
+                ? kosmosPins.length
+                : extractPinsFromReadingLists(profile.readingLists).length}
+            </span>
+          </button>
+          <button
+            type="button"
             onClick={() => setActiveTab('wardrobe')}
-            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'wardrobe'
                 ? 'bg-slate-800 text-white shadow-md border border-white/10'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
@@ -482,7 +500,7 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
           <button
             type="button"
             onClick={() => setActiveTab('badges')}
-            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'badges'
                 ? 'bg-slate-800 text-white shadow-md border border-white/10'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
@@ -497,9 +515,19 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
           {activeTab === 'library' && (
             <div className="bg-slate-900/40 border border-white/10 rounded-[24px] p-4 sm:p-6 shadow-xl backdrop-blur-sm">
               <ProfileReadingLists 
-                isOwnProfile={false}
+                isOwnProfile={user?.uid === profile.uid}
                 userId={userId}
                 initialLists={Array.isArray(profile.readingLists) ? profile.readingLists : []}
+              />
+            </div>
+          )}
+
+          {activeTab === 'pins' && (
+            <div className="bg-slate-900/40 border border-white/10 rounded-[24px] p-4 sm:p-6 shadow-xl backdrop-blur-sm">
+              <ProfileKosmosPins
+                isOwnProfile={user?.uid === profile.uid}
+                userId={userId}
+                rawLists={Array.isArray(profile.readingLists) ? profile.readingLists : []}
               />
             </div>
           )}

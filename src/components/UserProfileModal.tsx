@@ -2,7 +2,7 @@ import React
 , { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingProgress, isAuthorizedAdmin, DAILY_STARTER_REWARDS } from '../types';
-import { ProfileReadingLists } from './ProfileReadingLists';
+import { ProfileReadingLists, ProfileKosmosPins } from './ProfileReadingLists';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { SeriesCard } from './SeriesCard';
 import { THEME_STYLES, ThemeStyle } from '../data/shopData';
@@ -48,13 +48,14 @@ import {
   CalendarDays,
   Gift,
   HelpCircle,
-  Info
+  Info,
+  Pin
 } from 'lucide-react';
 
 interface UserProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'profile' | 'wardrobe' | 'badges' | 'library';
+  initialTab?: 'profile' | 'wardrobe' | 'badges' | 'library' | 'pins';
 }
 
 export interface AchievementBadge {
@@ -97,7 +98,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setView,
     earnPoints,
     followedSeriesIds,
-    seriesList
+    seriesList,
+    kosmosPins
   } = useApp();
 
   const bookmarkedSeriesIds = Object.keys(bookmarks || {});
@@ -105,9 +107,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     followedSeriesIds.some(id => String(id) === String(s.id)) || bookmarkedSeriesIds.includes(String(s.id))
   ) : [];
 
-  const [activeTab, setActiveTab] = useState<'profile' | 'wardrobe' | 'badges' | 'library' | 'followed'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'profile' | 'wardrobe' | 'badges' | 'library' | 'pins' | 'followed'>(initialTab);
 
-  const handleTabChange = (tab: 'profile' | 'wardrobe' | 'badges' | 'library' | 'followed') => {
+  const handleTabChange = (tab: 'profile' | 'wardrobe' | 'badges' | 'library' | 'pins' | 'followed') => {
     setActiveTab(tab);
   };
 
@@ -765,13 +767,29 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           <button
             type="button"
             onClick={() => handleTabChange('library')}
-            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap ${
+            className={`flex-1 min-w-[110px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
               activeTab === 'library'
                 ? 'bg-slate-800 text-white shadow-md border border-white/10'
                 : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
             }`}
           >
             <BookOpen size={15} /> Listeler
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleTabChange('pins')}
+            className={`flex-1 min-w-[125px] py-3 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap cursor-pointer ${
+              activeTab === 'pins'
+                ? 'bg-slate-800 text-white shadow-md border border-white/10'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-slate-800/50'
+            }`}
+          >
+            <Pin size={15} className="text-amber-400" />
+            <span>KosmosPin'ler</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              {kosmosPins.length}
+            </span>
           </button>
         </div>
 
@@ -1429,7 +1447,22 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
         {activeTab === 'library' && (
           <div className="bg-slate-900/90 border border-white/10 rounded-3xl p-5 sm:p-7 shadow-xl">
-            <ProfileReadingLists isOwnProfile={true} userId={user?.uid || ''} initialLists={[]} />
+            <ProfileReadingLists
+              isOwnProfile={true}
+              userId={user?.uid || ''}
+              initialLists={[]}
+              onNavigate={onClose}
+            />
+          </div>
+        )}
+
+        {activeTab === 'pins' && (
+          <div className="bg-slate-900/90 border border-white/10 rounded-3xl p-5 sm:p-7 shadow-xl">
+            <ProfileKosmosPins
+              isOwnProfile={true}
+              userId={user?.uid || ''}
+              onNavigate={onClose}
+            />
           </div>
         )}
 
