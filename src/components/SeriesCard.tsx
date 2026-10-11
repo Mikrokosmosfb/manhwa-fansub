@@ -111,10 +111,10 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                 >
                   {isNovel && isNew && (
                     <span
-                      className="absolute -top-2 -right-1.5 z-10 text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.85)] animate-pulse pointer-events-none"
+                      className="absolute -top-2.5 -right-2 z-10 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse pointer-events-none"
                       title="Yeni Bölüm!"
                     >
-                      <Bell size={13} className="fill-red-500 stroke-red-400 stroke-[2.2] rotate-12" />
+                      <Bell size={18} className="fill-red-500 stroke-red-400 stroke-[2.2] rotate-12" />
                     </span>
                   )}
                   <span className="truncate max-w-[130px] font-medium">{ch.title}</span>
@@ -240,10 +240,10 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                   {/* Novel-only Top-Right Corner Protruding Red Bell Icon for New Chapters */}
                   {isNovel && isNew && (
                     <span
-                      className="absolute -top-2 -right-1.5 z-10 text-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.85)] animate-pulse pointer-events-none"
+                      className="absolute -top-2.5 -right-2 z-10 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-pulse pointer-events-none"
                       title="Yeni Bölüm!"
                     >
-                      <Bell size={14} className="fill-red-500 stroke-red-400 stroke-[2.2] rotate-12" />
+                      <Bell size={18} className="fill-red-500 stroke-red-400 stroke-[2.2] rotate-12" />
                     </span>
                   )}
 
