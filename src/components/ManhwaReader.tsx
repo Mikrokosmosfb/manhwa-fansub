@@ -1062,21 +1062,20 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
-      {/* Mobile-Only Bottom-Left Corner Panic Blur Button (Parallel with ScrollToTopBottom at bottom-20) */}
+      {/* Mobile-Only Bottom-Left Panic Blur Button (Parallel with right-side ScrollToTopBottom at bottom-20) */}
       <button
         type="button"
         onClick={togglePrivacyBlur}
-        className={`md:hidden fixed bottom-20 left-3.5 sm:left-6 z-[60] p-2.5 sm:p-3 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
+        className={`md:hidden fixed bottom-20 left-3.5 z-[60] p-2.5 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
           isPrivacyBlurred
             ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
-            : 'bg-purple-900/90 hover:bg-purple-600 text-white border-purple-400/50'
+            : 'bg-purple-950/90 hover:bg-purple-700 text-purple-200 hover:text-white border-purple-500/40'
         }`}
         title={
           isPrivacyBlurred
             ? 'Gizlilik Bulanıklaştırmasını Kaldır'
             : 'Ekranı Anında Bulanıklaştır'
         }
-        aria-label="Ekranı Bulanıklaştır"
       >
         {isPrivacyBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
       </button>
