@@ -22,7 +22,8 @@ import {
   Lock,
   Sparkles,
   Check,
-  Zap
+  Zap,
+  Quote
 } from 'lucide-react';
 import { Comment, isAuthorizedAdmin } from '../types';
 
@@ -41,12 +42,16 @@ interface CommentsSectionProps {
   seriesId: string;
   chapterId?: string;
   isParagraphMode?: boolean;
+  paragraphLookup?: Record<string, { text: string; index: number }>;
+  onJumpToParagraph?: (paraKey: string) => void;
 }
 
 export const CommentsSection: React.FC<CommentsSectionProps> = ({
   seriesId,
   chapterId,
-  isParagraphMode = false
+  isParagraphMode = false,
+  paragraphLookup,
+  onJumpToParagraph
 }) => {
   const {
     comments,
@@ -207,9 +212,21 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
   };
 
-  // Filter comments for this series and chapter (exclude paragraph-anchored comments from general series feed)
+  // Filter comments for this series and chapter
+  // - In paragraph drawer mode: show only comments for that specific paragraph key
+  // - In chapter bottom mode: show both general chapter comments AND all paragraph comments of this chapter
+  // - In series detail mode: show general series comments (exclude paragraph-specific comments)
   const filteredComments = comments.filter(c => {
-    if (chapterId) return c.seriesId === seriesId && c.chapterId === chapterId;
+    if (chapterId) {
+      if (isParagraphMode) {
+        return c.seriesId === seriesId && c.chapterId === chapterId;
+      }
+      const rawChId = String(c.chapterId || '');
+      return (
+        c.seriesId === seriesId &&
+        (rawChId === chapterId || rawChId.startsWith(`${chapterId}__p__`))
+      );
+    }
     return c.seriesId === seriesId && !String(c.chapterId || '').includes('__p__');
   });
 
@@ -316,9 +333,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       return;
     }
 
+    const parentComment = replyTo ? comments.find(cm => cm.id === replyTo.id) : null;
+    const effectiveChapterId = parentComment?.chapterId || chapterId;
+
     addComment({
       seriesId,
-      chapterId,
+      chapterId: effectiveChapterId,
       userId: user.uid,
       userName: user.name,
       userAvatar: user.avatar,
@@ -524,6 +544,46 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             })}
           </div>
         )}
+
+        {/* Quoted Paragraph Box (Shown in Bottom Chapter Comments for Inline Paragraph Comments) */}
+        {!isParagraphMode && !isReply && String(c.chapterId || '').includes('__p__') && (() => {
+          const paraKey = String(c.chapterId || '').split('__p__')[1] || '';
+          const paraInfo = paraKey && paragraphLookup ? paragraphLookup[paraKey] : undefined;
+          return (
+            <button
+              type="button"
+              onClick={() => paraKey && onJumpToParagraph?.(paraKey)}
+              className="relative z-10 w-full text-left group/quote rounded-xl bg-purple-950/65 hover:bg-purple-900/75 border border-purple-400/35 hover:border-amber-400/60 px-3.5 py-2.5 transition-all duration-200 flex items-start gap-2.5 shadow-inner cursor-pointer"
+              title="Bu cümlenin metindeki yerine gitmek için tıklayın"
+            >
+              <Quote
+                size={15}
+                className="text-amber-300 shrink-0 mt-0.5 opacity-90 group-hover/quote:scale-110 transition-transform"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2 mb-0.5">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                    <span>
+                      {paraInfo ? `${paraInfo.index}. Paragraf Alıntısı` : 'Alıntılanan Paragraf'}
+                    </span>
+                  </span>
+                  <span className="text-[10px] font-bold text-purple-200 group-hover/quote:text-amber-200 flex items-center gap-1 shrink-0">
+                    <span>Cümleye Git ↑</span>
+                  </span>
+                </div>
+                {paraInfo?.text ? (
+                  <p className="text-xs text-purple-100/95 italic line-clamp-2 leading-relaxed">
+                    “{paraInfo.text}”
+                  </p>
+                ) : (
+                  <p className="text-xs text-purple-200/75 italic">
+                    Bölüm içindeki bir paragrafa yapılan satır içi yorum
+                  </p>
+                )}
+              </div>
+            </button>
+          );
+        })()}
 
         {/* Comment Text with Spoiler Blur & Word Wrapping */}
         <div className={`relative z-10 ${

@@ -92,6 +92,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     text: string;
     index: number;
   } | null>(null);
+  const [highlightedParaKey, setHighlightedParaKey] = useState<string | null>(null);
 
   const toggleParagraphCommentsVisibility = () => {
     setShowParagraphComments(prev => {
@@ -107,6 +108,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   // Close active paragraph drawer when changing chapter
   useEffect(() => {
     setActiveParagraph(null);
+    setHighlightedParaKey(null);
   }, [seriesId, chapterId]);
 
   // Close dropdown on Escape key
@@ -263,6 +265,28 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   const totalParagraphCommentsInChapter = useMemo(() => {
     return Object.values(paragraphCommentCounts).reduce((sum, n) => sum + n, 0);
   }, [paragraphCommentCounts]);
+
+  const paragraphLookup = useMemo(() => {
+    const map: Record<string, { text: string; index: number }> = {};
+    parsedParagraphs.forEach((p, idx) => {
+      if (!p.isMediaOnly && p.text) {
+        map[p.key] = { text: p.text, index: idx + 1 };
+      }
+    });
+    return map;
+  }, [parsedParagraphs]);
+
+  const handleJumpToParagraph = (paraKey: string) => {
+    setShowParagraphComments(true);
+    setHighlightedParaKey(paraKey);
+    const el = document.querySelector(`[data-para-key="${paraKey}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setTimeout(() => {
+      setHighlightedParaKey(prev => (prev === paraKey ? null : prev));
+    }, 5000);
+  };
 
   // Auto-open and scroll to paragraph if navigated from Recent Comments
   useEffect(() => {
@@ -1086,6 +1110,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
               const commentCount = paragraphCommentCounts[para.key] || 0;
               const isSelected = activeParagraph?.key === para.key;
+              const isHighlighted = highlightedParaKey === para.key;
 
               return (
                 <div
@@ -1096,9 +1121,9 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                       setActiveParagraph({ key: para.key, text: para.text, index: idx + 1 });
                     }
                   }}
-                  className={`group relative rounded-xl transition-all duration-200 ${
-                    isSelected
-                      ? 'bg-indigo-500/15 dark:bg-purple-500/20 ring-1 ring-indigo-500/40 dark:ring-purple-400/50 px-3 py-2 -mx-3 shadow-sm'
+                  className={`group relative rounded-xl transition-all duration-300 ${
+                    isSelected || isHighlighted
+                      ? 'bg-indigo-500/15 dark:bg-purple-500/20 ring-2 ring-amber-400/70 dark:ring-purple-400/70 px-3 py-2 -mx-3 shadow-md'
                       : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.02] px-1 -mx-1'
                   }`}
                 >
@@ -1219,7 +1244,12 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
         {/* Comments Section */}
         <div className="mt-12">
-          <CommentsSection seriesId={series.id} chapterId={currentChapter.id} />
+          <CommentsSection
+            seriesId={series.id}
+            chapterId={currentChapter.id}
+            paragraphLookup={paragraphLookup}
+            onJumpToParagraph={handleJumpToParagraph}
+          />
         </div>
 
       </div>
