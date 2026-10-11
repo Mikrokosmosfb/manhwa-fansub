@@ -1809,9 +1809,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
     if (!seriesList || seriesList.length === 0) return;
     const timer = setTimeout(() => {
       try {
-        // Store a lightweight catalog snapshot in localStorage (without chapter page arrays or full novel texts)
-        // so JSON serialization is <1ms and never hits the 5MB localStorage quota.
-        const lightweightCatalog = seriesList.map(s => ({
+        // Tier 1: Keep full novel content and up to 2 chapter images for thumbnails so it fits comfortably under 5MB
+        const compactCatalog = seriesList.map(s => ({
           ...s,
           chapters: (s.chapters || []).map(ch => ({
             id: ch.id,
@@ -1822,12 +1821,40 @@ const deleteShopItemAndStyle = (itemId: string) => {
             is18Plus: ch.is18Plus,
             notice: ch.notice,
             createdAt: ch.createdAt,
-            images: [],
-            content: undefined
+            images: Array.isArray(ch.images) ? ch.images.slice(0, 2) : [],
+            content: ch.content
           }))
         }));
-        localStorage.setItem('mk_series_list', JSON.stringify(lightweightCatalog));
-      } catch (e) {}
+        localStorage.setItem('mk_series_list', JSON.stringify(compactCatalog));
+      } catch (e) {
+        try {
+          // Tier 2: If total novel content across all series exceeds 5MB quota, keep novel content up to ~1.8M chars
+          let charBudget = 1800000;
+          const budgetedCatalog = seriesList.map(s => ({
+            ...s,
+            chapters: (s.chapters || []).map(ch => {
+              let keptContent: string | undefined = undefined;
+              if (ch.content && charBudget > 0) {
+                keptContent = ch.content;
+                charBudget -= ch.content.length;
+              }
+              return {
+                id: ch.id,
+                number: ch.number,
+                title: ch.title,
+                publishedDate: ch.publishedDate,
+                specialTag: ch.specialTag,
+                is18Plus: ch.is18Plus,
+                notice: ch.notice,
+                createdAt: ch.createdAt,
+                images: Array.isArray(ch.images) ? ch.images.slice(0, 1) : [],
+                content: keptContent
+              };
+            })
+          }));
+          localStorage.setItem('mk_series_list', JSON.stringify(budgetedCatalog));
+        } catch {}
+      }
     }, 250);
     return () => clearTimeout(timer);
   }, [seriesList]);
@@ -2513,16 +2540,36 @@ const deleteShopItemAndStyle = (itemId: string) => {
       localStorage.setItem('mk_chapter_18plus_map', JSON.stringify(ch18Map));
     } catch (e) {}
 
+    let mergedSeriesToSave: Series = newSeries;
     setSeriesList(prev => {
+      const existingSeries = prev.find(s => s.id === newSeries.id);
+      if (existingSeries && Array.isArray(existingSeries.chapters)) {
+        const existingChMap = new Map(existingSeries.chapters.map(c => [c.id, c]));
+        mergedSeriesToSave = {
+          ...newSeries,
+          chapters: (newSeries.chapters || []).map(ch => {
+            const oldCh = existingChMap.get(ch.id);
+            if (!oldCh) return ch;
+            return {
+              ...ch,
+              content: ch.content && ch.content.trim() ? ch.content : oldCh.content,
+              images:
+                Array.isArray(ch.images) && ch.images.length > 0
+                  ? ch.images
+                  : oldCh.images
+            };
+          })
+        };
+      }
       const filtered = prev.filter(s => s.id !== newSeries.id);
-      return sortSeriesByLatestRelease([newSeries, ...filtered]);
+      return sortSeriesByLatestRelease([mergedSeriesToSave, ...filtered]);
     });
 
     try {
       const res = await fetch('/api/series', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ series: newSeries })
+        body: JSON.stringify({ series: mergedSeriesToSave })
       });
       const text = await res.text();
       let data: any = {};

@@ -59,7 +59,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     openAuthModal,
     loginWithGoogle,
     adSettings,
-    comments
+    comments,
+    setSeriesList
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -107,11 +108,54 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     });
   };
 
+  const [isHydratingContent, setIsHydratingContent] = useState(false);
+
   // Close active paragraph drawer when changing chapter
   useEffect(() => {
     setActiveParagraph(null);
     setHighlightedParaKey(null);
   }, [seriesId, chapterId]);
+
+  // If localStorage had a lightweight catalog without chapter.content, immediately hydrate from /api/series?seriesId=...
+  useEffect(() => {
+    if (currentChapter && (!currentChapter.content || !currentChapter.content.trim())) {
+      let cancelled = false;
+      setIsHydratingContent(true);
+      fetch(`/api/series?seriesId=${encodeURIComponent(seriesId)}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          if (data && data.success && Array.isArray(data.chapters) && data.chapters.length > 0) {
+            setSeriesList(prev =>
+              prev.map(s => (s.id === seriesId ? { ...s, chapters: data.chapters } : s))
+            );
+            setIsHydratingContent(false);
+            return;
+          }
+          if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+            setSeriesList(data.data);
+            setIsHydratingContent(false);
+            return;
+          }
+          // Fallback to full /api/series
+          return fetch('/api/series', { cache: 'no-store' })
+            .then(r2 => r2.json())
+            .then(fullData => {
+              if (cancelled) return;
+              if (fullData && fullData.success && Array.isArray(fullData.data) && fullData.data.length > 0) {
+                setSeriesList(fullData.data);
+              }
+            });
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setIsHydratingContent(false);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+  }, [seriesId, chapterId, currentChapter?.id, currentChapter?.content]);
 
   // Close dropdown on Escape key
   useEffect(() => {
@@ -290,14 +334,28 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           const parser = new DOMParser();
           const doc = parser.parseFromString(normalizedHtml, 'text/html');
 
-          // 1. Extract and remove any <div class="profile"> blocks
+          // 1. Extract <div class="profile"> blocks safely (without deleting chapter text if nested inside .profile)
           doc.querySelectorAll('.profile, .profile-card').forEach(profileEl => {
             const imgEl = profileEl.querySelector('img');
             if (imgEl && imgEl.getAttribute('src') && !extractedProfileImg) {
               extractedProfileImg = imgEl.getAttribute('src') || '';
             }
-            parseMetadataTextChunk(profileEl.textContent || '');
-            profileEl.remove();
+            const totalProfileText = (profileEl.textContent || '').replace(/\s+/g, ' ').trim();
+            if (totalProfileText.length <= 320) {
+              parseMetadataTextChunk(totalProfileText);
+              profileEl.remove();
+            } else {
+              // The novel chapter body was accidentally placed inside .profile in Blogger
+              profileEl.querySelectorAll('.profile-picture').forEach(el => el.remove());
+              profileEl.querySelectorAll('.profile-details').forEach(detEl => {
+                const detTxt = (detEl.textContent || '').replace(/\s+/g, ' ').trim();
+                if (detTxt.length <= 260) {
+                  parseMetadataTextChunk(detTxt);
+                  detEl.remove();
+                }
+              });
+              profileEl.classList.remove('profile', 'profile-card');
+            }
           });
 
           const results: { key: string; text: string; html?: string; isMediaOnly: boolean }[] = [];
@@ -418,8 +476,10 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       }
     }
 
-    const finalParagraphs =
+    const slicedParagraphs =
       consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
+    const finalParagraphs =
+      slicedParagraphs.length > 0 ? slicedParagraphs : candidateParagraphs;
 
     // 3. Build the Chapter Profile Card
     // If this chapter doesn't explicitly contain Seri/Çevirmen/Çeviri lines, inherit from previous chapters of THIS same series
@@ -428,7 +488,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     );
 
     let inheritedImg = '';
-    if (!hasExplicitChapterMeta && series.chapters && series.chapters.length > 0) {
+    if (!hasExplicitChapterMeta && series?.chapters && series.chapters.length > 0) {
       for (const otherCh of series.chapters) {
         if (otherCh.id === currentChapter?.id || !otherCh.content) continue;
         const sample = decodeNovelEntities(
@@ -481,7 +541,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
     if (
       detectedBadges.length === 0 &&
-      series.translator &&
+      series?.translator &&
       series.translator.trim() &&
       series.translator !== 'Blogger' &&
       series.translator !== 'Mikrokosmos Fansub'
@@ -503,13 +563,13 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     }
 
     // Always prefer the full high-res vertical series cover on the card so the artwork is never cut off
-    const cardImageUrl = series.coverImage || extractedProfileImg || inheritedImg || allChapterImgs[0] || '';
+    const cardImageUrl = series?.coverImage || extractedProfileImg || inheritedImg || allChapterImgs[0] || '';
 
     const profileCard =
       hasExplicitChapterMeta || detectedBadges.length > 0
         ? {
-            imageUrl: cardImageUrl || series.coverImage,
-            seriesTitle: detectedSeriesTitle || series.title,
+            imageUrl: cardImageUrl || series?.coverImage || '',
+            seriesTitle: detectedSeriesTitle || series?.title || '',
             badges: detectedBadges
           }
         : null;
@@ -521,7 +581,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       chapterProfileCard: profileCard,
       remainingChapterImages: remainingImgs
     };
-  }, [currentChapter?.id, currentChapter?.content, currentChapter?.images, series.title, series.coverImage, series.translator, series.chapters]);
+  }, [currentChapter?.id, currentChapter?.content, currentChapter?.images, series?.title, series?.coverImage, series?.translator, series?.chapters]);
 
   // Single-pass comment count map per paragraph for this chapter (zero network overhead)
   const paragraphCommentCounts = useMemo(() => {
@@ -1515,6 +1575,13 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                 </div>
               );
             })
+          ) : isHydratingContent ? (
+            <div className="text-center py-12 space-y-3">
+              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto" />
+              <p className="text-sm font-semibold opacity-75">
+                Bölüm metni yükleniyor...
+              </p>
+            </div>
           ) : (
             <p className="text-center italic opacity-60">
               Bu bölümde henüz metin içerik bulunmuyor.

@@ -1101,6 +1101,35 @@ ${seriesXml}
 
             // Priority 3: Cloudflare D1 SQL Database
             if (db) {
+              const targetSeriesId = url.searchParams.get('seriesId');
+              if (targetSeriesId) {
+                const chRows = await db
+                  .prepare("SELECT * FROM chapters WHERE series_id = ?")
+                  .bind(targetSeriesId)
+                  .all();
+                const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => ({
+                  id: ch.id,
+                  number: ch.chapter_number,
+                  title: ch.title,
+                  publishedDate: ch.published_date,
+                  specialTag: ch.special_tag,
+                  is18Plus: Boolean(ch.is_18_plus),
+                  images: ch.images_json ? JSON.parse(ch.images_json) : [],
+                  content: ch.content,
+                  notice: ch.notice,
+                  createdAt: ch.created_at
+                }));
+                return new Response(
+                  JSON.stringify({
+                    success: true,
+                    storage: 'D1',
+                    seriesId: targetSeriesId,
+                    chapters: seriesChapters
+                  }),
+                  { headers: { ...headers, 'Cache-Control': 'no-cache' } }
+                );
+              }
+
               const now = Date.now();
               if (cachedSeriesResponseJson && now < cachedSeriesExpiresAt) {
                 return new Response(cachedSeriesResponseJson, {
@@ -1306,10 +1335,29 @@ ${seriesXml}
                   for (const ch of s.chapters) {
                     statements.push(
                       db.prepare(`
-                        INSERT OR REPLACE INTO chapters (
+                        INSERT INTO chapters (
                           id, series_id, chapter_number, title, published_date, special_tag,
                           images_json, content, notice, created_at, is_18_plus
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ON CONFLICT(id) DO UPDATE SET
+                          series_id = excluded.series_id,
+                          chapter_number = excluded.chapter_number,
+                          title = excluded.title,
+                          published_date = excluded.published_date,
+                          special_tag = excluded.special_tag,
+                          images_json = CASE
+                            WHEN excluded.images_json IS NOT NULL AND excluded.images_json != '[]' AND excluded.images_json != ''
+                            THEN excluded.images_json
+                            ELSE chapters.images_json
+                          END,
+                          content = CASE
+                            WHEN excluded.content IS NOT NULL AND excluded.content != ''
+                            THEN excluded.content
+                            ELSE chapters.content
+                          END,
+                          notice = excluded.notice,
+                          created_at = excluded.created_at,
+                          is_18_plus = excluded.is_18_plus
                       `).bind(
                         ch.id, s.id, ch.number, ch.title || '', ch.publishedDate || '',
                         ch.specialTag || '', JSON.stringify(ch.images || []), ch.content || '',
