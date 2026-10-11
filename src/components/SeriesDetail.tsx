@@ -825,27 +825,25 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
               Aranan kriterlere uygun bölüm bulunamadı.
             </div>
           ) : (
-            <div className="space-y-5">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
+            <div className="space-y-4">
+              <div
+                className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 ${
+                  isExpandedList
+                    ? 'max-h-[390px] sm:max-h-[520px] overflow-y-auto pr-1.5 custom-scrollbar overscroll-contain'
+                    : 'max-h-[370px] md:max-h-none overflow-y-auto md:overflow-visible pr-1 md:pr-0 custom-scrollbar overscroll-contain'
+                }`}
+              >
                 {paginatedChapters.map(ch => {
                   const isRead = isChapterRead(ch);
                   const isNew24h = checkIsChapterNew(ch, 24);
                   const is18 = isChapter18Plus(ch);
 
-                  // Pick a varied preview image frame from chapter images or fallback to series cover
-                  const getChapterPreview = (chapter: Chapter): string => {
-                    if (chapter.images && chapter.images.length > 0) {
-                      let seed = (chapter.number || 1) * 17;
-                      for (let i = 0; i < chapter.id.length; i++) {
-                        seed += chapter.id.charCodeAt(i) * (i + 1);
-                      }
-                      const idx = seed % chapter.images.length;
-                      return chapter.images[idx] || chapter.images[0];
-                    }
-                    return series.coverImage;
-                  };
-
-                  const previewImg = getChapterPreview(ch);
+                  // Reuse the single optimized series cover URL across all chapter rows so browser cache serves it with 0 extra requests
+                  const previewImg = getOptimizedImageUrl(series.coverImage, {
+                    width: 96,
+                    height: 96,
+                    quality: 65
+                  });
 
                   return (
                     <div
@@ -853,7 +851,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                       onClick={() =>
                         setView({ type: 'reader', seriesId: series.id, chapterId: ch.id })
                       }
-                      className={`group relative overflow-hidden p-3 sm:p-3.5 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
+                      className={`group relative overflow-hidden p-2.5 sm:p-3.5 rounded-2xl border text-left flex items-center justify-between gap-2.5 transition-all duration-200 hover:-translate-y-0.5 cursor-pointer ${
                         isRead
                           ? 'bg-gray-950/50 hover:bg-purple-950/35 border-emerald-500/25 hover:border-emerald-400/50 text-gray-300'
                           : is18
@@ -875,7 +873,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                       <div className="flex items-center gap-3 min-w-0 flex-1 pl-1">
                         {/* Chapter Mini Square Preview Thumbnail */}
                         <div
-                          className={`relative w-12 h-12 sm:w-13 sm:h-13 rounded-xl overflow-hidden flex-shrink-0 bg-gray-950 border transition-all shadow-sm ${
+                          className={`relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden flex-shrink-0 bg-gray-950 border transition-all shadow-sm ${
                             is18
                               ? 'border-rose-500/60 group-hover:border-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.2)]'
                               : isRead
@@ -885,8 +883,10 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         >
                           <img
                             src={previewImg}
+                            onError={e => handleImageError(e, series.title)}
                             alt={ch.title}
                             loading="lazy"
+                            decoding="async"
                             className="w-full h-full object-cover group-hover:scale-110 transition duration-300"
                           />
                           <div
