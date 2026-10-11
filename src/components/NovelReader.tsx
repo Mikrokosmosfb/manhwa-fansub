@@ -419,12 +419,71 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     const finalParagraphs =
       consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
 
-    // 3. Build the Chapter Profile Card (works for both legacy Blogger chapters and newly added chapters)
+    // 3. Build the Chapter Profile Card
+    // If this chapter doesn't explicitly contain Seri/Çevirmen/Çeviri lines, inherit from previous chapters of THIS same series
     const hasExplicitChapterMeta = Boolean(
       extractedProfileImg || detectedSeriesTitle || detectedBadges.length > 0
     );
 
-    if (!hasExplicitChapterMeta && series.translator && series.translator.trim() && series.translator !== 'Blogger') {
+    let inheritedImg = '';
+    if (!hasExplicitChapterMeta && series.chapters && series.chapters.length > 0) {
+      for (const otherCh of series.chapters) {
+        if (otherCh.id === currentChapter?.id || !otherCh.content) continue;
+        const sample = decodeNovelEntities(
+          otherCh.content
+            .slice(0, 900)
+            .replace(/<[^>]+>/g, '\n')
+        );
+        const lines = sample
+          .split(/\n+/)
+          .map(l => l.replace(/\s+/g, ' ').trim())
+          .filter(Boolean)
+          .slice(0, 12);
+
+        let idx = 0;
+        while (idx < lines.length) {
+          const line = lines[idx];
+          const m = line.match(labelHeadRegex);
+          if (!m) break;
+          const rLabel = m[1];
+          let rVal = m[2].trim();
+          idx++;
+          if (!rVal && idx < lines.length && !labelHeadRegex.test(lines[idx])) {
+            rVal = lines[idx].trim();
+            idx++;
+          }
+          if (
+            rVal &&
+            idx < lines.length &&
+            ((rVal.endsWith('-') && lines[idx].length <= 15 && !labelHeadRegex.test(lines[idx])) ||
+              /^-?\s*(CN|EN|KR|JP|TR|ENG|KOR|CHN)$/i.test(lines[idx]))
+          ) {
+            const suf = lines[idx].replace(/^-\s*/, '');
+            rVal = rVal.endsWith('-') ? `${rVal} ${suf}` : `${rVal} - ${suf}`;
+            idx++;
+          }
+          if (rVal) {
+            addMetadataField(rLabel, rVal);
+          }
+        }
+
+        if (detectedBadges.length > 0) {
+          const otherImgs = extractImageUrls(otherCh.images);
+          if (otherImgs.length > 0) {
+            inheritedImg = otherImgs[0];
+          }
+          break;
+        }
+      }
+    }
+
+    if (
+      detectedBadges.length === 0 &&
+      series.translator &&
+      series.translator.trim() &&
+      series.translator !== 'Blogger' &&
+      series.translator !== 'Mikrokosmos Fansub'
+    ) {
       detectedBadges.push({ label: 'Çevirmen', value: series.translator.trim() });
     }
 
@@ -435,6 +494,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       if (hasExplicitChapterMeta && allChapterImgs.length > 0) {
         cardImageUrl = allChapterImgs[0];
         usedFirstChapterImg = true;
+      } else if (inheritedImg) {
+        cardImageUrl = inheritedImg;
       } else {
         cardImageUrl = series.coverImage;
       }
@@ -458,7 +519,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       chapterProfileCard: profileCard,
       remainingChapterImages: remainingImgs
     };
-  }, [currentChapter?.content, currentChapter?.images, series.title, series.coverImage, series.translator]);
+  }, [currentChapter?.id, currentChapter?.content, currentChapter?.images, series.title, series.coverImage, series.translator, series.chapters]);
 
   // Single-pass comment count map per paragraph for this chapter (zero network overhead)
   const paragraphCommentCounts = useMemo(() => {

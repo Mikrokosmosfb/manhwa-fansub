@@ -2365,11 +2365,25 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   onClick={() => {
                     const selSeries = seriesList.find(s => s.id === selectedSeriesId);
                     const sTitle = selSeries?.title || 'Seri Adı';
-                    const sTrans =
-                      selSeries?.translator && selSeries.translator !== 'Blogger'
+                    let sTrans =
+                      selSeries?.translator &&
+                      selSeries.translator !== 'Blogger' &&
+                      selSeries.translator !== 'Mikrokosmos Fansub'
                         ? selSeries.translator
-                        : 'Theia';
-                    const headerTemplate = `Seri: ${sTitle}\nÇevirmen: ${sTrans}\nÇeviri: Çince-CN\n\n`;
+                        : '';
+                    let sLang = '';
+                    if (selSeries?.chapters) {
+                      for (const ch of selSeries.chapters) {
+                        if (!ch.content) continue;
+                        const head = ch.content.slice(0, 600).replace(/<[^>]+>/g, '\n');
+                        const tm = head.match(/Çevirmen\s*:\s*\n?\s*([^\n]+)/i);
+                        const lm = head.match(/Çeviri\s*:\s*\n?\s*([^\n]+(?:\n\s*(?:CN|KR|EN|JP))?)/i);
+                        if (tm && !sTrans) sTrans = tm[1].trim();
+                        if (lm && !sLang) sLang = lm[1].replace(/\s+/g, ' ').trim();
+                        if (sTrans && sLang) break;
+                      }
+                    }
+                    const headerTemplate = `Seri: ${sTitle}\nÇevirmen: ${sTrans || 'Çevirmen Adı'}\nÇeviri: ${sLang || 'Korece-KR'}\n\n`;
                     if (!chapterContent.trim().startsWith('Seri:')) {
                       setChapterContent(headerTemplate + chapterContent);
                     }
@@ -2613,11 +2627,25 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     <button
                       type="button"
                       onClick={() => {
-                        const headerTemplate = `Seri: ${series.title}\nÇevirmen: ${
-                          series.translator && series.translator !== 'Blogger'
+                        let sTrans =
+                          series.translator &&
+                          series.translator !== 'Blogger' &&
+                          series.translator !== 'Mikrokosmos Fansub'
                             ? series.translator
-                            : 'Theia'
-                        }\nÇeviri: Çince-CN\n\n`;
+                            : '';
+                        let sLang = '';
+                        for (const ch of series.chapters || []) {
+                          if (!ch.content) continue;
+                          const head = ch.content.slice(0, 600).replace(/<[^>]+>/g, '\n');
+                          const tm = head.match(/Çevirmen\s*:\s*\n?\s*([^\n]+)/i);
+                          const lm = head.match(/Çeviri\s*:\s*\n?\s*([^\n]+(?:\n\s*(?:CN|KR|EN|JP))?)/i);
+                          if (tm && !sTrans) sTrans = tm[1].trim();
+                          if (lm && !sLang) sLang = lm[1].replace(/\s+/g, ' ').trim();
+                          if (sTrans && sLang) break;
+                        }
+                        const headerTemplate = `Seri: ${series.title}\nÇevirmen: ${
+                          sTrans || 'Çevirmen Adı'
+                        }\nÇeviri: ${sLang || 'Korece-KR'}\n\n`;
                         if (!editingChapterContentText.trim().startsWith('Seri:')) {
                           setEditingChapterContentText(headerTemplate + editingChapterContentText);
                         }
