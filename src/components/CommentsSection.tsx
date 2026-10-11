@@ -230,7 +230,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     return c.seriesId === seriesId && !String(c.chapterId || '').includes('__p__');
   });
 
-  const unlockedEmojiPacks = user?.unlockedEmojiPacks || [];
+  const unlockedEmojiPacks = Array.from(
+    new Set([...(user?.unlockedEmojiPacks || []), ...(user?.inventory || [])])
+  );
   const emojiPackItems = currentShopItems.filter(i => i.category === 'emoji_pack');
   const allKnownEmojis: ChibiEmoji[] = emojiPackItems.flatMap(p => p.emojis || []);
 

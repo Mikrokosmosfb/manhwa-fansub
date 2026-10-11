@@ -700,7 +700,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ...parsed,
         coins: isUnlimitedUser ? 999999999 : (parsed.coins ?? 250),
         inventory: parsed.inventory || [],
-        unlockedEmojiPacks: parsed.unlockedEmojiPacks || []
+        unlockedEmojiPacks: Array.from(
+          new Set([...(parsed.unlockedEmojiPacks || []), ...(parsed.inventory || [])])
+        )
       };
     } catch (e) {
       localStorage.removeItem('mk_user');
@@ -1071,6 +1073,19 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     const userInventory = user.inventory || [];
     if (userInventory.includes(itemId)) {
+      if (item.category === 'emoji_pack') {
+        const currentEmojiPacks = user.unlockedEmojiPacks || [];
+        if (!currentEmojiPacks.includes(itemId)) {
+          setUser({
+            ...user,
+            unlockedEmojiPacks: [...currentEmojiPacks, itemId]
+          });
+        }
+        return {
+          success: true,
+          message: `"${item.name}" zaten hesabınızda açık ve kullanıma hazır!`
+        };
+      }
       return { success: false, message: 'Bu ürüne zaten sahipsiniz!' };
     }
 
@@ -2153,10 +2168,20 @@ const deleteShopItemAndStyle = (itemId: string) => {
                   ? (typeof data.claimed_checkin_days === 'string' ? JSON.parse(data.claimed_checkin_days) : data.claimed_checkin_days)
                   : (prev.claimedCheckinDays || []);
 
+                const fetchedInventory = data.shop_items
+                  ? (typeof data.shop_items === 'string' ? JSON.parse(data.shop_items) : data.shop_items)
+                  : prev.inventory;
+                const safeInventory = Array.isArray(fetchedInventory)
+                  ? fetchedInventory
+                  : (prev.inventory || []);
+
                 return {
                   ...prev,
                   coins: typeof data.cosmo_points === 'number' ? data.cosmo_points : prev.coins,
-                  inventory: data.shop_items ? (typeof data.shop_items === 'string' ? JSON.parse(data.shop_items) : data.shop_items) : prev.inventory,
+                  inventory: safeInventory,
+                  unlockedEmojiPacks: Array.from(
+                    new Set([...(prev.unlockedEmojiPacks || []), ...safeInventory])
+                  ),
                   equippedTheme: data.equipped_theme !== undefined ? data.equipped_theme : prev.equippedTheme,
                   equippedBadge: data.equipped_badge !== undefined ? data.equipped_badge : prev.equippedBadge,
                   equippedBadges: Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : [],
