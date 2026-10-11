@@ -1,10 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingList, Series, KosmosPinItem } from '../types';
-import { Plus, Trash2, Edit2, Check, X, BookOpen, Bookmark, Pin, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Plus, Trash2, Edit2, Check, X, BookOpen, Bookmark, Pin, ExternalLink, Image as ImageIcon, Search } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { isIframeUrl, normalizeImageUrl } from '../utils/imageParser';
+
+const normalizePinSearch = (text: string): string => {
+  return (text || '')
+    .toLowerCase()
+    .replace(/ı/g, 'i')
+    .replace(/İ/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c')
+    .trim();
+};
 
 export const extractPinsFromReadingLists = (rawLists?: any[]): KosmosPinItem[] => {
   if (!Array.isArray(rawLists)) return [];
@@ -22,13 +35,57 @@ export const ProfileKosmosPins: React.FC<{
   rawLists?: any[];
   onNavigate?: () => void;
 }> = ({ isOwnProfile, initialPins, rawLists, onNavigate }) => {
-  const { kosmosPins, toggleKosmosPin, setView } = useApp();
+  const { kosmosPins, toggleKosmosPin, setView, seriesList } = useApp();
+  const [pinSearchQuery, setPinSearchQuery] = useState('');
+  const [selectedPinSeries, setSelectedPinSeries] = useState<string>('all');
 
   const pinsToDisplay: KosmosPinItem[] = isOwnProfile
     ? kosmosPins
     : initialPins && initialPins.length > 0
     ? initialPins
     : extractPinsFromReadingLists(rawLists);
+
+  // Extract unique series names from the user's pins for quick filtering
+  const availablePinSeries = useMemo(() => {
+    const map = new Map<string, { name: string; count: number }>();
+    for (const pin of pinsToDisplay) {
+      const linkedSeries = pin.seriesId ? seriesList.find(s => s.id === pin.seriesId) : undefined;
+      const rawName = (linkedSeries?.title || pin.seriesTitle || '').trim();
+      if (!rawName) continue;
+      const key = normalizePinSearch(rawName);
+      const existing = map.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        map.set(key, { name: rawName, count: 1 });
+      }
+    }
+    return Array.from(map.entries()).map(([key, val]) => ({
+      key,
+      name: val.name,
+      count: val.count
+    }));
+  }, [pinsToDisplay, seriesList]);
+
+  const filteredPins = useMemo(() => {
+    const q = normalizePinSearch(pinSearchQuery);
+    return pinsToDisplay.filter(pin => {
+      const linkedSeries = pin.seriesId ? seriesList.find(s => s.id === pin.seriesId) : undefined;
+      const resolvedSeriesTitle = linkedSeries?.title || pin.seriesTitle || '';
+      const normSeries = normalizePinSearch(resolvedSeriesTitle);
+      const normTitle = normalizePinSearch(pin.title || '');
+
+      if (selectedPinSeries !== 'all' && normSeries !== selectedPinSeries) {
+        return false;
+      }
+
+      if (q) {
+        return normSeries.includes(q) || normTitle.includes(q);
+      }
+
+      return true;
+    });
+  }, [pinsToDisplay, pinSearchQuery, selectedPinSeries, seriesList]);
 
   const handleOpenPinInWallpapers = (pin: KosmosPinItem) => {
     try {
@@ -52,7 +109,7 @@ export const ProfileKosmosPins: React.FC<{
           </div>
           <p className="text-xs text-gray-400 mt-0.5">
             {isOwnProfile
-              ? 'Beğenip pinlediğiniz duvar kağıtları. Pine tıklayarak Wallpaper sayfasındaki orijinal haline gidebilirsiniz.'
+              ? 'Beğenip pinlediğiniz duvar kağıtları. Seri adı arayarak pinlerinizi filtreleyebilir veya pine tıklayarak orijinal sayfaya gidebilirsiniz.'
               : 'Kullanıcının seçtiği KosmosPin koleksiyonu. Beğendiğiniz pine tıklayarak orijinal Wallpaper sayfasında açabilirsiniz.'}
           </p>
         </div>
@@ -70,6 +127,68 @@ export const ProfileKosmosPins: React.FC<{
         </button>
       </div>
 
+      {/* Search Bar & Quick Series Filter inside KosmosPin'ler */}
+      {pinsToDisplay.length > 0 && (
+        <div className="bg-gray-950/70 border border-purple-500/20 rounded-2xl p-2.5 sm:p-3 space-y-2.5">
+          <div className="relative">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none"
+            />
+            <input
+              type="text"
+              value={pinSearchQuery}
+              onChange={e => setPinSearchQuery(e.target.value)}
+              placeholder="Pinler arasında seri adı veya başlık ara..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-gray-900/90 border border-gray-800 focus:border-purple-500 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none transition"
+            />
+            {pinSearchQuery && (
+              <button
+                type="button"
+                onClick={() => setPinSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
+                title="Aramayı Temizle"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          {availablePinSeries.length > 1 && (
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5">
+              <button
+                type="button"
+                onClick={() => setSelectedPinSeries('all')}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition cursor-pointer ${
+                  selectedPinSeries === 'all'
+                    ? 'bg-amber-500 text-black shadow-sm'
+                    : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800'
+                }`}
+              >
+                Tümü ({pinsToDisplay.length})
+              </button>
+              {availablePinSeries.map(s => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() =>
+                    setSelectedPinSeries(selectedPinSeries === s.key ? 'all' : s.key)
+                  }
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap transition flex items-center gap-1 cursor-pointer ${
+                    selectedPinSeries === s.key
+                      ? 'bg-purple-600 text-white border border-purple-400 shadow-sm'
+                      : 'bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-800'
+                  }`}
+                >
+                  <span className="max-w-[140px] truncate">{s.name}</span>
+                  <span className="text-[10px] opacity-80">({s.count})</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {pinsToDisplay.length === 0 ? (
         <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-gray-800/50 px-4">
           <Pin size={26} className="mx-auto text-gray-600 mb-2" />
@@ -79,24 +198,43 @@ export const ProfileKosmosPins: React.FC<{
               : 'Bu kullanıcı henüz KosmosPin eklememiş.'}
           </p>
         </div>
+      ) : filteredPins.length === 0 ? (
+        <div className="text-center py-8 bg-gray-900/30 rounded-2xl border border-gray-800/50 px-4 space-y-2">
+          <Search size={24} className="mx-auto text-gray-600" />
+          <p className="text-xs sm:text-sm font-bold text-gray-400">
+            Aradığınız seri adına uygun KosmosPin bulunamadı.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setPinSearchQuery('');
+              setSelectedPinSeries('all');
+            }}
+            className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition cursor-pointer"
+          >
+            Filtreyi Temizle
+          </button>
+        </div>
       ) : (
         <div className="bg-gray-900/40 border border-gray-800/70 rounded-2xl p-3 sm:p-4">
           {/* Compact, neat thumbnail grid so pins never look overly huge on profile */}
           <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-2.5">
-            {pinsToDisplay.map(pin => {
+            {filteredPins.map(pin => {
               const imgUrl = normalizeImageUrl(pin.imageUrl) || pin.imageUrl;
+              const linkedSeries = pin.seriesId ? seriesList.find(s => s.id === pin.seriesId) : undefined;
+              const displaySeriesTitle = linkedSeries?.title || pin.seriesTitle || pin.title || 'Wallpaper';
               return (
                 <div
                   key={pin.id}
                   onClick={() => handleOpenPinInWallpapers(pin)}
                   className="group relative aspect-[3/4] rounded-xl overflow-hidden bg-gray-950 border border-purple-500/20 hover:border-amber-400/70 cursor-pointer shadow-md hover:shadow-purple-500/20 transition-all duration-300"
-                  title={`${pin.seriesTitle || pin.title} — Orijinal Wallpaper sayfasında görüntüle`}
+                  title={`${displaySeriesTitle} — Orijinal Wallpaper sayfasında görüntüle`}
                 >
                   {isIframeUrl(imgUrl) ? (
                     <div className="w-full h-full relative bg-gray-950 overflow-hidden">
                       <iframe
                         src={imgUrl}
-                        title={pin.title || pin.seriesTitle}
+                        title={pin.title || displaySeriesTitle}
                         className="w-full h-full border-0 pointer-events-none scale-[1.02]"
                         loading="lazy"
                       />
@@ -105,8 +243,8 @@ export const ProfileKosmosPins: React.FC<{
                   ) : (
                     <img
                       src={getOptimizedImageUrl(imgUrl, 260)}
-                      onError={e => handleImageError(e, imgUrl, pin.title || pin.seriesTitle)}
-                      alt={pin.title || pin.seriesTitle}
+                      onError={e => handleImageError(e, imgUrl, pin.title || displaySeriesTitle)}
+                      alt={pin.title || displaySeriesTitle}
                       referrerPolicy="no-referrer"
                       loading="lazy"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -138,7 +276,7 @@ export const ProfileKosmosPins: React.FC<{
                   {/* Bottom compact title & link indicator */}
                   <div className="absolute inset-x-0 bottom-0 p-1.5 flex items-end justify-between gap-1">
                     <span className="text-[10px] font-bold text-white line-clamp-1 leading-tight drop-shadow">
-                      {pin.seriesTitle || pin.title || 'Wallpaper'}
+                      {displaySeriesTitle}
                     </span>
                     <ExternalLink
                       size={10}
