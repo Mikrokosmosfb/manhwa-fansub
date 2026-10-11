@@ -278,7 +278,7 @@ export const Header: React.FC = () => {
             {/* PWA Install Button */}
             <PWAInstallButton variant="header" />
 
-            {/* Shop Action Button (Prominent) */}
+            {/* Shop Action Button (Icon Only) */}
             <button
               onClick={() => {
                 setView({ type: 'shop' });
@@ -286,12 +286,12 @@ export const Header: React.FC = () => {
                 setIsMobileMenuOpen(false);
                 setIsNotificationsOpen(false);
               }}
-              className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.6)] transition-transform active:scale-95 border border-amber-300/50 relative overflow-hidden group"
+              className="flex items-center justify-center p-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.6)] transition-transform active:scale-95 border border-amber-300/50 relative overflow-hidden group cursor-pointer"
               title="Kozmetik Mağazası"
+              aria-label="Kozmetik Mağazası"
             >
               <div className="absolute inset-0 bg-white/20 -skew-x-12 -translate-x-full group-hover:translate-x-[200%] transition-transform duration-700" />
               <ShoppingBag size={18} className="text-white drop-shadow-md relative z-10" />
-              <span className="text-[11px] sm:text-xs font-black hidden sm:block tracking-wide drop-shadow-md relative z-10">MAĞAZA</span>
             </button>
 
             {/* User Profile / Auth Button (Desktop Only - Mobile uses Bottom Nav) */}

@@ -86,13 +86,12 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({ variant = 'h
     <>
       <button
         onClick={handleInstallClick}
-        title="Mikrokosmos Uygulamasını Doğrudan İndir"
-        className="relative group overflow-hidden flex items-center gap-2 px-3 py-1.5 rounded-xl bg-gradient-to-r from-purple-800/90 via-purple-700/80 to-pink-700/80 hover:from-purple-700 hover:to-pink-600 border border-purple-400/40 text-white text-xs font-semibold shadow-md shadow-purple-950/60 hover:shadow-purple-600/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
+        title="Uygulamayı İndir"
+        aria-label="Uygulamayı İndir"
+        className="relative group overflow-hidden flex items-center justify-center p-2 rounded-xl bg-gradient-to-r from-purple-800/90 via-purple-700/80 to-pink-700/80 hover:from-purple-700 hover:to-pink-600 border border-purple-400/40 text-white shadow-md shadow-purple-950/60 hover:shadow-purple-600/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
-        <Download className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-        <span className="hidden sm:inline">Uygulamayı İndir</span>
-        <span className="sm:hidden">Uygulama</span>
+        <Download size={18} className="text-amber-300 relative z-10" />
       </button>
 
       {showToast && <Toast />}
