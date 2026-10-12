@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   ShieldCheck,
   Crown,
@@ -10,10 +10,20 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
-  UserCheck
+  UserCheck,
+  X,
+  User,
+  RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TeamBadge, TeamBadges, TEAM_ROLE_PRESETS } from './TeamBadge';
+
+interface CloudflareUserItem {
+  uid?: string;
+  email: string;
+  name: string;
+  avatar?: string;
+}
 
 export const AdminTeamManager: React.FC = () => {
   const {
@@ -21,21 +31,128 @@ export const AdminTeamManager: React.FC = () => {
     teamRoles,
     assignTeamRole,
     removeTeamRole,
+    comments,
     showToast
   } = useApp();
 
   const [targetEmail, setTargetEmail] = useState('');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [fetchedCloudflareUsers, setFetchedCloudflareUsers] = useState<CloudflareUserItem[]>([]);
+  const [isLoadingCloudflareUsers, setIsLoadingCloudflareUsers] = useState(false);
+
   const [selectedRoles, setSelectedRoles] = useState<string[]>(['Çevirmen']);
   const [customRoleInput, setCustomRoleInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Selected user preview from knownUsers
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // 1. Fetch Cloudflare D1 Registered Users on Mount
+  const fetchUsersFromCloudflare = async () => {
+    setIsLoadingCloudflareUsers(true);
+    try {
+      const res = await fetch('/api/admin/users');
+      const data = await res.json();
+      if (data && data.success && Array.isArray(data.users)) {
+        setFetchedCloudflareUsers(data.users);
+      }
+    } catch (e) {
+      console.error('Failed to fetch Cloudflare users:', e);
+    } finally {
+      setIsLoadingCloudflareUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsersFromCloudflare();
+  }, []);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // 2. Aggregate all available users (Cloudflare D1 + knownUsers + Comments)
+  const allUsersList = useMemo(() => {
+    const map = new Map<string, CloudflareUserItem>();
+
+    // Add Cloudflare users
+    fetchedCloudflareUsers.forEach(u => {
+      if (u && u.email) {
+        map.set(u.email.toLowerCase().trim(), {
+          uid: u.uid,
+          email: u.email.trim(),
+          name: u.name || u.email.split('@')[0],
+          avatar: u.avatar
+        });
+      }
+    });
+
+    // Add knownUsers
+    knownUsers.forEach(u => {
+      if (u && u.email) {
+        const key = u.email.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            uid: u.uid,
+            email: u.email.trim(),
+            name: u.name || u.email.split('@')[0],
+            avatar: u.avatar
+          });
+        } else {
+          const existing = map.get(key)!;
+          if (!existing.avatar) existing.avatar = u.avatar;
+          if (!existing.name) existing.name = u.name;
+        }
+      }
+    });
+
+    // Add comment authors
+    comments.forEach(c => {
+      if (c && c.userName && c.userId && c.userId.includes('@')) {
+        const key = c.userId.toLowerCase().trim();
+        if (!map.has(key)) {
+          map.set(key, {
+            uid: c.userId,
+            email: c.userId,
+            name: c.userName,
+            avatar: c.userAvatar
+          });
+        }
+      }
+    });
+
+    return Array.from(map.values());
+  }, [fetchedCloudflareUsers, knownUsers, comments]);
+
+  // Currently selected target user preview
   const selectedUser = useMemo(() => {
     const clean = targetEmail.trim().toLowerCase();
     if (!clean) return null;
-    return knownUsers.find(u => u.email.toLowerCase() === clean) || null;
-  }, [targetEmail, knownUsers]);
+    return allUsersList.find(u => u.email.toLowerCase() === clean) || {
+      email: targetEmail,
+      name: targetEmail.split('@')[0]
+    };
+  }, [targetEmail, allUsersList]);
+
+  // Filtered users for live autocomplete dropdown
+  const searchedUsersList = useMemo(() => {
+    const q = userSearchQuery.trim().toLowerCase();
+    if (!q) return allUsersList.slice(0, 15);
+
+    return allUsersList.filter(u => {
+      const normName = u.name.toLowerCase();
+      const normEmail = u.email.toLowerCase();
+      return normName.includes(q) || normEmail.includes(q);
+    }).slice(0, 20);
+  }, [allUsersList, userSearchQuery]);
 
   // List of active team members
   const teamMembersList = useMemo(() => {
@@ -52,6 +169,24 @@ export const AdminTeamManager: React.FC = () => {
       (m.roles && m.roles.some(r => r.toLowerCase().includes(q)))
     );
   }, [teamMembersList, searchQuery]);
+
+  const handleSelectUserFromDropdown = (userItem: CloudflareUserItem) => {
+    setTargetEmail(userItem.email);
+    setUserSearchQuery(`${userItem.name} (${userItem.email})`);
+    setIsDropdownOpen(false);
+
+    // If user already has team roles assigned, pre-populate them
+    const existing = teamRoles[userItem.email.toLowerCase().trim()];
+    if (existing && existing.roles && existing.roles.length > 0) {
+      setSelectedRoles(existing.roles);
+    }
+  };
+
+  const handleClearSelectedUser = () => {
+    setTargetEmail('');
+    setUserSearchQuery('');
+    setSelectedRoles(['Çevirmen']);
+  };
 
   const togglePresetRole = (roleName: string) => {
     setSelectedRoles(prev => {
@@ -76,6 +211,7 @@ export const AdminTeamManager: React.FC = () => {
     const record = teamRoles[email.toLowerCase().trim()];
     if (record) {
       setTargetEmail(record.email);
+      setUserSearchQuery(`${record.name || record.email} (${record.email})`);
       setSelectedRoles(record.roles && record.roles.length > 0 ? record.roles : ['Çevirmen']);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -98,8 +234,8 @@ export const AdminTeamManager: React.FC = () => {
     const cleanEmail = targetEmail.trim().toLowerCase();
     if (!cleanEmail) {
       showToast?.({
-        title: 'E-posta Eksik ⚠️',
-        message: 'Lütfen ekip rolü atamak istediğiniz kullanıcının e-posta adresini girin.',
+        title: 'Kullanıcı Seçilmedi ⚠️',
+        message: 'Lütfen ekip rolü atamak istediğiniz bir kullanıcı arayın veya seçin.',
         type: 'warning'
       });
       return;
@@ -125,10 +261,8 @@ export const AdminTeamManager: React.FC = () => {
       type: res.success ? 'success' : 'error'
     });
 
-    // Reset target email on success
     if (res.success) {
-      setTargetEmail('');
-      setSelectedRoles(['Çevirmen']);
+      handleClearSelectedUser();
       setCustomRoleInput('');
     }
   };
@@ -148,7 +282,7 @@ export const AdminTeamManager: React.FC = () => {
             </h2>
             <p className="text-xs sm:text-sm text-purple-200/80 max-w-2xl leading-relaxed">
               Çevirmen, Editör, Kurucu, Yönetici, Moderatör gibi resmi ekip unvanlarını belirleyin.
-              Bu etiketler sitede <strong>bölüm yorumlarında, yanıtlarında, Top 50 sıralamasında ve profillerde</strong> isimlerinin hemen yanında renkli ve simgeli olarak otomatik gösterilir.
+              Kullanıcı adını yazarak arayabilir ve Cloudflare veritabanındaki tüm üyeler arasından seçim yapabilirsiniz.
             </p>
           </div>
 
@@ -177,46 +311,151 @@ export const AdminTeamManager: React.FC = () => {
               </div>
               <div>
                 <h3 className="text-base font-black text-white">Ekip Rolü Tanımla / Güncelle</h3>
-                <p className="text-xs text-gray-400">Kullanıcının e-postasını girip atanacak unvanları seçin.</p>
+                <p className="text-xs text-gray-400">Üyenin adını veya e-postasını arayıp seçin, ardından unvan atayın.</p>
               </div>
             </div>
-            {selectedUser && (
+            {targetEmail && (
               <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
-                <CheckCircle2 size={12} /> Hesap Bulundu
+                <CheckCircle2 size={12} /> Seçim Yapıldı
               </span>
             )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Target Email Input */}
-            <div className="space-y-2">
-              <label className="block text-xs font-extrabold text-gray-300">
-                Hedef E-Posta Adresi <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="email"
-                required
-                value={targetEmail}
-                onChange={e => setTargetEmail(e.target.value)}
-                placeholder="ornek: cevirmen@gmail.com"
-                className="w-full bg-gray-950 border border-purple-500/40 text-white placeholder-gray-500 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition"
-              />
+            {/* Live Autocomplete User Search Field */}
+            <div className="space-y-2 relative" ref={searchContainerRef}>
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-extrabold text-gray-300 flex items-center gap-1.5">
+                  <Search size={14} className="text-purple-400" />
+                  <span>Kullanıcı Ara (Kullanıcı Adı veya E-Posta)</span>
+                  <span className="text-red-400">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={fetchUsersFromCloudflare}
+                  disabled={isLoadingCloudflareUsers}
+                  className="text-[11px] text-purple-300 hover:text-purple-200 flex items-center gap-1 transition cursor-pointer"
+                  title="Cloudflare Üye Listesini Yenile"
+                >
+                  <RefreshCw size={11} className={isLoadingCloudflareUsers ? 'animate-spin' : ''} />
+                  <span>Cloudflare Üyelerini Yenile ({allUsersList.length})</span>
+                </button>
+              </div>
 
-              {/* Quick Select from Known Users */}
-              <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                <span className="text-[11px] text-gray-400 mr-1">Hızlı Seç:</span>
-                {knownUsers.slice(0, 5).map(u => (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={e => {
+                    setUserSearchQuery(e.target.value);
+                    if (!isDropdownOpen) setIsDropdownOpen(true);
+                    if (targetEmail && e.target.value !== selectedUser?.name) {
+                      setTargetEmail('');
+                    }
+                  }}
+                  onFocus={() => setIsDropdownOpen(true)}
+                  placeholder="Kullanıcı adı veya e-posta girin (örn: Ahmet, cevirmen@gmail.com)..."
+                  className="w-full bg-gray-950 border border-purple-500/40 text-white placeholder-gray-500 rounded-2xl pl-10 pr-10 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 transition"
+                />
+                <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
+                
+                {userSearchQuery && (
                   <button
-                    key={u.uid}
                     type="button"
-                    onClick={() => setTargetEmail(u.email)}
+                    onClick={handleClearSelectedUser}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-gray-800 transition cursor-pointer"
+                    title="Aramayı Temizle"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+
+              {/* Autocomplete Dropdown List */}
+              {isDropdownOpen && (
+                <div className="absolute left-0 right-0 top-full mt-2 z-50 bg-gray-950 border border-purple-500/40 rounded-2xl shadow-2xl overflow-hidden max-h-72 overflow-y-auto custom-scrollbar backdrop-blur-xl divide-y divide-gray-800/60 animate-fadeIn">
+                  <div className="p-2.5 bg-purple-950/40 text-[11px] font-bold text-purple-300 flex items-center justify-between border-b border-purple-900/40">
+                    <span>
+                      {searchedUsersList.length > 0
+                        ? `${searchedUsersList.length} Kullanıcı Bulundu`
+                        : 'Eşleşen Kullanıcı Bulunamadı'}
+                    </span>
+                    <span className="text-gray-400 text-[10px]">Tıklayarak Seçin</span>
+                  </div>
+
+                  {searchedUsersList.length > 0 ? (
+                    searchedUsersList.map(u => {
+                      const isCurrentlySelected = targetEmail.toLowerCase() === u.email.toLowerCase();
+                      const existingRecord = teamRoles[u.email.toLowerCase()];
+                      return (
+                        <div
+                          key={u.email}
+                          onClick={() => handleSelectUserFromDropdown(u)}
+                          className={`p-3 flex items-center justify-between gap-3 cursor-pointer transition ${
+                            isCurrentlySelected
+                              ? 'bg-purple-900/50 border-l-4 border-purple-400'
+                              : 'hover:bg-purple-950/40'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <img
+                              src={u.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.email)}`}
+                              alt={u.name}
+                              className="w-9 h-9 rounded-xl border border-purple-500/30 object-cover shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-black text-white truncate">{u.name}</p>
+                              <p className="text-[11px] text-gray-400 truncate">{u.email}</p>
+                            </div>
+                          </div>
+
+                          {existingRecord && existingRecord.roles && existingRecord.roles.length > 0 ? (
+                            <div className="shrink-0 text-right">
+                              <TeamBadges roles={existingRecord.roles} size="xs" />
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-gray-500 font-bold shrink-0">
+                              Üye
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="p-4 text-center text-xs text-gray-400 space-y-2">
+                      <p>Girdiğiniz arama terimine uygun kayıtlı üye bulunamadı.</p>
+                      {userSearchQuery.includes('@') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTargetEmail(userSearchQuery.trim());
+                            setIsDropdownOpen(false);
+                          }}
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition"
+                        >
+                          "{userSearchQuery}" Adresini Doğrudan Kullan
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Select Pill Buttons for Registered Users */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <span className="text-[11px] text-gray-400 mr-1 font-bold">Kayıtlı Üyeler:</span>
+                {allUsersList.slice(0, 6).map(u => (
+                  <button
+                    key={u.email}
+                    type="button"
+                    onClick={() => handleSelectUserFromDropdown(u)}
                     className={`text-[11px] px-2.5 py-1 rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
                       targetEmail.toLowerCase() === u.email.toLowerCase()
                         ? 'bg-purple-600 text-white font-extrabold border-purple-400 shadow-md'
                         : 'bg-gray-950 text-gray-300 hover:text-white hover:bg-gray-800 border-gray-800'
                     }`}
                   >
-                    <img src={u.avatar} alt={u.name} className="w-3.5 h-3.5 rounded-full object-cover" />
+                    <img src={u.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.email)}`} alt={u.name} className="w-3.5 h-3.5 rounded-full object-cover" />
                     <span>{u.name}</span>
                   </button>
                 ))}
@@ -224,22 +463,38 @@ export const AdminTeamManager: React.FC = () => {
             </div>
 
             {/* Selected User Live Preview Card */}
-            {selectedUser && (
-              <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between gap-3 animate-fadeIn">
+            {targetEmail && (
+              <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/40 flex items-center justify-between gap-3 animate-fadeIn shadow-lg">
                 <div className="flex items-center gap-3 min-w-0">
                   <img
-                    src={selectedUser.avatar}
-                    alt={selectedUser.name}
-                    className="w-11 h-11 rounded-2xl border-2 border-purple-400 object-cover shadow"
+                    src={selectedUser?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(targetEmail)}`}
+                    alt={selectedUser?.name || targetEmail}
+                    className="w-12 h-12 rounded-2xl border-2 border-purple-400 object-cover shadow"
                   />
                   <div className="min-w-0">
-                    <p className="text-xs font-black text-white truncate">{selectedUser.name}</p>
-                    <p className="text-[11px] text-gray-400 truncate">{selectedUser.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-black text-white truncate">{selectedUser?.name || targetEmail.split('@')[0]}</p>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                        Seçili
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 truncate">{targetEmail}</p>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
-                  <span className="text-[10px] text-gray-400 block font-bold">Mevcut Rolleri</span>
-                  <TeamBadges roles={teamRoles[selectedUser.email.toLowerCase()]?.roles} size="xs" />
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <div className="text-right hidden sm:block">
+                    <span className="text-[10px] text-gray-400 block font-bold">Mevcut Rolleri</span>
+                    <TeamBadges roles={teamRoles[targetEmail.toLowerCase()]?.roles} size="xs" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedUser}
+                    className="p-1.5 bg-gray-800 hover:bg-rose-600 text-gray-300 hover:text-white rounded-xl transition cursor-pointer"
+                    title="Seçimi Temizle"
+                  >
+                    <X size={15} />
+                  </button>
                 </div>
               </div>
             )}
@@ -322,7 +577,7 @@ export const AdminTeamManager: React.FC = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !targetEmail}
               className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:via-indigo-500 hover:to-purple-500 text-white font-black text-sm tracking-wide shadow-xl shadow-purple-950/60 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
