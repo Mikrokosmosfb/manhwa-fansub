@@ -1622,13 +1622,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   <div>
                     <strong className="text-white block mb-1">Kazanabileceğiniz Unvanlar:</strong>
                     <div className="grid grid-cols-2 gap-1.5 text-[11px] text-gray-300">
-                      <div>• Seviye 1-4: <span className="text-purple-300 font-bold">Çaylak / Hevesli Okur</span></div>
+                      <div>• Seviye 1-4: <span className="text-purple-300 font-bold">Çaylak Okur</span></div>
                       <div>• Seviye 5-9: <span className="text-blue-300 font-bold">Kıdemli Okur</span></div>
-                      <div>• Seviye 10-19: <span className="text-cyan-300 font-bold">Usta Okuyucu</span></div>
-                      <div>• Seviye 20-29: <span className="text-emerald-300 font-bold">Kadim Büyücü</span></div>
-                      <div>• Seviye 30-39: <span className="text-yellow-300 font-bold">S-Rank Efsane</span></div>
-                      <div>• Seviye 40-49: <span className="text-rose-300 font-bold">Efsanevi Yüce Okur</span></div>
-                      <div className="col-span-2">• Seviye 50: <span className="text-amber-400 font-black">👑 Kozmik Hükümdar</span></div>
+                      <div>• Seviye 10-19: <span className="text-cyan-300 font-bold">Usta Okur</span></div>
+                      <div>• Seviye 20-29: <span className="text-emerald-300 font-bold">Kadim Okur</span></div>
+                      <div>• Seviye 30-39: <span className="text-yellow-300 font-bold">Yüce Okur</span></div>
+                      <div>• Seviye 40-49: <span className="text-rose-300 font-bold">Efsanevi Okur</span></div>
+                      <div className="col-span-2">• Seviye 50: <span className="text-amber-400 font-black">👑 Kozmik Okuyucu</span></div>
                     </div>
                   </div>
                 </div>
