@@ -64,13 +64,26 @@ import { ShopItem, ThemeStyle } from '../data/shopData';
 import { AdminNotificationsManager } from './AdminNotificationsManager';
 import { ImageUploadField } from './ImageUploadField';
 import { UserAvatar } from './UserAvatar';
+import { AdminTeamManager } from './AdminTeamManager';
+import { AdminPointsManager } from './AdminPointsManager';
 
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
 
+export type AdminTabType =
+  | 'add-series'
+  | 'add-chapter'
+  | 'manage-series'
+  | 'announcements-notifications'
+  | 'blogger-import'
+  | 'cloudflare-d1'
+  | 'shop-management'
+  | 'team-management'
+  | 'points-management';
+
 export interface AdminModalProps {
-  activeTabOverride?: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management';
-  onTabChange?: (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => void;
+  activeTabOverride?: AdminTabType;
+  onTabChange?: (tab: AdminTabType) => void;
   hideHeader?: boolean;
   hideTabs?: boolean;
   hideActionBar?: boolean;
@@ -109,10 +122,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     user
   } = useApp();
 
-  const [internalTab, setInternalTab] = useState<'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management'>('manage-series');
+  const [internalTab, setInternalTab] = useState<AdminTabType>('manage-series');
 
   const activeTab = activeTabOverride !== undefined ? activeTabOverride : internalTab;
-  const setActiveTab = (tab: 'add-series' | 'add-chapter' | 'manage-series' | 'announcements-notifications' | 'blogger-import' | 'cloudflare-d1' | 'shop-management') => {
+  const setActiveTab = (tab: AdminTabType) => {
     setInternalTab(tab);
     if (onTabChange) onTabChange(tab);
   };
@@ -1727,6 +1740,28 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           >
             <ShoppingBag size={15} />
             🛍️ Mağaza & Tema Yönetimi
+          </button>
+          <button
+            onClick={() => setActiveTab('team-management')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-emerald-300 ${
+              activeTab === 'team-management'
+                ? 'border-emerald-400 text-emerald-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <ShieldCheck size={15} />
+            🛡️ Ekip & Rol Yönetimi
+          </button>
+          <button
+            onClick={() => setActiveTab('points-management')}
+            className={`pb-3 px-3.5 text-xs sm:text-sm font-bold border-b-2 transition whitespace-nowrap flex items-center gap-1 text-amber-300 ${
+              activeTab === 'points-management'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Sparkles size={15} />
+            💰 Cosmo-Puan Yükle
           </button>
         </div>
       )}
@@ -5457,6 +5492,16 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         <div className="bg-gray-900/95 border border-purple-500/20 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl">
           <AdminNotificationsManager />
         </div>
+      )}
+
+      {/* Ekip & Rol Yönetimi Tab */}
+      {activeTab === 'team-management' && (
+        <AdminTeamManager />
+      )}
+
+      {/* Cosmo-Puan Yükle Tab */}
+      {activeTab === 'points-management' && (
+        <AdminPointsManager />
       )}
 
     </div>
