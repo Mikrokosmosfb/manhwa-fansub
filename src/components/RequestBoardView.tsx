@@ -73,6 +73,17 @@ function fixImageUrl(url?: string) {
   return str;
 }
 
+function cleanStatusString(str?: string) {
+  if (!str) return '';
+  return String(str)
+    .replace(/İ/g, 'i')
+    .replace(/I/g, 'i')
+    .replace(/ı/g, 'i')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
 async function apiCall(payloadObj: any) {
   try {
     const res = await fetch(SCRIPT_URL, {
@@ -500,26 +511,30 @@ export const RequestBoardView: React.FC = () => {
   };
 
   const getStatusBadge = (rawStatus?: string) => {
-    const st = String(rawStatus || 'Beklemede').toLowerCase();
+    const st = cleanStatusString(rawStatus);
+
     if (st.includes('incele')) {
       return { class: 'bg-purple-950/80 text-purple-300 border-purple-500/50', dataStatus: 'incelemede', text: 'İncelemede', icon: <Clock size={12} /> };
     }
     if (st.includes('kabul')) {
       return { class: 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50', dataStatus: 'kabul', text: 'Kabul Edildi', icon: <CheckCircle2 size={12} /> };
     }
-    if (st.includes('yapim') || st.includes('yapım')) {
+    if (st.includes('yapim')) {
       return { class: 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50', dataStatus: 'yapim', text: 'Yapımda', icon: <Sparkles size={12} /> };
     }
-    if (st.includes('yakin') || st.includes('yakın')) {
+    if (st.includes('yakin')) {
       return { class: 'bg-amber-950/80 text-amber-300 border-amber-500/50', dataStatus: 'yakin', text: 'Yakında', icon: <Clock size={12} /> };
     }
-    if (st.includes('yayin') || st.includes('yayın')) {
+    if (st.includes('yayin')) {
       return { class: 'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-500/50', dataStatus: 'yayin', text: 'Yayında!', icon: <BookOpen size={12} /> };
     }
     if (st.includes('red')) {
       return { class: 'bg-rose-950/80 text-rose-300 border-rose-500/50', dataStatus: 'red', text: 'Reddedildi', icon: <Ban size={12} /> };
     }
-    return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: 'Beklemede', icon: <Clock size={12} /> };
+    if (st.includes('bekle')) {
+      return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: 'Beklemede', icon: <Clock size={12} /> };
+    }
+    return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: rawStatus || 'Beklemede', icon: <Clock size={12} /> };
   };
 
   // Filtered and Sorted requests calculation
