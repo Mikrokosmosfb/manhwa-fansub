@@ -474,12 +474,12 @@ export const ShopContent: React.FC = () => {
         onClose={() => setShowDailyCalendar(false)}
       />
 
-      {/* CATEGORY TABS WITH DESKTOP FLEX-WRAP & MOBILE/DESKTOP ARROW + WHEEL SCROLLING */}
-      <div className="relative flex items-center group/cat-scroll">
+      {/* CATEGORY TABS (CLEAN HORIZONTAL SCROLL WITHOUT WEIRD WRAPPING) */}
+      <div className="relative flex items-center group/cat-scroll bg-gray-950/80 border border-purple-900/40 p-1.5 rounded-2xl shadow-inner">
         <button
           type="button"
           onClick={() => handleCategoryScroll('left')}
-          className="hidden sm:flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-lg z-10 mr-1.5 cursor-pointer"
+          className="flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-md z-10 mr-1.5 cursor-pointer"
           title="Sola Kaydır"
         >
           <ChevronLeft size={16} />
@@ -488,17 +488,19 @@ export const ShopContent: React.FC = () => {
         <div
           ref={categoryScrollRef}
           onWheel={handleCategoryWheel}
-          className="flex items-center gap-2 py-1 overflow-x-auto sm:flex-wrap no-scrollbar scroll-smooth flex-1"
+          className="flex items-center gap-2 py-1 overflow-x-auto no-scrollbar scroll-smooth flex-1 flex-nowrap"
         >
           <button
             onClick={() => setActiveCategory('buy_coins')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+            className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 whitespace-nowrap shrink-0 transition-all cursor-pointer shadow-md ${
               activeCategory === 'buy_coins'
-                ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black shadow-lg shadow-amber-500/30 ring-2 ring-amber-300 animate-pulse'
-                : 'bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/90'
+                ? 'bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-black shadow-amber-500/20 scale-[1.02]'
+                : 'bg-amber-950/60 text-amber-300 border border-amber-500/40 hover:bg-amber-900/80 hover:text-white'
             }`}
           >
-            <CreditCard size={15} /> 💳 Cosmo-Puan Yükle (Lemon Squeezy)
+            <CreditCard size={15} className="stroke-[2.5]" />
+            <span>Cosmo-Puan Yükle</span>
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-md font-bold">Lemon Squeezy</span>
           </button>
 
           <button
@@ -571,7 +573,7 @@ export const ShopContent: React.FC = () => {
         <button
           type="button"
           onClick={() => handleCategoryScroll('right')}
-          className="hidden sm:flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-lg z-10 ml-1.5 cursor-pointer"
+          className="flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-md z-10 ml-1.5 cursor-pointer"
           title="Sağa Kaydır"
         >
           <ChevronRight size={16} />
