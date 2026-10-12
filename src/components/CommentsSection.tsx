@@ -32,9 +32,9 @@ import { TeamBadges } from './TeamBadge';
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
 const REACTION_OPTIONS = [
-  { id: 'love', emoji: '🧎‍♀️', label: 'Kalbim Çıktı', sub: 'Düştüm kaldırın' },
+  { id: 'love', emoji: '🫠', label: 'Kalbim Çıktı', sub: 'Düştüm kaldırın' },
   { id: 'fire', emoji: '🛐', label: 'Tam Şaheser', sub: 'Saygıyla eğildim' },
-  { id: 'funny', emoji: '💀', label: 'Haykırdım', sub: 'Gülmekten öldüm' },
+  { id: 'funny', emoji: '😂', label: 'Haykırdım', sub: 'Gülmekten öldüm' },
   { id: 'shock', emoji: '🤯', label: 'Beynim Yandı', sub: 'Kaos & Şoktayım' },
   { id: 'sad', emoji: '😭', label: 'Mendil Getirin', sub: 'Gözyaşı sel oldu' }
 ] as const;

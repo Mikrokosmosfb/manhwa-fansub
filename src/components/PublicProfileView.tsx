@@ -524,6 +524,7 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
                 isOwnProfile={user?.uid === profile.uid}
                 userId={userId}
                 initialLists={Array.isArray(profile.readingLists) ? profile.readingLists : []}
+                hidePinsSection={true}
               />
             </div>
           )}

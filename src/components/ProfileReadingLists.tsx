@@ -299,7 +299,7 @@ export const ProfileReadingLists: React.FC<{
   initialLists: ReadingList[];
   hidePinsSection?: boolean;
   onNavigate?: () => void;
-}> = ({ isOwnProfile, userId, initialLists, hidePinsSection = false, onNavigate }) => {
+}> = ({ isOwnProfile, userId, initialLists, hidePinsSection = true, onNavigate }) => {
   const { readingLists, setReadingLists, seriesList, setView, showToast } = useApp();
 
   // Filter out the internal __kosmospins__ carrier from reading lists

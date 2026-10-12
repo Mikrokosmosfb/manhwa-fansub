@@ -615,6 +615,7 @@ ${seriesXml}
     }
 
     if (path.startsWith('/api/')) {
+      try {
       // 1. CLOUDFLARE R2 IMAGE UPLOAD & FILE SERVING
       if (path.startsWith('/api/upload/r2') && request.method === 'POST') {
         try {
@@ -1053,7 +1054,6 @@ ${seriesXml}
       }
       await d1SchemaInitPromise;
 
-      try {
         if (path.startsWith('/api/public-profile') && request.method === 'GET') {
           const url = new URL(request.url);
           const uid = url.searchParams.get('uid');
@@ -2451,6 +2451,9 @@ ${seriesXml}
                   return new Response(JSON.stringify({ success: true, users: usersList }), { headers });
                 } catch (err) {}
               }
+            }
+          }
+
           // TEAM ROLES API (Assign, Update & Retrieve Staff Badges)
           if (path.startsWith('/api/team-roles') || path.startsWith('/api/admin/team-roles')) {
             const activeDb = usersDb || db;

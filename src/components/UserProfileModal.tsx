@@ -1465,6 +1465,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
               isOwnProfile={true}
               userId={user?.uid || ''}
               initialLists={[]}
+              hidePinsSection={true}
               onNavigate={onClose}
             />
           </div>
