@@ -1236,7 +1236,7 @@ export const COIN_PACKAGES: CoinPackage[] = [
     priceTRY: 35,
     iconEmoji: '🥉',
     badge: 'Popüler Giriş',
-    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_starter'
+    lemonCheckoutUrl: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
   },
   {
     id: 'cp_pro',
@@ -1248,7 +1248,7 @@ export const COIN_PACKAGES: CoinPackage[] = [
     popular: true,
     iconEmoji: '🥈',
     badge: 'En Çok Tercih Edilen',
-    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_pro'
+    lemonCheckoutUrl: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
   },
   {
     id: 'cp_giga',
@@ -1259,7 +1259,7 @@ export const COIN_PACKAGES: CoinPackage[] = [
     priceTRY: 280,
     iconEmoji: '🥇',
     badge: '+%33 Extra Bonus',
-    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_giga'
+    lemonCheckoutUrl: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
   },
   {
     id: 'cp_vip',
@@ -1271,7 +1271,7 @@ export const COIN_PACKAGES: CoinPackage[] = [
     bestValue: true,
     iconEmoji: '👑',
     badge: 'Maksimum Tasarruf',
-    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_vip'
+    lemonCheckoutUrl: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
   }
 ];
 

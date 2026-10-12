@@ -97,7 +97,7 @@ export const ShopContent: React.FC = () => {
   const [orderCodeInput, setOrderCodeInput] = useState('');
   const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
   const [lemonStoreUrl, setLemonStoreUrl] = useState(() => {
-    return localStorage.getItem('ls_store_checkout_url') || '';
+    return localStorage.getItem('ls_store_checkout_url') || 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053';
   });
   const [inputUrl, setInputUrl] = useState(lemonStoreUrl);
 
