@@ -80,6 +80,10 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [isSpoiler, setIsSpoiler] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [replyTo, setReplyTo] = useState<{ id: string; name: string } | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replyIsSpoiler, setReplyIsSpoiler] = useState(false);
+  const [replyImageUrl, setReplyImageUrl] = useState('');
+  const [showReplyEmojiPicker, setShowReplyEmojiPicker] = useState(false);
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<string, boolean>>({});
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [reportingComment, setReportingComment] = useState<Comment | null>(null);
@@ -242,7 +246,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const lockedEmojiPacks = emojiPackItems.filter(p => !unlockedEmojiPacks.includes(p.id));
   const allKnownEmojis: ChibiEmoji[] = emojiPackItems.flatMap(p => p.emojis || []);
 
-  const handleInstantUnlockPack = (pack: ShopItem, emojiToInsert?: ChibiEmoji) => {
+  const handleInstantUnlockPack = (
+    pack: ShopItem,
+    emojiToInsert?: ChibiEmoji,
+    target: 'main' | 'reply' = 'main'
+  ) => {
     if (!user) {
       openAuthModal('login');
       showToast?.({
@@ -257,7 +265,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     if (res.success) {
       if (emojiToInsert) {
         const token = emojiToInsert.code || emojiToInsert.symbol;
-        setCommentText(prev => (prev ? prev + ' ' + token : token));
+        if (target === 'reply') {
+          setReplyText(prev => (prev ? prev + ' ' + token : token));
+        } else {
+          setCommentText(prev => (prev ? prev + ' ' + token : token));
+        }
       }
       showToast?.({
         title: '🎉 Emoji Paketi Açıldı!',
@@ -277,17 +289,183 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     }
   };
 
-  const handleInsertEmoji = (pack: ShopItem, em: ChibiEmoji) => {
+  const handleInsertEmoji = (pack: ShopItem, em: ChibiEmoji, target: 'main' | 'reply' = 'main') => {
     const isPackUnlocked = unlockedEmojiPacks.includes(pack.id);
     if (!isPackUnlocked) {
-      handleInstantUnlockPack(pack, em);
+      handleInstantUnlockPack(pack, em, target);
       return;
     }
 
     // Insert shortcode or symbol into text area
     const token = em.code || em.symbol;
-    setCommentText(prev => (prev ? prev + ' ' + token : token));
+    if (target === 'reply') {
+      setReplyText(prev => (prev ? prev + ' ' + token : token));
+    } else {
+      setCommentText(prev => (prev ? prev + ' ' + token : token));
+    }
   };
+
+  const renderEmojiPickerDrawer = (target: 'main' | 'reply') => (
+    <div className="mt-2 p-3.5 bg-gray-950 border border-purple-500/40 rounded-2xl space-y-4 animate-fadeIn shadow-2xl">
+      <div className="flex items-center justify-between border-b border-gray-800 pb-2.5">
+        <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
+          <Sparkles size={14} className="text-amber-400" /> Özel Chibi Emojiler
+        </span>
+        <button
+          type="button"
+          onClick={openShop}
+          className="text-[11px] text-amber-400 hover:underline font-bold flex items-center gap-1"
+        >
+          <ShoppingBag size={12} /> Mağazadan Yeni Paketler Aç
+        </button>
+      </div>
+
+      {/* 1. PURCHASED / OWNED CHIBIS SECTION (SEPARATE AT VERY TOP) */}
+      <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-gray-900/95 to-gray-950 border border-emerald-500/40 space-y-3 shadow-lg">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-1.5">
+              <Check size={14} className="text-emerald-400 stroke-[3]" />
+              Satın Alınan Chibilerim
+            </span>
+            <span className="text-[10px] font-extrabold bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+              {ownedEmojiPacks.length} Paket • {ownedEmojiPacks.reduce((acc, p) => acc + (p.emojis?.length || 0), 0)} Chibi
+            </span>
+          </div>
+          <span className="text-[10px] text-emerald-400/90 font-bold">
+            Tıkla & Yorumuna Ekle ✨
+          </span>
+        </div>
+
+        {ownedEmojiPacks.length > 0 ? (
+          <div className="space-y-3">
+            {ownedEmojiPacks.map(pack => (
+              <div key={pack.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
+                    <span className="text-sm">{pack.icon || '✨'}</span> {pack.name}
+                  </span>
+                  <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                    <Check size={10} /> Açık • ⏳ {formatRemainingDuration(emojiExpiresAtMap[pack.id])}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                  {pack.emojis?.map((em, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleInsertEmoji(pack, em, target)}
+                      className="group p-2 rounded-xl bg-gray-900/95 hover:bg-purple-950/80 border border-emerald-500/30 hover:border-amber-400/70 transition flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.03]"
+                      title={`${em.label} ekle`}
+                    >
+                      <div className="w-11 h-11 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800">
+                        {em.imageUrl ? (
+                          <img
+                            src={em.imageUrl}
+                            alt={em.label}
+                            className="max-w-full max-h-full object-contain drop-shadow group-hover:scale-110 transition-transform"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <span className="text-sm font-bold text-amber-300">{em.symbol}</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-100 truncate w-full">{em.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-3 px-2 rounded-xl bg-black/40 border border-white/5 text-xs text-gray-400">
+            Henüz satın aldığınız bir Chibi paketi bulunmuyor. Aşağıdaki paketlerden dilediğinizi tek tıkla açabilirsiniz!
+          </div>
+        )}
+      </div>
+
+      {/* 2. BASIC FREE EMOJIS */}
+      <div className="pt-1">
+        <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">
+          Genel Okuyucu Emojileri (Ücretsiz)
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {['🔥', '✨', '💖', '😱', '😍', '😎', '👑', '🎉', '👏', '👀', '💯', '🚀'].map((em, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() =>
+                target === 'reply'
+                  ? setReplyText(prev => prev + em)
+                  : setCommentText(prev => prev + em)
+              }
+              className="p-2 bg-gray-900 hover:bg-purple-900/60 border border-gray-800 hover:border-purple-500/50 rounded-xl text-base transition transform hover:scale-110"
+            >
+              {em}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. LOCKED / UNPURCHASED CHIBI PACKS SECTION */}
+      {lockedEmojiPacks.length > 0 && (
+        <div className="pt-3 border-t border-gray-800 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-extrabold text-amber-300/90 uppercase tracking-wider flex items-center gap-1.5">
+              <Lock size={12} className="text-amber-400" />
+              Mağazadaki Diğer Chibi Paketleri ({lockedEmojiPacks.length} Paket)
+            </span>
+          </div>
+
+          {lockedEmojiPacks.map(pack => (
+            <div key={pack.id} className="p-3 rounded-xl bg-gray-900/60 border border-gray-800/90 space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
+                  <span className="text-base">{pack.icon || '✨'}</span> {pack.name}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleInstantUnlockPack(pack, undefined, target)}
+                  className="text-[10px] text-amber-300 bg-amber-950/90 border border-amber-500/50 hover:bg-amber-900 px-2.5 py-1 rounded-xl font-black flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
+                >
+                  <Lock size={11} className="text-amber-400" />
+                  Hemen Aç ({pack.price} CP • 1 Ay)
+                </button>
+              </div>
+
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                {pack.emojis?.map((em, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleInsertEmoji(pack, em, target)}
+                    className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 hover:border-amber-500/50 text-gray-400 hover:text-amber-300 transition flex flex-col items-center justify-center text-center gap-1 cursor-pointer relative group"
+                    title={`${pack.name} paketini ${pack.price} CP ile açmak için tıkla`}
+                  >
+                    <Lock size={10} className="text-amber-400/80 absolute top-1.5 right-1.5" />
+                    <div className="w-10 h-10 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800 opacity-85 group-hover:opacity-100">
+                      {em.imageUrl ? (
+                        <img
+                          src={em.imageUrl}
+                          alt={em.label}
+                          className="max-w-full max-h-full object-contain"
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <span className="text-xs font-bold text-amber-300">{em.symbol}</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-300 truncate w-full">{em.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 
   const renderCommentContent = (text: string) => {
     if (!text) return null;
@@ -348,7 +526,34 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       return;
     }
 
-    const parentComment = replyTo ? comments.find(cm => cm.id === replyTo.id) : null;
+    addComment({
+      seriesId,
+      chapterId,
+      userId: user.uid,
+      userName: user.name,
+      userAvatar: user.avatar,
+      text: commentText.trim(),
+      imageUrl: imageUrl.trim() || undefined,
+      parentId: null,
+      isSpoiler
+    });
+
+    setCommentText('');
+    setImageUrl('');
+    setIsSpoiler(false);
+    setShowEmojiPicker(false);
+  };
+
+  const handleReplySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyTo || !replyText.trim()) return;
+
+    if (!user) {
+      openAuthModal('login');
+      return;
+    }
+
+    const parentComment = comments.find(cm => cm.id === replyTo.id);
     const effectiveChapterId = parentComment?.chapterId || chapterId;
 
     addComment({
@@ -357,17 +562,17 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       userId: user.uid,
       userName: user.name,
       userAvatar: user.avatar,
-      text: commentText.trim(),
-      imageUrl: imageUrl.trim() || undefined,
-      parentId: replyTo ? replyTo.id : null,
-      isSpoiler
+      text: replyText.trim(),
+      imageUrl: replyImageUrl.trim() || undefined,
+      parentId: replyTo.id,
+      isSpoiler: replyIsSpoiler
     });
 
-    setCommentText('');
-    setImageUrl('');
-    setIsSpoiler(false);
+    setReplyText('');
+    setReplyImageUrl('');
+    setReplyIsSpoiler(false);
     setReplyTo(null);
-    setShowEmojiPicker(false);
+    setShowReplyEmojiPicker(false);
   };
 
   const toggleSpoilerReveal = (commentId: string) => {
@@ -696,15 +901,136 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                   openAuthModal('login');
                   return;
                 }
-                setReplyTo({ id: c.id, name: c.userName });
+                if (replyTo?.id === c.id) {
+                  setReplyTo(null);
+                  setShowReplyEmojiPicker(false);
+                } else {
+                  setReplyTo({ id: c.id, name: c.userName });
+                  setReplyText('');
+                  setReplyIsSpoiler(false);
+                  setReplyImageUrl('');
+                  setShowReplyEmojiPicker(false);
+                }
               }}
-              className="flex items-center gap-1.5 text-gray-400 hover:text-purple-300 font-semibold px-2 py-1 rounded-lg hover:bg-white/5 transition cursor-pointer"
+              className={`flex items-center gap-1.5 font-semibold px-2.5 py-1 rounded-lg transition cursor-pointer ${
+                replyTo?.id === c.id
+                  ? 'bg-purple-600/30 text-amber-300 border border-amber-400/50'
+                  : 'text-gray-400 hover:text-purple-300 hover:bg-white/5'
+              }`}
             >
               <CornerDownRight size={14} />
-              <span>Yanıtla</span>
+              <span>{replyTo?.id === c.id ? 'Yanıtı Kapat' : 'Yanıtla'}</span>
             </button>
           </div>
         </div>
+
+        {/* INLINE REPLY BOX (Opens directly under the comment being replied to) */}
+        {replyTo?.id === c.id && (
+          <form
+            onSubmit={handleReplySubmit}
+            className="relative z-20 mt-3 pt-3 border-t border-purple-500/40 bg-gray-950/95 p-3.5 rounded-2xl border space-y-3 shadow-2xl animate-fadeIn"
+          >
+            <div className="flex items-center justify-between gap-2 text-xs text-purple-200">
+              <span className="flex items-center gap-1.5 font-bold">
+                <CornerDownRight size={14} className="text-amber-400 shrink-0" />
+                <span>
+                  <strong className="text-amber-300">@{c.userName}</strong> kişisine yanıt yazıyorsunuz
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setReplyTo(null);
+                  setShowReplyEmojiPicker(false);
+                }}
+                className="text-xs font-bold text-gray-400 hover:text-white px-2 py-0.5 rounded-lg hover:bg-gray-800 transition cursor-pointer"
+              >
+                İptal ✕
+              </button>
+            </div>
+
+            <textarea
+              autoFocus
+              value={replyText}
+              onChange={e => setReplyText(e.target.value)}
+              placeholder={`@${c.userName} kişisine yanıtınızı yazın...`}
+              rows={3}
+              className="w-full bg-gray-900 border border-purple-500/40 text-white placeholder-gray-500 text-xs sm:text-sm rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-purple-400 resize-none shadow-inner"
+            />
+
+            {/* Quick Tag Bar & Chibi Emoji Picker Toggle for Reply */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full">
+                <span className="text-[11px] text-gray-400 font-medium mr-1 shrink-0">Hızlı İfade:</span>
+                {['Katılıyorum!', 'Kesinlikle', 'Teşekkürler', 'Çok Doğru', '😂'].map(tag => (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setReplyText(prev => (prev ? prev + ' ' + tag : tag))}
+                    className="bg-gray-800/90 hover:bg-purple-900/60 border border-purple-500/20 text-[11px] px-2 py-0.5 rounded-lg text-purple-200 transition font-medium whitespace-nowrap shrink-0 cursor-pointer"
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReplyEmojiPicker(!showReplyEmojiPicker)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition whitespace-nowrap shrink-0 w-full sm:w-auto cursor-pointer ${
+                  showReplyEmojiPicker
+                    ? 'bg-amber-500 text-black shadow'
+                    : 'bg-purple-950/90 text-purple-300 border border-purple-700 hover:bg-purple-900'
+                }`}
+              >
+                <Smile size={14} /> Chibi Emojiler {showReplyEmojiPicker ? '▲' : '▼'}
+              </button>
+            </div>
+
+            {showReplyEmojiPicker && renderEmojiPickerDrawer('reply')}
+
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 text-xs">
+              <div className="flex flex-wrap items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-300 font-medium">
+                  <input
+                    type="checkbox"
+                    checked={replyIsSpoiler}
+                    onChange={e => setReplyIsSpoiler(e.target.checked)}
+                    className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 bg-gray-900 border-gray-700"
+                  />
+                  <span>Spoiler içeriyor</span>
+                </label>
+
+                <input
+                  type="text"
+                  placeholder="Görsel URL ekle (opsiyonel)"
+                  value={replyImageUrl}
+                  onChange={e => setReplyImageUrl(e.target.value)}
+                  className="bg-gray-900 border border-gray-800 text-white text-xs rounded-xl px-2.5 py-1.5 w-44 sm:w-52 focus:outline-none focus:border-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 ml-auto">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReplyTo(null);
+                    setShowReplyEmojiPicker(false);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs transition cursor-pointer"
+                >
+                  Vazgeç
+                </button>
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-lg flex items-center gap-1.5 transition cursor-pointer"
+                >
+                  <Send size={13} />
+                  Yanıtı Gönder
+                </button>
+              </div>
+            </div>
+          </form>
+        )}
       </div>
     );
   };
@@ -860,19 +1186,6 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
       {/* Comment Submission Form */}
       <form onSubmit={handleSubmit} className="space-y-3">
-        {replyTo && (
-          <div className="bg-purple-900/40 border border-purple-500/30 p-2 rounded-xl text-xs text-purple-200 flex items-center justify-between">
-            <span>@{replyTo.name} kişisine yanıt veriyorsunuz...</span>
-            <button
-              type="button"
-              onClick={() => setReplyTo(null)}
-              className="text-xs font-bold text-purple-400 hover:text-white"
-            >
-              İptal
-            </button>
-          </div>
-        )}
-
         <div className="relative">
           <textarea
             value={commentText}
@@ -910,163 +1223,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           </div>
 
           {/* CHIBI EMOJI DRAWER */}
-          {showEmojiPicker && (
-            <div className="mt-2 p-3.5 bg-gray-950 border border-purple-500/40 rounded-2xl space-y-4 animate-fadeIn shadow-2xl">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2.5">
-                <span className="text-xs font-extrabold text-amber-300 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-amber-400" /> Özel Chibi Emojiler
-                </span>
-                <button
-                  type="button"
-                  onClick={openShop}
-                  className="text-[11px] text-amber-400 hover:underline font-bold flex items-center gap-1"
-                >
-                  <ShoppingBag size={12} /> Mağazadan Yeni Paketler Aç
-                </button>
-              </div>
-
-              {/* 1. PURCHASED / OWNED CHIBIS SECTION (SEPARATE AT VERY TOP) */}
-              <div className="p-3 sm:p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/35 via-gray-900/95 to-gray-950 border border-emerald-500/40 space-y-3 shadow-lg">
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-500/20 pb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs sm:text-sm font-black text-emerald-300 flex items-center gap-1.5">
-                      <Check size={14} className="text-emerald-400 stroke-[3]" />
-                      Satın Alınan Chibilerim
-                    </span>
-                    <span className="text-[10px] font-extrabold bg-emerald-950/90 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full">
-                      {ownedEmojiPacks.length} Paket • {ownedEmojiPacks.reduce((acc, p) => acc + (p.emojis?.length || 0), 0)} Chibi
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400/90 font-bold">
-                    Tıkla & Yorumuna Ekle ✨
-                  </span>
-                </div>
-
-                {ownedEmojiPacks.length > 0 ? (
-                  <div className="space-y-3">
-                    {ownedEmojiPacks.map(pack => (
-                      <div key={pack.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-extrabold text-white flex items-center gap-1.5">
-                            <span className="text-sm">{pack.icon || '✨'}</span> {pack.name}
-                          </span>
-                          <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                            <Check size={10} /> Açık • ⏳ {formatRemainingDuration(emojiExpiresAtMap[pack.id])}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                          {pack.emojis?.map((em, idx) => (
-                            <button
-                              key={idx}
-                              type="button"
-                              onClick={() => handleInsertEmoji(pack, em)}
-                              className="group p-2 rounded-xl bg-gray-900/95 hover:bg-purple-950/80 border border-emerald-500/30 hover:border-amber-400/70 transition flex flex-col items-center justify-center text-center gap-1.5 cursor-pointer shadow-sm hover:scale-[1.03]"
-                              title={`${em.label} ekle`}
-                            >
-                              <div className="w-11 h-11 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800">
-                                {em.imageUrl ? (
-                                  <img
-                                    src={em.imageUrl}
-                                    alt={em.label}
-                                    className="max-w-full max-h-full object-contain drop-shadow group-hover:scale-110 transition-transform"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ) : (
-                                  <span className="text-sm font-bold text-amber-300">{em.symbol}</span>
-                                )}
-                              </div>
-                              <span className="text-[10px] font-bold text-gray-100 truncate w-full">{em.label}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-3 px-2 rounded-xl bg-black/40 border border-white/5 text-xs text-gray-400">
-                    Henüz satın aldığınız bir Chibi paketi bulunmuyor. Aşağıdaki paketlerden dilediğinizi tek tıkla açabilirsiniz!
-                  </div>
-                )}
-              </div>
-
-              {/* 2. BASIC FREE EMOJIS */}
-              <div className="pt-1">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1.5">
-                  Genel Okuyucu Emojileri (Ücretsiz)
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {['🔥', '✨', '💖', '😱', '😍', '😎', '👑', '🎉', '👏', '👀', '💯', '🚀'].map((em, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setCommentText(prev => prev + em)}
-                      className="p-2 bg-gray-900 hover:bg-purple-900/60 border border-gray-800 hover:border-purple-500/50 rounded-xl text-base transition transform hover:scale-110"
-                    >
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. LOCKED / UNPURCHASED CHIBI PACKS SECTION */}
-              {lockedEmojiPacks.length > 0 && (
-                <div className="pt-3 border-t border-gray-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-extrabold text-amber-300/90 uppercase tracking-wider flex items-center gap-1.5">
-                      <Lock size={12} className="text-amber-400" />
-                      Mağazadaki Diğer Chibi Paketleri ({lockedEmojiPacks.length} Paket)
-                    </span>
-                  </div>
-
-                  {lockedEmojiPacks.map(pack => (
-                    <div key={pack.id} className="p-3 rounded-xl bg-gray-900/60 border border-gray-800/90 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-bold text-gray-200 flex items-center gap-1.5">
-                          <span className="text-base">{pack.icon || '✨'}</span> {pack.name}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => handleInstantUnlockPack(pack)}
-                          className="text-[10px] text-amber-300 bg-amber-950/90 border border-amber-500/50 hover:bg-amber-900 px-2.5 py-1 rounded-xl font-black flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
-                        >
-                          <Lock size={11} className="text-amber-400" />
-                          Hemen Aç ({pack.price} CP • 1 Ay)
-                        </button>
-                      </div>
-
-                      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                        {pack.emojis?.map((em, idx) => (
-                          <button
-                            key={idx}
-                            type="button"
-                            onClick={() => handleInsertEmoji(pack, em)}
-                            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 hover:border-amber-500/50 text-gray-400 hover:text-amber-300 transition flex flex-col items-center justify-center text-center gap-1 cursor-pointer relative group"
-                            title={`${pack.name} paketini ${pack.price} CP ile açmak için tıkla`}
-                          >
-                            <Lock size={10} className="text-amber-400/80 absolute top-1.5 right-1.5" />
-                            <div className="w-10 h-10 rounded-lg bg-[radial-gradient(#374151_1px,transparent_1px)] [background-size:4px_4px] bg-black/60 flex items-center justify-center p-1 shrink-0 border border-gray-800 opacity-85 group-hover:opacity-100">
-                              {em.imageUrl ? (
-                                <img
-                                  src={em.imageUrl}
-                                  alt={em.label}
-                                  className="max-w-full max-h-full object-contain"
-                                  referrerPolicy="no-referrer"
-                                />
-                              ) : (
-                                <span className="text-xs font-bold text-amber-300">{em.symbol}</span>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-300 truncate w-full">{em.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
+          {showEmojiPicker && renderEmojiPickerDrawer('main')}
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
