@@ -1259,35 +1259,40 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
-      {/* Bottom-Left Floating Stack: Scene Comment Button above Privacy Blur Button (Parallel with right-side ScrollToTopBottom) */}
+      {/* Sol Alt Köşe Floating Stack: Üstte Sahneye Yorum, Altta Bulanıklaştırma (Gizlilik) Butonu (Sağdaki Yukarı/Aşağı Butonlarıyla Tam Paralel) */}
       <div className="fixed bottom-20 md:bottom-8 left-3.5 sm:left-6 z-[60] flex flex-col gap-2 pointer-events-none">
+        {/* Üstte: Sahneye Yorum Butonu */}
         {showSceneComments && !isPrivacyBlurred && chapterImageUrls.length > 0 && (
           <button
             type="button"
             onClick={handleCommentCurrentViewportScene}
-            className="pointer-events-auto bg-purple-900/90 hover:bg-purple-600 text-amber-300 hover:text-white p-2.5 sm:p-3 rounded-2xl border border-purple-400/50 shadow-2xl backdrop-blur-md transition-all duration-300 transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
-            title="Bu Sahneye Yorum Bırak / Yorumları Gör"
+            className="pointer-events-auto bg-purple-900/90 hover:bg-purple-600 text-amber-300 hover:text-white p-2.5 sm:p-3 rounded-2xl border border-purple-400/50 shadow-2xl backdrop-blur-md transition-all duration-300 transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer group"
+            title="Ekranda Görünen Sahneye Yorum Bırak / Yorumları Gör"
             aria-label="Bu Sahneye Yorum Bırak"
           >
-            <MessageCircle size={20} />
+            <MessageCircle size={20} className="group-hover:rotate-12 transition-transform" />
+            <span className="sr-only">Sahneye Yorum Bırak</span>
           </button>
         )}
 
+        {/* Altta: Bulanıklaştırma (Gizlilik) Butonu */}
         <button
           type="button"
           onClick={togglePrivacyBlur}
-          className={`md:hidden pointer-events-auto p-2.5 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
+          className={`pointer-events-auto p-2.5 sm:p-3 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform hover:scale-110 active:scale-95 cursor-pointer ${
             isPrivacyBlurred
               ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
               : 'bg-purple-950/90 hover:bg-purple-700 text-purple-200 hover:text-white border-purple-500/40'
           }`}
           title={
             isPrivacyBlurred
-              ? 'Gizlilik Bulanıklaştırmasını Kaldır'
-              : 'Ekranı Anında Bulanıklaştır'
+              ? 'Gizlilik Bulanıklaştırmasını Kaldır (B)'
+              : 'Ekranı Anında Bulanıklaştır (B)'
           }
+          aria-label="Bulanıklaştır"
         >
           {isPrivacyBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
+          <span className="sr-only">Bulanıklaştır</span>
         </button>
       </div>
 
@@ -1779,7 +1784,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             {/* Cropped Scene Slice Preview + Vertical Position Fine-Tuning Controls */}
             <div className="px-4 py-3 bg-purple-950/30 border-b border-purple-500/20 space-y-2.5 shrink-0">
               {chapterImageUrls[activeScene.imgIdx] && !isIframeUrl(chapterImageUrls[activeScene.imgIdx]) && (
-                <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden border border-purple-400/40 bg-black shadow-inner">
+                <div className="relative w-full max-w-sm mx-auto h-44 sm:h-52 rounded-2xl overflow-hidden border border-purple-400/50 bg-black shadow-xl">
                   <img
                     src={chapterImageUrls[activeScene.imgIdx]}
                     alt="Seçili Sahne Kesiti"
@@ -1787,11 +1792,11 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                     className="w-full h-full object-cover transition-all duration-200"
                     style={{ objectPosition: `50% ${activeScene.yPct}%` }}
                   />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-1.5 flex items-center justify-between text-[11px]">
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 py-2 flex items-center justify-between text-[11px]">
                     <span className="font-bold text-amber-300">
                       📸 Seçili Sahne Kesiti (%{activeScene.yPct})
                     </span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         type="button"
                         onClick={() => {
@@ -1802,7 +1807,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                             yPct: nextY
                           });
                         }}
-                        className="px-2 py-0.5 rounded bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer shadow-sm transition"
                         title="Sahne kesitini biraz yukarı kaydır"
                       >
                         ▲ Yukarı
@@ -1817,7 +1822,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                             yPct: nextY
                           });
                         }}
-                        className="px-2 py-0.5 rounded bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer"
+                        className="px-2.5 py-1 rounded-lg bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer shadow-sm transition"
                         title="Sahne kesitini biraz aşağı kaydır"
                       >
                         ▼ Aşağı
