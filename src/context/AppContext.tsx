@@ -245,6 +245,7 @@ interface AppContextType {
   // Comments
   comments: Comment[];
   addComment: (comment: Omit<Comment, 'id' | 'date' | 'likes' | 'dislikes'>) => void;
+  editComment: (commentId: string, newText: string, newIsSpoiler?: boolean, newImageUrl?: string) => void;
   toggleLikeComment: (commentId: string, userId: string) => void;
   toggleDislikeComment: (commentId: string, userId: string) => void;
   deleteComment: (commentId: string) => void;
@@ -3386,6 +3387,36 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }).catch(() => {});
   };
 
+  const editComment = (commentId: string, newText: string, newIsSpoiler?: boolean, newImageUrl?: string) => {
+    setComments(prev => {
+      let updatedComment: Comment | null = null;
+      const next = prev.map(c => {
+        if (c.id !== commentId) return c;
+        updatedComment = {
+          ...c,
+          text: newText,
+          isSpoiler: newIsSpoiler !== undefined ? newIsSpoiler : c.isSpoiler,
+          imageUrl: newImageUrl !== undefined ? newImageUrl : c.imageUrl
+        };
+        return updatedComment;
+      });
+
+      try {
+        localStorage.setItem('mk_comments', JSON.stringify(next));
+      } catch (e) {}
+
+      if (updatedComment) {
+        fetch('/api/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedComment),
+          keepalive: true
+        }).catch(() => {});
+      }
+      return next;
+    });
+  };
+
   const toggleLikeComment = (commentId: string, userId: string) => {
     setComments(prev => {
       let updatedComment: Comment | null = null;
@@ -3975,6 +4006,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
         resetNovelSettings,
         comments,
         addComment,
+        editComment,
         toggleLikeComment,
         toggleDislikeComment,
         deleteComment,

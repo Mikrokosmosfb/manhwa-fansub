@@ -24,7 +24,9 @@ import {
   Sparkles,
   Check,
   Zap,
-  Quote
+  Quote,
+  Edit3,
+  X
 } from 'lucide-react';
 import { Comment, isAuthorizedAdmin } from '../types';
 import { TeamBadges } from './TeamBadge';
@@ -60,6 +62,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const {
     comments,
     addComment,
+    editComment,
     toggleLikeComment,
     toggleDislikeComment,
     deleteComment,
@@ -95,6 +98,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   const [reportReason, setReportReason] = useState('Küfür / Hakaret / Zorbalık');
   const [reportDetails, setReportDetails] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+
+  // Edit Comment State
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const [editingIsSpoiler, setEditingIsSpoiler] = useState(false);
+  const [editingImageUrl, setEditingImageUrl] = useState('');
 
   // Series / Chapter 5-Emoji Reactions State
   const reactionTargetKey = chapterId ? `${seriesId}:${chapterId}` : `${seriesId}:series`;
@@ -813,22 +822,42 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             </button>
 
             {isOwner && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (replyTo?.id === c.id) setReplyTo(null);
-                  deleteComment(c.id);
-                  showToast?.({
-                    title: 'Yorum Silindi 🗑️',
-                    message: 'Yorum hem ekrandan hem de veritabanından kalıcı olarak kaldırıldı.',
-                    type: 'info'
-                  });
-                }}
-                className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
-                title="Sil"
-              >
-                <Trash2 size={15} />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (editingCommentId === c.id) {
+                      setEditingCommentId(null);
+                    } else {
+                      setEditingCommentId(c.id);
+                      setEditingText(c.text);
+                      setEditingIsSpoiler(Boolean(c.isSpoiler));
+                      setEditingImageUrl(c.imageUrl || '');
+                    }
+                  }}
+                  className="text-gray-400 hover:text-purple-300 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                  title="Yorumu Düzenle"
+                >
+                  <Edit3 size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (replyTo?.id === c.id) setReplyTo(null);
+                    deleteComment(c.id);
+                    showToast?.({
+                      title: 'Yorum Silindi 🗑️',
+                      message: 'Yorum hem ekrandan hem de veritabanından kalıcı olarak kaldırıldı.',
+                      type: 'info'
+                    });
+                  }}
+                  className="text-gray-400 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                  title="Sil"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -914,49 +943,112 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           );
         })()}
 
-        {/* Comment Text with Spoiler Blur & Word Wrapping */}
-        <div className={`relative z-10 ${
-          themeStyle?.cardBgImageUrl && !c.isSpoiler
-            ? 'bg-black/75 p-3 rounded-xl border border-white/10 shadow-md'
-            : ''
-        }`}>
-          {c.isSpoiler ? (
-            <div
-              onClick={() => toggleSpoilerReveal(c.id)}
-              className="relative p-3.5 rounded-xl border border-purple-500/40 bg-purple-950/40 backdrop-blur-md cursor-pointer group hover:bg-purple-950/60 transition"
-            >
-              {!isRevealed ? (
-                <div className="flex items-center justify-center gap-2 py-1.5 text-xs font-bold text-amber-300">
-                  <EyeOff size={16} />
-                  <span>Spoiler İçerik! Görmek için tıklayın</span>
-                </div>
-              ) : (
-                <div>
-                  <div className="text-xs sm:text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">
-                    {renderCommentContent(c.text)}
-                  </div>
-                  <div className="text-[10px] text-amber-400/90 mt-2 flex items-center gap-1 font-semibold">
-                    <Eye size={12} />
-                    <span>Spoiler Göründü</span>
-                  </div>
-                </div>
-              )}
+        {/* Comment Text OR Inline Editing Box */}
+        {editingCommentId === c.id ? (
+          <div className="relative z-10 p-3.5 bg-black/90 border border-purple-500/50 rounded-2xl space-y-3 shadow-2xl animate-fadeIn">
+            <div className="flex items-center justify-between text-xs font-bold text-purple-300">
+              <span className="flex items-center gap-1.5">
+                <Edit3 size={14} className="text-fuchsia-400" /> Yorumu Düzenle
+              </span>
+              <button
+                type="button"
+                onClick={() => setEditingCommentId(null)}
+                className="text-gray-400 hover:text-white transition cursor-pointer"
+              >
+                <X size={15} />
+              </button>
             </div>
-          ) : (
-            <div className="text-xs sm:text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">
-              {renderCommentContent(c.text)}
-            </div>
-          )}
 
-          {/* Attached image if any */}
-          {c.imageUrl && (
-            <img
-              src={c.imageUrl}
-              alt="Görsel Eki"
-              className="mt-3 rounded-xl max-h-52 object-cover border border-purple-500/20 shadow-md"
+            <textarea
+              value={editingText}
+              onChange={e => setEditingText(e.target.value)}
+              rows={3}
+              className="w-full bg-gray-900/90 border border-purple-500/30 focus:border-fuchsia-400 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none transition resize-none placeholder:text-gray-500"
+              placeholder="Yorumunuzu güncelleyin..."
             />
-          )}
-        </div>
+
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <label className="flex items-center gap-2 text-xs text-gray-300 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={editingIsSpoiler}
+                  onChange={e => setEditingIsSpoiler(e.target.checked)}
+                  className="rounded border-purple-500/40 text-purple-600 focus:ring-purple-500"
+                />
+                <span>Spoiler İçerik</span>
+              </label>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingCommentId(null)}
+                  className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gray-800 hover:bg-gray-700 text-gray-300 transition cursor-pointer"
+                >
+                  İptal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!editingText.trim()) return;
+                    editComment(c.id, editingText.trim(), editingIsSpoiler, editingImageUrl.trim());
+                    setEditingCommentId(null);
+                    showToast?.({
+                      title: 'Yorum Güncellendi ✨',
+                      message: 'Değişiklikleriniz kaydedildi.',
+                      type: 'success'
+                    });
+                  }}
+                  className="px-4 py-1.5 rounded-xl text-xs font-extrabold bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white shadow-lg transition active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Check size={14} /> Kaydet
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className={`relative z-10 ${
+            themeStyle?.cardBgImageUrl && !c.isSpoiler
+              ? 'bg-black/75 p-3 rounded-xl border border-white/10 shadow-md'
+              : ''
+          }`}>
+            {c.isSpoiler ? (
+              <div
+                onClick={() => toggleSpoilerReveal(c.id)}
+                className="relative p-3.5 rounded-xl border border-purple-500/40 bg-purple-950/40 backdrop-blur-md cursor-pointer group hover:bg-purple-950/60 transition"
+              >
+                {!isRevealed ? (
+                  <div className="flex items-center justify-center gap-2 py-1.5 text-xs font-bold text-amber-300">
+                    <EyeOff size={16} />
+                    <span>Spoiler İçerik! Görmek için tıklayın</span>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="text-xs sm:text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">
+                      {renderCommentContent(c.text)}
+                    </div>
+                    <div className="text-[10px] text-amber-400/90 mt-2 flex items-center gap-1 font-semibold">
+                      <Eye size={12} />
+                      <span>Spoiler Göründü</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs sm:text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words break-all [overflow-wrap:anywhere]">
+                {renderCommentContent(c.text)}
+              </div>
+            )}
+
+            {/* Attached image if any */}
+            {c.imageUrl && (
+              <img
+                src={c.imageUrl}
+                alt="Görsel Eki"
+                className="mt-3 rounded-xl max-h-52 object-cover border border-purple-500/20 shadow-md"
+              />
+            )}
+          </div>
+        )}
 
         {/* Action Bar (Likes / Dislikes / Reply) - Clean Symmetrical Footer */}
         <div className={`relative z-10 flex items-center justify-between ${
