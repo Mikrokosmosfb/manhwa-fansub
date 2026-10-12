@@ -8,6 +8,7 @@ import {
   ShopItem,
   CoinPackage
 } from '../data/shopData';
+import { isAuthorizedAdmin } from '../types';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { ChibiThemeCreator } from './ChibiThemeCreator';
 import { DailyRewardModal } from './DailyRewardModal';
@@ -583,145 +584,150 @@ export const ShopContent: React.FC = () => {
       {/* PRODUCT / COIN PACKAGES VIEW */}
       {activeCategory === 'buy_coins' ? (
         <div className="space-y-4">
-          {/* Lemon Squeezy Hero Header Banner */}
-          <div className="bg-gradient-to-r from-yellow-950/90 via-amber-950/80 to-purple-950/90 border border-amber-500/50 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xl">🍋</span>
-                <h3 className="text-base font-black text-white flex items-center gap-2">
-                  Lemon Squeezy Global Bakiye Yükleme Altyapısı
-                </h3>
-                <span className="bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
-                  Global Aktif
-                </span>
-              </div>
-              <p className="text-xs text-amber-200/90 leading-relaxed max-w-xl">
-                Dünyanın her yerinden <strong className="text-white">Visa, MasterCard, Apple Pay, Google Pay</strong> ile Amerikan Doları ($ USD) üzerinden anında Cosmo-Puan satın alabilirsiniz.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setShowLemonGuide(!showLemonGuide)}
-                className="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
-              >
-                <HelpCircle size={14} className="text-amber-400" />
-                <span>Lemon Squeezy Kurulum Rehberi</span>
-                {showLemonGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowLemonSettings(!showLemonSettings)}
-                className="p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 hover:text-white rounded-xl transition"
-                title="Lemon Squeezy Mağaza Linkini Ayarla"
-              >
-                <Settings size={15} />
-              </button>
-            </div>
-          </div>
-
-          {/* Lemon Squeezy Settings Panel */}
-          {showLemonSettings && (
-            <form onSubmit={handleSaveLemonUrl} className="bg-gray-900/90 border border-amber-500/40 p-4 rounded-2xl space-y-3 animate-fadeIn">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
-                  <Settings size={14} /> Lemon Squeezy Paket Ödeme Linkleri (Yönetici)
-                </h4>
-                <span className="text-[10px] text-gray-400">Her paket için kopyaladığınız Lemon Squeezy linkini yapıştırın</span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                {COIN_PACKAGES.map(pkg => (
-                  <div key={pkg.id} className="space-y-1 bg-black/40 p-2.5 rounded-xl border border-gray-800">
-                    <label className="text-[11px] font-extrabold text-white flex items-center justify-between">
-                      <span>{pkg.iconEmoji} {pkg.name}</span>
-                      <span className="text-amber-400">${pkg.priceUSD} USD</span>
-                    </label>
-                    <input
-                      type="url"
-                      placeholder={`https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/...`}
-                      value={(inputPackageUrls || {})[pkg.id] || ''}
-                      onChange={e => setInputPackageUrls({ ...(inputPackageUrls || {}), [pkg.id]: e.target.value })}
-                      className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-[11px] placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
-                    />
+          {/* Lemon Squeezy Admin Banner & Settings (Visible ONLY to aseleliyeva77@gmail.com and mikrokosmosfansub@gmail.com) */}
+          {isAuthorizedAdmin(user?.email) && (
+            <>
+              {/* Lemon Squeezy Hero Header Banner */}
+              <div className="bg-gradient-to-r from-yellow-950/90 via-amber-950/80 to-purple-950/90 border border-amber-500/50 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-xl">🍋</span>
+                    <h3 className="text-base font-black text-white flex items-center gap-2">
+                      Lemon Squeezy Global Bakiye Yükleme Altyapısı
+                    </h3>
+                    <span className="bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
+                      Yönetici Paneli
+                    </span>
                   </div>
-                ))}
-              </div>
-
-              <div className="bg-amber-950/30 border border-amber-500/30 p-2.5 rounded-xl space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black text-amber-300">🔗 Otomatik Bakiye Yükleme Webhook Adresi:</span>
-                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">Aktif & Hazır</span>
-                </div>
-                <p className="text-[10px] text-gray-300">
-                  Lemon Squeezy panelinde <strong>Settings &gt; Webhooks</strong> alanına bu adresi ekleyip <code>order_created</code> olayını seçerseniz, kullanıcılar ödeme yapar yapmaz coinleri anında hesaplarına aktarılır:
-                </p>
-                <code className="block bg-black/60 p-1.5 rounded text-[11px] text-amber-200 select-all font-mono border border-gray-800">
-                  https://mikrokosmosfansub.com/api/webhooks/lemon-squeezy
-                </code>
-              </div>
-
-              <div className="flex justify-end pt-1">
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl transition cursor-pointer shadow-md"
-                >
-                  Tüm Paket Linklerini Kaydet
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Lemon Squeezy Guide Accordion */}
-          {showLemonGuide && (
-            <div className="bg-gray-950/95 border border-purple-500/40 p-4 sm:p-5 rounded-2xl space-y-3 text-xs leading-relaxed animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
-                <h4 className="text-sm font-black text-white flex items-center gap-2">
-                  <Globe size={16} className="text-amber-400" /> Lemon Squeezy İle Dolar ($) Ödemesi Alma Rehberi
-                </h4>
-                <button onClick={() => setShowLemonGuide(false)} className="text-gray-400 hover:text-white text-xs font-bold">Kapat ✕</button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
-                  <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-emerald-400" /> 1. Ücretsiz Hesap Açın
-                  </h5>
-                  <p className="text-gray-300 text-[11px]">
-                    <a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold underline">lemonsqueezy.com</a> adresine giderek ücretsiz bir mağaza hesabı oluşturun.
+                  <p className="text-xs text-amber-200/90 leading-relaxed max-w-xl">
+                    Dünyanın her yerinden <strong className="text-white">Visa, MasterCard, Apple Pay, Google Pay</strong> ile Amerikan Doları ($ USD) üzerinden anında Cosmo-Puan satın alabilirsiniz.
                   </p>
                 </div>
 
-                <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
-                  <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <CreditCard size={14} className="text-cyan-400" /> 2. Ürün / Paket Ekleyin
-                  </h5>
-                  <p className="text-gray-300 text-[11px]">
-                    "Products" kısmından Cosmo-Puan paketlerinizi ($0.99, $2.99 vb. fiyatlarla) Dolar cinsinden tanımlayın.
-                  </p>
-                </div>
+                <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowLemonGuide(!showLemonGuide)}
+                    className="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+                  >
+                    <HelpCircle size={14} className="text-amber-400" />
+                    <span>Lemon Squeezy Kurulum Rehberi</span>
+                    {showLemonGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </button>
 
-                <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
-                  <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-purple-400" /> 3. Checkout Linkini Alın
-                  </h5>
-                  <p className="text-gray-300 text-[11px]">
-                    Ürününüzün "Share / Copy Checkout Link" bağlantısını kopyalayın.
-                  </p>
-                </div>
-
-                <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
-                  <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <ArrowRight size={14} className="text-amber-400" /> 4. Sitedeki Ayarlara Yapıştırın
-                  </h5>
-                  <p className="text-gray-300 text-[11px]">
-                    Sitede "Çark / Ayarlar" simgesine tıklayarak kopyaladığınız Lemon Squeezy bağlantısını kaydedin.
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowLemonSettings(!showLemonSettings)}
+                    className="p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 hover:text-white rounded-xl transition"
+                    title="Lemon Squeezy Mağaza Linkini Ayarla"
+                  >
+                    <Settings size={15} />
+                  </button>
                 </div>
               </div>
-            </div>
+
+              {/* Lemon Squeezy Settings Panel */}
+              {showLemonSettings && (
+                <form onSubmit={handleSaveLemonUrl} className="bg-gray-900/90 border border-amber-500/40 p-4 rounded-2xl space-y-3 animate-fadeIn">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
+                      <Settings size={14} /> Lemon Squeezy Paket Ödeme Linkleri (Yönetici)
+                    </h4>
+                    <span className="text-[10px] text-gray-400">Her paket için kopyaladığınız Lemon Squeezy linkini yapıştırın</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {COIN_PACKAGES.map(pkg => (
+                      <div key={pkg.id} className="space-y-1 bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                        <label className="text-[11px] font-extrabold text-white flex items-center justify-between">
+                          <span>{pkg.iconEmoji} {pkg.name}</span>
+                          <span className="text-amber-400">${pkg.priceUSD} USD</span>
+                        </label>
+                        <input
+                          type="url"
+                          placeholder={`https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/...`}
+                          value={(inputPackageUrls || {})[pkg.id] || ''}
+                          onChange={e => setInputPackageUrls({ ...(inputPackageUrls || {}), [pkg.id]: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-[11px] placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-amber-950/30 border border-amber-500/30 p-2.5 rounded-xl space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-black text-amber-300">🔗 Otomatik Bakiye Yükleme Webhook Adresi:</span>
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">Aktif & Hazır</span>
+                    </div>
+                    <p className="text-[10px] text-gray-300">
+                      Lemon Squeezy panelinde <strong>Settings &gt; Webhooks</strong> alanına bu adresi ekleyip <code>order_created</code> olayını seçerseniz, kullanıcılar ödeme yapar yapmaz coinleri anında hesaplarına aktarılır:
+                    </p>
+                    <code className="block bg-black/60 p-1.5 rounded text-[11px] text-amber-200 select-all font-mono border border-gray-800">
+                      https://mikrokosmosfansub.com/api/webhooks/lemon-squeezy
+                    </code>
+                  </div>
+
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="submit"
+                      className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl transition cursor-pointer shadow-md"
+                    >
+                      Tüm Paket Linklerini Kaydet
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* Lemon Squeezy Guide Accordion */}
+              {showLemonGuide && (
+                <div className="bg-gray-950/95 border border-purple-500/40 p-4 sm:p-5 rounded-2xl space-y-3 text-xs leading-relaxed animate-fadeIn">
+                  <div className="flex items-center justify-between border-b border-gray-800 pb-2">
+                    <h4 className="text-sm font-black text-white flex items-center gap-2">
+                      <Globe size={16} className="text-amber-400" /> Lemon Squeezy İle Dolar ($) Ödemesi Alma Rehberi
+                    </h4>
+                    <button onClick={() => setShowLemonGuide(false)} className="text-gray-400 hover:text-white text-xs font-bold">Kapat ✕</button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                    <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
+                      <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
+                        <ShieldCheck size={14} className="text-emerald-400" /> 1. Ücretsiz Hesap Açın
+                      </h5>
+                      <p className="text-gray-300 text-[11px]">
+                        <a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold underline">lemonsqueezy.com</a> adresine giderek ücretsiz bir mağaza hesabı oluşturun.
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
+                      <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
+                        <CreditCard size={14} className="text-cyan-400" /> 2. Ürün / Paket Ekleyin
+                      </h5>
+                      <p className="text-gray-300 text-[11px]">
+                        "Products" kısmından Cosmo-Puan paketlerinizi ($0.99, $2.99 vb. fiyatlarla) Dolar cinsinden tanımlayın.
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
+                      <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
+                        <CheckCircle2 size={14} className="text-purple-400" /> 3. Checkout Linkini Alın
+                      </h5>
+                      <p className="text-gray-300 text-[11px]">
+                        Ürününüzün "Share / Copy Checkout Link" bağlantısını kopyalayın.
+                      </p>
+                    </div>
+
+                    <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
+                      <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
+                        <ArrowRight size={14} className="text-amber-400" /> 4. Sitedeki Ayarlara Yapıştırın
+                      </h5>
+                      <p className="text-gray-300 text-[11px]">
+                        Sitede "Çark / Ayarlar" simgesine tıklayarak kopyaladığınız Lemon Squeezy bağlantısını kaydedin.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* COIN PACKAGES GRID */}
