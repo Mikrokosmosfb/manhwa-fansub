@@ -819,6 +819,14 @@ ${seriesXml}
                   );
                 `),
                 db.prepare(`
+                  CREATE TABLE IF NOT EXISTS deleted_users (
+                    uid TEXT PRIMARY KEY,
+                    email TEXT,
+                    name TEXT,
+                    deleted_at TEXT
+                  );
+                `),
+                db.prepare(`
                   CREATE TABLE IF NOT EXISTS user_library (
                     uid TEXT PRIMARY KEY,
                     name TEXT,
@@ -916,6 +924,14 @@ ${seriesXml}
                     last_login TEXT,
                     bio TEXT,
                     role TEXT DEFAULT 'user'
+                  );
+                `),
+                usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS deleted_users (
+                    uid TEXT PRIMARY KEY,
+                    email TEXT,
+                    name TEXT,
+                    deleted_at TEXT
                   );
                 `),
                 usersDb.prepare(`
@@ -2786,16 +2802,39 @@ ${seriesXml}
           // DELETE USER ACCOUNT & ALL DATA
           if (path.startsWith('/api/auth/delete-account') && request.method === 'POST') {
             const body = await request.json() as any;
-            const { uid, email } = body;
+            const { uid, email, name } = body;
 
-            if (!uid) {
+            if (!uid && !email) {
               return new Response(JSON.stringify({ success: false, message: 'Silinecek üye Kimliği (UID) bulunamadı.' }), { status: 400, headers });
             }
 
             if (userDb) {
               try {
-                await userDb.prepare("DELETE FROM users WHERE uid = ? OR email = ?").bind(uid, email || '').run();
-                await userDb.prepare("DELETE FROM user_library WHERE uid = ?").bind(uid).run();
+                let userName = name || '';
+                let userEmail = email || '';
+                try {
+                  const { results } = await userDb.prepare("SELECT uid, email, name FROM users WHERE uid = ? OR email = ?").bind(uid || '', email || '').all();
+                  if (results && results.length > 0) {
+                    const row: any = results[0];
+                    if (row.name) userName = row.name;
+                    if (row.email) userEmail = row.email;
+                  }
+                } catch (selErr) {}
+
+                await userDb.prepare("DELETE FROM users WHERE uid = ? OR email = ?").bind(uid || '', email || '').run();
+                await userDb.prepare("DELETE FROM user_library WHERE uid = ?").bind(uid || '').run();
+
+                // Persist to deleted_users table
+                await userDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS deleted_users (
+                    uid TEXT PRIMARY KEY,
+                    email TEXT,
+                    name TEXT,
+                    deleted_at TEXT
+                  )
+                `).run().catch(() => {});
+                await userDb.prepare("INSERT OR REPLACE INTO deleted_users (uid, email, name, deleted_at) VALUES (?, ?, ?, ?)")
+                  .bind(uid || `del-${Date.now()}`, userEmail, userName, new Date().toISOString()).run().catch(() => {});
               } catch (e) {
                 console.error('Error deleting user from USERS_DB:', e);
               }
@@ -2805,6 +2844,48 @@ ${seriesXml}
               success: true,
               message: 'Hesabınız Mikrokosmos Fansub veritabanından başarıyla silindi.'
             }), { headers });
+          }
+
+          // GET OR ADD DELETED USERS LIST (For Top 50 Leaderboard filtering & Admin tracking)
+          if (path.startsWith('/api/auth/deleted-users')) {
+            if (request.method === 'GET') {
+              if (userDb) {
+                try {
+                  await userDb.prepare(`
+                    CREATE TABLE IF NOT EXISTS deleted_users (
+                      uid TEXT PRIMARY KEY,
+                      email TEXT,
+                      name TEXT,
+                      deleted_at TEXT
+                    )
+                  `).run().catch(() => {});
+                  const { results } = await userDb.prepare("SELECT uid, email, name, deleted_at FROM deleted_users").all();
+                  return new Response(JSON.stringify({ success: true, deletedUsers: results || [] }), { headers });
+                } catch (e) {}
+              }
+              return new Response(JSON.stringify({ success: true, deletedUsers: [] }), { headers });
+            }
+
+            if (request.method === 'POST') {
+              const body = await request.json() as any;
+              const { uid, email, name } = body;
+              if (userDb && (uid || email || name)) {
+                try {
+                  await userDb.prepare(`
+                    CREATE TABLE IF NOT EXISTS deleted_users (
+                      uid TEXT PRIMARY KEY,
+                      email TEXT,
+                      name TEXT,
+                      deleted_at TEXT
+                    )
+                  `).run().catch(() => {});
+                  await userDb.prepare("INSERT OR REPLACE INTO deleted_users (uid, email, name, deleted_at) VALUES (?, ?, ?, ?)")
+                    .bind(uid || `del-${Date.now()}`, email || '', name || '', new Date().toISOString()).run();
+                  return new Response(JSON.stringify({ success: true, message: 'Kullanıcı silinenler listesine eklendi.' }), { headers });
+                } catch (e) {}
+              }
+              return new Response(JSON.stringify({ success: false }), { headers });
+            }
           }
 
           // LOGIN USER (SECURE PASSWORD CHECK WITH HASH VERIFICATION)

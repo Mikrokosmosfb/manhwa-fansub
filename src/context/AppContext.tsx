@@ -318,6 +318,8 @@ interface AppContextType {
   grantCosmoPoints: (targetEmail: string, amount: number, mode?: 'add' | 'subtract' | 'set', note?: string, sendNotification?: boolean) => Promise<{ success: boolean; message: string; previousBalance?: number; newBalance?: number }>;
   deletePointGrantLog: (logId: string) => Promise<void>;
   registerKnownUser: (userRecord: Partial<KnownUserRecord>) => void;
+  deletedUsers: { uid?: string; email?: string; name?: string }[];
+  markUserAsDeleted: (uid?: string, email?: string, name?: string) => Promise<void>;
 
   // Site Branding (Logo, Favicon & Brand)
   siteBranding: SiteBrandingSettings;
@@ -1361,6 +1363,110 @@ const deleteShopItemAndStyle = (itemId: string) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user: userRecord })
+    }).catch(() => {});
+  };
+
+  // ===================== DELETED USERS TRACKING (TOP 50 LEADERBOARD EXCLUSION) =====================
+  const INITIAL_DELETED_USERS: { uid?: string; email?: string; name?: string }[] = [
+    { name: 'aseleliyeva1234' },
+    { email: 'aseleliyeva1234@gmail.com' },
+    { name: 'Aysel Eliyeva' }, // Eski silinen hesap
+  ];
+
+  const [deletedUsers, setDeletedUsers] = useState<{ uid?: string; email?: string; name?: string }[]>(() => {
+    const saved = localStorage.getItem('mk_deleted_users_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const merged = [...parsed];
+          for (const init of INITIAL_DELETED_USERS) {
+            if (!merged.some(m => (init.name && m.name === init.name) || (init.email && m.email === init.email))) {
+              merged.push(init);
+            }
+          }
+          return merged;
+        }
+      } catch (e) {}
+    }
+    return INITIAL_DELETED_USERS;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mk_deleted_users_v1', JSON.stringify(deletedUsers));
+    } catch (e) {}
+  }, [deletedUsers]);
+
+  // Fetch deleted users list from Cloudflare D1
+  useEffect(() => {
+    safeFetchJson<{ success: boolean; deletedUsers: any[] }>('/api/auth/deleted-users')
+      .then(data => {
+        if (data && data.success && Array.isArray(data.deletedUsers)) {
+          setDeletedUsers(prev => {
+            const merged = [...prev];
+            for (const d of data.deletedUsers) {
+              if (!merged.some(m => (d.uid && m.uid === d.uid) || (d.email && m.email && m.email.toLowerCase() === d.email.toLowerCase()) || (d.name && m.name && m.name.toLowerCase() === d.name.toLowerCase()))) {
+                merged.push(d);
+              }
+            }
+            return merged;
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Prune knownUsers when deletedUsers changes so deleted accounts don't linger in registry
+  useEffect(() => {
+    if (deletedUsers.length > 0 && knownUsers.length > 0) {
+      setKnownUsers(prev => {
+        const filtered = prev.filter(k => {
+          const cleanEmail = k.email?.toLowerCase().trim();
+          const cleanName = k.name?.toLowerCase().trim();
+          for (const d of deletedUsers) {
+            if (d.uid && k.uid === d.uid) return false;
+            if (d.email && cleanEmail && d.email.toLowerCase().trim() === cleanEmail) return false;
+            if (d.name && cleanName && d.name.toLowerCase().trim() === cleanName) return false;
+          }
+          return true;
+        });
+        if (filtered.length !== prev.length) {
+          try {
+            localStorage.setItem('mk_known_users_registry', JSON.stringify(filtered));
+          } catch(e) {}
+          return filtered;
+        }
+        return prev;
+      });
+    }
+  }, [deletedUsers]);
+
+  const markUserAsDeleted = async (uid?: string, email?: string, name?: string) => {
+    if (!uid && !email && !name) return;
+    const cleanEmail = email ? email.toLowerCase().trim() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    setDeletedUsers(prev => {
+      if (prev.some(d => (uid && d.uid === uid) || (cleanEmail && d.email === cleanEmail) || (cleanName && d.name === cleanName))) {
+        return prev;
+      }
+      return [...prev, { uid, email: cleanEmail, name: cleanName }];
+    });
+
+    // Remove immediately from knownUsers registry
+    setKnownUsers(prev => prev.filter(k => {
+      if (uid && k.uid === uid) return false;
+      if (cleanEmail && k.email?.toLowerCase() === cleanEmail) return false;
+      if (cleanName && k.name?.toLowerCase() === cleanName) return false;
+      return true;
+    }));
+
+    // Post to backend D1 deleted_users table
+    safeFetchJson('/api/auth/deleted-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, email: cleanEmail, name: cleanName })
     }).catch(() => {});
   };
 
@@ -3525,13 +3631,21 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   const deleteAccount = async (): Promise<{ success: boolean; message?: string }> => {
     if (!user) return { success: false, message: 'Giriş yapılmamış.' };
+    const curUid = user.uid;
+    const curEmail = user.email;
+    const curName = user.name;
+
+    // Immediately mark as deleted locally and remove from known users
+    await markUserAsDeleted(curUid, curEmail, curName);
+
     try {
       const data = await safeFetchJson<any>('/api/auth/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          uid: user.uid,
-          email: user.email
+          uid: curUid,
+          email: curEmail,
+          name: curName
         })
       });
       
@@ -3690,6 +3804,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
         grantCosmoPoints,
         deletePointGrantLog,
         registerKnownUser,
+        deletedUsers,
+        markUserAsDeleted,
         followedSeriesIds,
         isFollowingSeries,
         toggleFollowSeries,

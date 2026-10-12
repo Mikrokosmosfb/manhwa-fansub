@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, Award, MessageSquare, Heart, Sparkles, Search, Crown, Flame, UserCheck, ChevronRight, Zap, ShieldCheck } from 'lucide-react';
+import { Trophy, Award, MessageSquare, Heart, Sparkles, Search, Crown, Flame, UserCheck, ChevronRight, Zap, ShieldCheck, UserX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserAvatar } from './UserAvatar';
+import { isAuthorizedAdmin } from '../types';
 
 interface RankedUser {
   uid: string;
@@ -18,10 +19,40 @@ interface RankedUser {
 }
 
 export const LeaderboardView: React.FC = () => {
-  const { comments, knownUsers, user, openPublicProfile, setView } = useApp();
+  const { comments, knownUsers, user, openPublicProfile, setView, deletedUsers, markUserAsDeleted } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Calculate Real-Time Top 50 Users based on Actual Comments
+  // Helper function to check if a user record belongs to a deleted account
+  const isDeletedAccount = (uid?: string, email?: string, name?: string): boolean => {
+    const cleanUid = uid?.trim();
+    const cleanEmail = email?.toLowerCase().trim();
+    const cleanName = name?.toLowerCase().trim();
+
+    // The currently active logged-in user is never considered deleted
+    if (user) {
+      if (cleanUid && user.uid === cleanUid) return false;
+      if (cleanEmail && user.email?.toLowerCase().trim() === cleanEmail) return false;
+      if (cleanName && user.name.toLowerCase().trim() === cleanName) return false;
+    }
+
+    // Check against global deletedUsers list
+    if (deletedUsers && Array.isArray(deletedUsers)) {
+      for (const d of deletedUsers) {
+        if (cleanUid && d.uid && d.uid === cleanUid) return true;
+        if (cleanEmail && d.email && d.email.toLowerCase().trim() === cleanEmail) return true;
+        if (cleanName && d.name && d.name.toLowerCase().trim() === cleanName) return true;
+      }
+    }
+
+    // Known historical deleted accounts requested by user (aseleliyeva1234, eski Aysel Eliyeva, vb.)
+    if (cleanName === 'aseleliyeva1234') return true;
+    if (cleanEmail === 'aseleliyeva1234@gmail.com') return true;
+    if (cleanName === 'aysel eliyeva' && (!user || user.name.toLowerCase().trim() !== 'aysel eliyeva')) return true;
+
+    return false;
+  };
+
+  // Calculate Real-Time Top 50 Users based on Actual Comments (Excluding deleted accounts)
   const leaderboardData = useMemo(() => {
     const userStatsMap: Record<string, {
       uid: string;
@@ -36,14 +67,24 @@ export const LeaderboardView: React.FC = () => {
       coins?: number;
     }> = {};
 
-    // 1. Process all real comments posted in the application
+    // 1. Process all real comments posted in the application (Skip comments from deleted accounts)
     comments.forEach(c => {
-      const key = c.userId || c.userName || 'guest';
+      // Sadece burada görünmesin: Silinen hesapların yorumları sıralamaya dahil edilmez
+      if (isDeletedAccount(c.userId, undefined, c.userName)) {
+        return;
+      }
+
+      // Aktif giriş yapmış kullanıcı ise yorumlarını doğrudan kendi hesabına bağla
+      let key = c.userId || c.userName || 'guest';
+      if (user && (c.userId === user.uid || (c.userName && c.userName.toLowerCase().trim() === user.name.toLowerCase().trim()))) {
+        key = user.uid;
+      }
+
       if (!userStatsMap[key]) {
         userStatsMap[key] = {
-          uid: c.userId || `u-${c.userName}`,
-          name: c.userName || 'Okuyucu',
-          avatar: c.userAvatar || '',
+          uid: key,
+          name: (user && key === user.uid) ? user.name : (c.userName || 'Okuyucu'),
+          avatar: (user && key === user.uid) ? user.avatar : (c.userAvatar || ''),
           commentCount: 0,
           totalLikesReceived: 0,
           equippedBadge: c.equippedBadge,
@@ -62,10 +103,27 @@ export const LeaderboardView: React.FC = () => {
       if (c.equippedFrame) userStatsMap[key].equippedFrame = c.equippedFrame;
     });
 
-    // 2. Blend with registered knownUsers (if any user registered but hasn't commented yet, they still exist)
+    // 2. Blend with registered knownUsers (Skip deleted accounts)
     if (knownUsers && Array.isArray(knownUsers)) {
       knownUsers.forEach(ku => {
-        const key = ku.uid || ku.email || ku.name;
+        if (isDeletedAccount(ku.uid, ku.email, ku.name)) {
+          return;
+        }
+
+        let key = ku.uid || ku.email || ku.name;
+        if (user && (ku.uid === user.uid || (ku.email && ku.email.toLowerCase().trim() === user.email?.toLowerCase().trim()) || (ku.name && ku.name.toLowerCase().trim() === user.name.toLowerCase().trim()))) {
+          key = user.uid;
+        }
+
+        // Aynı isimde aktif yorumları olan bir kullanıcı varsa hayalet çift satır oluşturma, puanlarını eşleştir
+        const cleanKuName = (ku.name || '').toLowerCase().trim();
+        const existingByName = Object.values(userStatsMap).find(u => u.name.toLowerCase().trim() === cleanKuName);
+        if (existingByName && existingByName.uid !== key) {
+          existingByName.coins = Math.max(existingByName.coins || 0, ku.coins || 0);
+          if (!existingByName.email && ku.email) existingByName.email = ku.email;
+          return;
+        }
+
         if (!userStatsMap[key]) {
           userStatsMap[key] = {
             uid: ku.uid,
@@ -90,7 +148,7 @@ export const LeaderboardView: React.FC = () => {
 
     // 3. Ensure currently logged-in user is present in stats
     if (user) {
-      const key = user.uid || user.email || user.name;
+      const key = user.uid;
       if (!userStatsMap[key]) {
         userStatsMap[key] = {
           uid: user.uid,
@@ -115,9 +173,9 @@ export const LeaderboardView: React.FC = () => {
       }
     }
 
-    // Convert map to array
+    // Convert map to array and strictly filter out any deleted accounts
     const sortedList = Object.values(userStatsMap)
-      .filter(u => u.name && u.name.trim() !== '')
+      .filter(u => u.name && u.name.trim() !== '' && !isDeletedAccount(u.uid, u.email, u.name))
       .sort((a, b) => {
         // Sort by comment count descending
         if (b.commentCount !== a.commentCount) {
@@ -136,7 +194,7 @@ export const LeaderboardView: React.FC = () => {
       ...item,
       rank: index + 1,
     }));
-  }, [comments, knownUsers, user]);
+  }, [comments, knownUsers, user, deletedUsers]);
 
   // Filtered by Search Term
   const filteredUsers = useMemo(() => {
@@ -554,6 +612,22 @@ export const LeaderboardView: React.FC = () => {
                           ★ {item.coins.toLocaleString('tr-TR')}
                         </div>
                       </div>
+                    )}
+
+                    {isAuthorizedAdmin(user?.email) && !isCurrentUser && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm(`"${item.name}" hesabını silinen olarak işaretleyip Top 50 sıralamasından kaldırmak istiyor musunuz?\n\n(Not: Kullanıcının bölümlerdeki yorumları silinmez, sadece sıralama listesinden gizlenir.)`)) {
+                            markUserAsDeleted(item.uid, item.email, item.name);
+                          }
+                        }}
+                        className="p-2 rounded-xl bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white transition border border-red-500/30 opacity-60 hover:opacity-100 cursor-pointer"
+                        title="Bu hesabı silinen olarak işaretle ve sıralamadan gizle"
+                      >
+                        <UserX className="w-4 h-4" />
+                      </button>
                     )}
 
                     <div className="p-2 rounded-xl bg-purple-950/60 group-hover:bg-purple-600 text-purple-300 group-hover:text-white transition border border-purple-500/20">
