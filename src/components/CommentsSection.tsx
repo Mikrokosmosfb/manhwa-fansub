@@ -784,7 +784,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                 title="Bu sahnenin bölümdeki tam noktasına gitmek için tıklayın"
               >
                 {sceneImgUrl && (
-                  <div className="relative w-28 sm:w-32 h-40 sm:h-48 rounded-xl overflow-hidden border border-purple-400/60 bg-black shrink-0 shadow-lg">
+                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 aspect-square rounded-2xl overflow-hidden border border-purple-400/60 bg-black shrink-0 shadow-lg">
                     <img
                       src={sceneImgUrl}
                       alt={`${imgIdx + 1}. Şerit Sahnesi`}

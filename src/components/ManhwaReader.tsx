@@ -1782,19 +1782,19 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </div>
 
             {/* Cropped Scene Slice Preview + Vertical Position Fine-Tuning Controls */}
-            <div className="px-4 py-3 bg-purple-950/30 border-b border-purple-500/20 space-y-2.5 shrink-0">
+            <div className="px-4 py-3 bg-purple-950/30 border-b border-purple-500/20 space-y-2 shrink-0 flex flex-col items-center">
               {chapterImageUrls[activeScene.imgIdx] && !isIframeUrl(chapterImageUrls[activeScene.imgIdx]) && (
-                <div className="relative w-full max-w-sm mx-auto h-44 sm:h-52 rounded-2xl overflow-hidden border border-purple-400/50 bg-black shadow-xl">
+                <div className="relative w-64 h-64 sm:w-72 sm:h-72 aspect-square mx-auto rounded-3xl overflow-hidden border-2 border-purple-400/60 bg-black shadow-2xl">
                   <img
                     src={chapterImageUrls[activeScene.imgIdx]}
                     alt="Seçili Sahne Kesiti"
                     referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-all duration-200"
+                    className="w-full h-full object-cover transition-all duration-200 select-none"
                     style={{ objectPosition: `50% ${activeScene.yPct}%` }}
                   />
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-3 py-2 flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-amber-300">
-                      📸 Seçili Sahne Kesiti (%{activeScene.yPct})
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-3 py-2 flex items-center justify-between text-[11px]">
+                    <span className="font-black text-amber-300 drop-shadow text-xs">
+                      📸 %{activeScene.yPct}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button
@@ -1807,7 +1807,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                             yPct: nextY
                           });
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer shadow-sm transition"
+                        className="px-2.5 py-1 rounded-xl bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/20 cursor-pointer shadow-sm transition active:scale-95"
                         title="Sahne kesitini biraz yukarı kaydır"
                       >
                         ▲ Yukarı
@@ -1822,7 +1822,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                             yPct: nextY
                           });
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer shadow-sm transition"
+                        className="px-2.5 py-1 rounded-xl bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/20 cursor-pointer shadow-sm transition active:scale-95"
                         title="Sahne kesitini biraz aşağı kaydır"
                       >
                         ▼ Aşağı
