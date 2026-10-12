@@ -39,6 +39,8 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Settings,
   CalendarDays,
   AlertOctagon,
@@ -73,6 +75,21 @@ export const ShopContent: React.FC = () => {
   const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [showDailyCalendar, setShowDailyCalendar] = useState(false);
+
+  const categoryScrollRef = React.useRef<HTMLDivElement>(null);
+
+  const handleCategoryScroll = (direction: 'left' | 'right') => {
+    if (categoryScrollRef.current) {
+      const amount = direction === 'left' ? -260 : 260;
+      categoryScrollRef.current.scrollBy({ left: amount, behavior: 'smooth' });
+    }
+  };
+
+  const handleCategoryWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    if (categoryScrollRef.current && e.deltaY !== 0) {
+      categoryScrollRef.current.scrollLeft += e.deltaY;
+    }
+  };
 
   // Lemon Squeezy Store link settings
   const [showLemonGuide, setShowLemonGuide] = useState(false);
@@ -321,83 +338,107 @@ export const ShopContent: React.FC = () => {
         onClose={() => setShowDailyCalendar(false)}
       />
 
-      {/* CATEGORY TABS */}
-      <div className="flex items-center gap-2 py-1 overflow-x-auto no-scrollbar">
+      {/* CATEGORY TABS WITH DESKTOP FLEX-WRAP & MOBILE/DESKTOP ARROW + WHEEL SCROLLING */}
+      <div className="relative flex items-center group/cat-scroll">
         <button
-          onClick={() => setActiveCategory('buy_coins')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'buy_coins'
-              ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black shadow-lg shadow-amber-500/30 ring-2 ring-amber-300 animate-pulse'
-              : 'bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/90'
-          }`}
+          type="button"
+          onClick={() => handleCategoryScroll('left')}
+          className="hidden sm:flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-lg z-10 mr-1.5 cursor-pointer"
+          title="Sola Kaydır"
         >
-          <CreditCard size={15} /> 💳 Cosmo-Puan Yükle (Lemon Squeezy)
+          <ChevronLeft size={16} />
         </button>
 
-        <button
-          onClick={() => setActiveCategory('theme_photo')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'theme_photo'
-              ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-500 text-black shadow-md shadow-rose-500/30 ring-1 ring-amber-300'
-              : 'bg-gray-900 text-rose-300 hover:text-white hover:bg-gray-800'
-          }`}
+        <div
+          ref={categoryScrollRef}
+          onWheel={handleCategoryWheel}
+          className="flex items-center gap-2 py-1 overflow-x-auto sm:flex-wrap no-scrollbar scroll-smooth flex-1"
         >
-          🖼️ Görsel Fonlu Temalar ({itemsList.filter(i => i.category === 'theme' && i.themeType === 'photo').length})
-        </button>
+          <button
+            onClick={() => setActiveCategory('buy_coins')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'buy_coins'
+                ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-black shadow-lg shadow-amber-500/30 ring-2 ring-amber-300 animate-pulse'
+                : 'bg-amber-950/80 text-amber-300 border border-amber-500/40 hover:bg-amber-900/90'
+            }`}
+          >
+            <CreditCard size={15} /> 💳 Cosmo-Puan Yükle (Lemon Squeezy)
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('theme_photo')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'theme_photo'
+                ? 'bg-gradient-to-r from-rose-500 via-amber-400 to-rose-500 text-black shadow-md shadow-rose-500/30 ring-1 ring-amber-300'
+                : 'bg-gray-900 text-rose-300 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            🖼️ Görsel Fonlu Temalar ({itemsList.filter(i => i.category === 'theme' && i.themeType === 'photo').length})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('theme_aura')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'theme_aura'
+                ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300'
+                : 'bg-gray-900 text-amber-300 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Palette size={14} /> ✨ Aura Temaları ({itemsList.filter(i => i.category === 'theme' && i.themeType !== 'photo').length})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('frame')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'frame'
+                ? 'bg-gradient-to-r from-cyan-500 via-blue-400 to-indigo-500 text-black shadow-md shadow-cyan-500/20 ring-1 ring-cyan-300'
+                : 'bg-gray-900 text-cyan-300 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Sparkles size={14} /> 🖼️ Profil Çerçeveleri ({itemsList.filter(i => i.category === 'frame').length})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('badge')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'badge'
+                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Crown size={14} /> ⭐ VIP Unvanlar ({itemsList.filter(i => i.category === 'badge').length})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('emoji_pack')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'emoji_pack'
+                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <Smile size={14} /> 🎨 Chibi Çıkartmaları ({itemsList.filter(i => i.category === 'emoji_pack').length})
+          </button>
+
+          <button
+            onClick={() => setActiveCategory('all')}
+            className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition cursor-pointer ${
+              activeCategory === 'all'
+                ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
+                : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
+            }`}
+          >
+            <ShoppingBag size={14} /> Tüm Ürünler ({itemsList.length})
+          </button>
+        </div>
 
         <button
-          onClick={() => setActiveCategory('theme_aura')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'theme_aura'
-              ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 text-black shadow-md shadow-amber-500/20 ring-1 ring-amber-300'
-              : 'bg-gray-900 text-amber-300 hover:text-white hover:bg-gray-800'
-          }`}
+          type="button"
+          onClick={() => handleCategoryScroll('right')}
+          className="hidden sm:flex shrink-0 p-2 rounded-xl bg-gray-900/90 border border-amber-500/30 hover:bg-amber-500 hover:text-black text-amber-300 transition shadow-lg z-10 ml-1.5 cursor-pointer"
+          title="Sağa Kaydır"
         >
-          <Palette size={14} /> ✨ Aura Temaları ({itemsList.filter(i => i.category === 'theme' && i.themeType !== 'photo').length})
-        </button>
-
-        <button
-          onClick={() => setActiveCategory('frame')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'frame'
-              ? 'bg-gradient-to-r from-cyan-500 via-blue-400 to-indigo-500 text-black shadow-md shadow-cyan-500/20 ring-1 ring-cyan-300'
-              : 'bg-gray-900 text-cyan-300 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <Sparkles size={14} /> 🖼️ Profil Çerçeveleri ({itemsList.filter(i => i.category === 'frame').length})
-        </button>
-
-        <button
-          onClick={() => setActiveCategory('badge')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'badge'
-              ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-              : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <Crown size={14} /> ⭐ VIP Unvanlar ({itemsList.filter(i => i.category === 'badge').length})
-        </button>
-
-        <button
-          onClick={() => setActiveCategory('emoji_pack')}
-          className={`px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'emoji_pack'
-              ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-              : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <Smile size={14} /> 🎨 Chibi Çıkartmaları ({itemsList.filter(i => i.category === 'emoji_pack').length})
-        </button>
-
-        <button
-          onClick={() => setActiveCategory('all')}
-          className={`px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 whitespace-nowrap transition ${
-            activeCategory === 'all'
-              ? 'bg-amber-500 text-black shadow-md shadow-amber-500/20'
-              : 'bg-gray-900 text-gray-400 hover:text-white hover:bg-gray-800'
-          }`}
-        >
-          <ShoppingBag size={14} /> Tüm Ürünler ({itemsList.length})
+          <ChevronRight size={16} />
         </button>
       </div>
 
