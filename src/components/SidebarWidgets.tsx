@@ -269,10 +269,12 @@ export const RecentCommentsWidget: React.FC = () => {
             const baseChapterId = isParaComment ? rawChapterId.split('__p__')[0] : rawChapterId;
             const paraKey = isParaComment ? rawChapterId.split('__p__')[1] : '';
             const matchedChapter = matchedSeries?.chapters.find(ch => ch.id === baseChapterId);
+            const isSceneComment = paraKey.startsWith('scene_');
+            const subCommentLabel = isSceneComment ? 'Sahne Yorumu' : 'Satır Yorumu';
             const chapterLabel = matchedChapter
-              ? `Bölüm ${matchedChapter.number}${isParaComment ? ' • Satır Yorumu' : ''}`
+              ? `Bölüm ${matchedChapter.number}${isParaComment ? ` • ${subCommentLabel}` : ''}`
               : baseChapterId
-              ? (isParaComment ? 'Satır Yorumu' : 'Bölüm Yorumu')
+              ? (isParaComment ? subCommentLabel : 'Bölüm Yorumu')
               : 'Genel Yorum';
 
             const handleClick = () => {

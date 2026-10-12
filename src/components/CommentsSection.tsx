@@ -44,6 +44,7 @@ interface CommentsSectionProps {
   chapterId?: string;
   isParagraphMode?: boolean;
   paragraphLookup?: Record<string, { text: string; index: number }>;
+  sceneImages?: string[];
   onJumpToParagraph?: (paraKey: string) => void;
 }
 
@@ -52,6 +53,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   chapterId,
   isParagraphMode = false,
   paragraphLookup,
+  sceneImages,
   onJumpToParagraph
 }) => {
   const {
@@ -765,9 +767,54 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
           </div>
         )}
 
-        {/* Quoted Paragraph Box (Shown in Bottom Chapter Comments for Inline Paragraph Comments) */}
+        {/* Quoted Paragraph / Manhwa Scene Box (Shown in Bottom Chapter Comments) */}
         {!isParagraphMode && !isReply && String(c.chapterId || '').includes('__p__') && (() => {
           const paraKey = String(c.chapterId || '').split('__p__')[1] || '';
+          if (paraKey.startsWith('scene_')) {
+            const parts = paraKey.split('_');
+            const imgIdx = Math.max(0, parseInt(parts[1] || '0', 10) || 0);
+            const yPct = Math.min(100, Math.max(0, parseInt(parts[2] || '50', 10) || 0));
+            const sceneImgUrl = sceneImages && sceneImages[imgIdx] ? sceneImages[imgIdx] : '';
+
+            return (
+              <button
+                type="button"
+                onClick={() => onJumpToParagraph?.(paraKey)}
+                className="relative z-10 w-full text-left group/quote rounded-xl bg-purple-950/75 hover:bg-purple-900/80 border border-purple-400/40 hover:border-amber-400/70 p-2.5 transition-all duration-200 flex items-center gap-3 shadow-inner cursor-pointer"
+                title="Bu sahnenin bölümdeki tam noktasına gitmek için tıklayın"
+              >
+                {sceneImgUrl && (
+                  <div className="relative w-24 h-14 sm:w-28 sm:h-16 rounded-lg overflow-hidden border border-purple-400/50 bg-black shrink-0 shadow-md">
+                    <img
+                      src={sceneImgUrl}
+                      alt={`${imgIdx + 1}. Şerit Sahnesi`}
+                      referrerPolicy="no-referrer"
+                      loading="lazy"
+                      className="w-full h-full object-cover group-hover/quote:scale-105 transition-transform duration-300"
+                      style={{ objectPosition: `50% ${yPct}%` }}
+                    />
+                    <span className="absolute bottom-0.5 right-1 bg-black/80 text-amber-300 text-[9px] font-mono font-bold px-1 rounded">
+                      %{yPct}
+                    </span>
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                      <span>📸 {imgIdx + 1}. Şerit • %{yPct} Sahne Alıntısı</span>
+                    </span>
+                    <span className="text-[10px] font-bold text-purple-200 group-hover/quote:text-amber-200 flex items-center gap-1 shrink-0">
+                      <span>Sahneye Git ↑</span>
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-100/90 leading-snug">
+                    Bölüm görselinin bu sahnesine yapılan konum duyarlı okuyucu yorumu
+                  </p>
+                </div>
+              </button>
+            );
+          }
+
           const paraInfo = paraKey && paragraphLookup ? paragraphLookup[paraKey] : undefined;
           return (
             <button

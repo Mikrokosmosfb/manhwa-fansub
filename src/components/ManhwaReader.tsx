@@ -34,7 +34,9 @@ import {
   CheckCircle2,
   MousePointerClick,
   Eye,
-  EyeOff
+  EyeOff,
+  MessageCircle,
+  X
 } from 'lucide-react';
 import { CommentsSection } from './CommentsSection';
 
@@ -83,7 +85,8 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     user,
     openAuthModal,
     loginWithGoogle,
-    adSettings
+    adSettings,
+    comments
   } = useApp();
   const series = seriesList.find(s => s.id === seriesId);
 
@@ -131,6 +134,39 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [isPrivacyBlurred, setIsPrivacyBlurred] = useState(false);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Position-aware Manhwa Scene Comments State (Toggleable like Novel paragraph comments)
+  const [showSceneComments, setShowSceneComments] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('mk_show_scene_comments');
+      return saved ? saved !== 'false' : true;
+    } catch {
+      return true;
+    }
+  });
+  const [activeScene, setActiveScene] = useState<{
+    key: string;
+    imgIdx: number;
+    yPct: number;
+  } | null>(null);
+  const [highlightedScene, setHighlightedScene] = useState<{
+    key: string;
+    imgIdx: number;
+    yPct: number;
+  } | null>(null);
+
+  const toggleSceneCommentsVisibility = () => {
+    setShowSceneComments(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('mk_show_scene_comments', String(next));
+      } catch {}
+      if (!next) {
+        setActiveScene(null);
+      }
+      return next;
+    });
+  };
 
   const togglePrivacyBlur = () => {
     setIsPrivacyBlurred(prev => {
@@ -212,6 +248,130 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   }, [currentChapter]);
 
   const totalPages = chapterImageUrls.length;
+
+  // Reset active scene drawer when switching chapters
+  useEffect(() => {
+    setActiveScene(null);
+    setHighlightedScene(null);
+  }, [seriesId, chapterId]);
+
+  // Map of sceneKey ("scene_<imgIdx>_<yPct>") -> comment count in this chapter
+  const sceneCommentCounts = useMemo(() => {
+    const map: Record<string, number> = {};
+    if (!currentChapter) return map;
+    const prefix = `${currentChapter.id}__p__`;
+    for (const c of comments) {
+      if (c.seriesId === seriesId && c.chapterId && c.chapterId.startsWith(prefix)) {
+        const sKey = c.chapterId.slice(prefix.length);
+        if (sKey.startsWith('scene_')) {
+          map[sKey] = (map[sKey] || 0) + 1;
+        }
+      }
+    }
+    return map;
+  }, [comments, seriesId, currentChapter?.id]);
+
+  const totalSceneCommentsInChapter = useMemo(() => {
+    return Object.values(sceneCommentCounts).reduce((sum, n) => sum + n, 0);
+  }, [sceneCommentCounts]);
+
+  // Group active scene pins per image index: imgIdx -> Array<{ key, yPct, count }>
+  const scenePinsByImage = useMemo(() => {
+    const byImg: Record<number, { key: string; yPct: number; count: number }[]> = {};
+    for (const [sKey, count] of Object.entries(sceneCommentCounts)) {
+      if (count <= 0) continue;
+      const parts = sKey.split('_');
+      const imgIdx = parseInt(parts[1] || '0', 10);
+      const yPct = parseInt(parts[2] || '50', 10);
+      if (!isNaN(imgIdx) && !isNaN(yPct)) {
+        if (!byImg[imgIdx]) byImg[imgIdx] = [];
+        byImg[imgIdx].push({ key: sKey, yPct, count });
+      }
+    }
+    return byImg;
+  }, [sceneCommentCounts]);
+
+  // Open scene comment drawer for the exact slice currently visible in the center of the user's screen
+  const handleCommentCurrentViewportScene = () => {
+    if (readerMode === 'manga') {
+      const key = `scene_${currentPage}_50`;
+      setActiveScene({ key, imgIdx: currentPage, yPct: 50 });
+      return;
+    }
+
+    const viewportFocusY = window.innerHeight * 0.45;
+    const stripNodes = Array.from(document.querySelectorAll('[data-manhwa-img-idx]')) as HTMLElement[];
+    if (stripNodes.length === 0) return;
+
+    let bestNode = stripNodes[0];
+    let minDistance = Infinity;
+
+    for (const node of stripNodes) {
+      const rect = node.getBoundingClientRect();
+      if (rect.top <= viewportFocusY && rect.bottom >= viewportFocusY) {
+        bestNode = node;
+        minDistance = 0;
+        break;
+      }
+      const dist = Math.min(Math.abs(rect.top - viewportFocusY), Math.abs(rect.bottom - viewportFocusY));
+      if (dist < minDistance) {
+        minDistance = dist;
+        bestNode = node;
+      }
+    }
+
+    const imgIdx = Math.max(0, parseInt(bestNode.getAttribute('data-manhwa-img-idx') || '0', 10) || 0);
+    const rect = bestNode.getBoundingClientRect();
+    const rawRatio = rect.height > 0 ? (viewportFocusY - rect.top) / rect.height : 0.5;
+    const clampedPct = Math.min(95, Math.max(5, Math.round((rawRatio * 100) / 5) * 5));
+    const key = `scene_${imgIdx}_${clampedPct}`;
+    setActiveScene({ key, imgIdx, yPct: clampedPct });
+  };
+
+  // Smoothly scroll to the exact pixel height of a 16,000px strip when "Sahneye Git ↑" is clicked
+  const handleJumpToScene = (sceneKey: string) => {
+    if (!sceneKey.startsWith('scene_')) return;
+    const parts = sceneKey.split('_');
+    const imgIdx = Math.max(0, parseInt(parts[1] || '0', 10) || 0);
+    const yPct = Math.min(95, Math.max(0, parseInt(parts[2] || '50', 10) || 0));
+
+    setShowSceneComments(true);
+    setHighlightedScene({ key: sceneKey, imgIdx, yPct });
+
+    if (readerMode === 'manga') {
+      setCurrentPage(imgIdx);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      const el = document.querySelector(`[data-manhwa-img-idx="${imgIdx}"]`) as HTMLElement | null;
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        const targetDocY = window.scrollY + rect.top + rect.height * (yPct / 100) - window.innerHeight * 0.35;
+        window.scrollTo({ top: Math.max(0, targetDocY), behavior: 'smooth' });
+      }
+    }
+
+    setTimeout(() => {
+      setHighlightedScene(prev => (prev?.key === sceneKey ? null : prev));
+    }, 5000);
+  };
+
+  // Auto-open and scroll to scene if navigated from Homepage Recent Comments
+  useEffect(() => {
+    if (chapterImageUrls.length === 0) return;
+    try {
+      const targetKey = sessionStorage.getItem('mk_open_para_key');
+      if (!targetKey || !targetKey.startsWith('scene_')) return;
+      sessionStorage.removeItem('mk_open_para_key');
+      const parts = targetKey.split('_');
+      const imgIdx = Math.max(0, parseInt(parts[1] || '0', 10) || 0);
+      const yPct = Math.min(95, Math.max(0, parseInt(parts[2] || '50', 10) || 0));
+      setShowSceneComments(true);
+      setActiveScene({ key: targetKey, imgIdx, yPct });
+      setTimeout(() => {
+        handleJumpToScene(targetKey);
+      }, 200);
+    } catch {}
+  }, [chapterImageUrls.length, seriesId, chapterId]);
 
   const handleGoToNextChapter = () => {
     if (nextChapter && series && currentChapter) {
@@ -550,8 +710,30 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </button>
           </div>
 
-          {/* Settings, Privacy Blur (Desktop Only) & Prev / Next Header Buttons */}
+          {/* Settings, Scene Comments Toggle, Privacy Blur (Desktop Only) & Prev / Next Header Buttons */}
           <div className="flex items-center gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={toggleSceneCommentsVisibility}
+              className={`h-9 px-2 sm:h-10 sm:px-2.5 rounded-xl border flex items-center justify-center gap-1 transition cursor-pointer ${
+                showSceneComments
+                  ? 'bg-purple-600/20 dark:bg-purple-900/70 border-purple-400/50 text-purple-800 dark:text-purple-100'
+                  : 'bg-slate-100 dark:bg-gray-900/60 border-slate-300 dark:border-gray-800 text-slate-400 dark:text-gray-500'
+              }`}
+              title={
+                showSceneComments
+                  ? 'Sahne Yorum Balonları Açık (Gizlemek için tıkla)'
+                  : 'Sahne Yorum Balonları Gizli (Açmak için tıkla)'
+              }
+            >
+              <MessageCircle size={15} className={showSceneComments ? 'text-purple-600 dark:text-amber-300' : ''} />
+              {totalSceneCommentsInChapter > 0 && (
+                <span className="text-[10px] font-extrabold font-mono">
+                  {totalSceneCommentsInChapter}
+                </span>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={togglePrivacyBlur}
@@ -1046,6 +1228,21 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
               <button
                 type="button"
+                onClick={toggleSceneCommentsVisibility}
+                className={`py-1.5 px-2.5 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 border transition cursor-pointer ${
+                  showSceneComments
+                    ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                    : 'bg-gray-950 border-purple-500/30 text-gray-300 hover:text-white'
+                }`}
+              >
+                <MessageCircle size={13} />
+                <span className="truncate">
+                  {showSceneComments ? 'Sahne Yorumları ✓' : 'Sahne Yorumları Gizli'}
+                </span>
+              </button>
+
+              <button
+                type="button"
                 onClick={togglePrivacyBlur}
                 className={`py-1.5 px-2.5 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 border transition cursor-pointer ${
                   isPrivacyBlurred
@@ -1060,6 +1257,24 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
           </div>
         </>
+      )}
+
+      {/* Floating Right-Edge "Comment on Current Scene" Trigger (Only visible when showSceneComments is ON) */}
+      {showSceneComments && !isPrivacyBlurred && chapterImageUrls.length > 0 && (
+        <button
+          type="button"
+          onClick={handleCommentCurrentViewportScene}
+          className="fixed right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-40 bg-purple-950/90 hover:bg-purple-600 text-amber-300 hover:text-white border border-purple-400/50 px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-2xl shadow-[0_6px_24px_rgba(88,28,135,0.55)] backdrop-blur-md flex flex-col items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
+          title="Şu an ekranda baktığınız sahneye yorum bırakın veya yapılan yorumları görün"
+        >
+          <MessageCircle size={18} className="text-amber-300 group-hover:text-white transition" />
+          <span className="text-[9px] sm:text-[10px] font-black tracking-tight leading-none">
+            Sahneye
+          </span>
+          <span className="text-[9px] sm:text-[10px] font-black tracking-tight leading-none text-purple-200 group-hover:text-white">
+            Yorum
+          </span>
+        </button>
       )}
 
       {/* Mobile-Only Bottom-Left Panic Blur Button (Parallel with right-side ScrollToTopBottom at bottom-20) */}
@@ -1223,8 +1438,10 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                 className="w-full flex flex-col items-center"
                 style={{ gap: `${manhwaSettings.pageGap}px` }}
               >
-                {chapterImageUrls.map((imgUrl, idx) => (
-                  isIframeUrl(imgUrl) ? (
+                {chapterImageUrls.map((imgUrl, idx) => {
+                  const stripPins = scenePinsByImage[idx] || [];
+                  const isHighlightedStrip = highlightedScene?.imgIdx === idx;
+                  return isIframeUrl(imgUrl) ? (
                     <iframe
                       key={idx}
                       src={imgUrl}
@@ -1233,24 +1450,71 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                       allowFullScreen
                     />
                   ) : (
-                    <img
+                    <div
                       key={idx}
-                      src={getOptimizedImageUrl(imgUrl, getImageOptimizationConfig())}
-                      alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
-                      className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
-                      loading={idx < 2 ? 'eager' : 'lazy'}
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        const target = e.currentTarget;
-                        if (target.src !== imgUrl) {
-                          target.src = imgUrl;
-                        }
-                      }}
-                      style={{ display: 'block', margin: 0, padding: 0 }}
-                    />
-                  )
-                ))}
+                      data-manhwa-img-idx={idx}
+                      className="relative w-full group/strip"
+                    >
+                      <img
+                        src={getOptimizedImageUrl(imgUrl, getImageOptimizationConfig())}
+                        alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
+                        className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
+                        loading={idx < 2 ? 'eager' : 'lazy'}
+                        decoding="async"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          if (target.src !== imgUrl) {
+                            target.src = imgUrl;
+                          }
+                        }}
+                        style={{ display: 'block', margin: 0, padding: 0 }}
+                      />
+
+                      {/* Highlight band when jumping to a specific scene slice on a 16,000px strip */}
+                      {isHighlightedStrip && highlightedScene && (
+                        <div
+                          style={{ top: `${highlightedScene.yPct}%` }}
+                          className="absolute inset-x-0 -translate-y-1/2 h-36 sm:h-48 border-y-2 border-amber-400 bg-amber-400/15 pointer-events-none z-20 animate-pulse flex items-start justify-end p-2"
+                        >
+                          <span className="bg-black/85 text-amber-300 border border-amber-400/60 text-[10px] font-black px-2.5 py-1 rounded-full shadow-lg">
+                            📸 Seçilen Sahne (%{highlightedScene.yPct})
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Existing Scene Comment Pins along the vertical height of the strip */}
+                      {showSceneComments &&
+                        stripPins.map(pin => {
+                          const isSelectedPin = activeScene?.key === pin.key;
+                          return (
+                            <button
+                              key={pin.key}
+                              type="button"
+                              style={{ top: `${pin.yPct}%` }}
+                              onClick={e => {
+                                e.stopPropagation();
+                                setActiveScene(prev =>
+                                  prev?.key === pin.key
+                                    ? null
+                                    : { key: pin.key, imgIdx: idx, yPct: pin.yPct }
+                                );
+                              }}
+                              className={`absolute right-2 sm:right-3 -translate-y-1/2 z-20 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold shadow-xl transition-all cursor-pointer select-none ${
+                                isSelectedPin
+                                  ? 'bg-amber-500 text-black ring-2 ring-white scale-110'
+                                  : 'bg-purple-950/90 hover:bg-purple-600 text-amber-300 hover:text-white border border-purple-400/60 hover:scale-105'
+                              }`}
+                              title={`Bu sahnedeki ${pin.count} yorumu gör / yorum yaz`}
+                            >
+                              <MessageCircle size={13} className="fill-current" />
+                              <span>{pin.count}</span>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="p-12 text-center text-slate-500 dark:text-gray-400 bg-white dark:bg-gray-900 rounded-2xl border border-purple-200 dark:border-purple-500/20 w-full shadow-sm">
@@ -1460,10 +1724,126 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
         {/* Comments */}
         <div className="mt-8">
-          <CommentsSection seriesId={series.id} chapterId={currentChapter.id} />
+          <CommentsSection
+            seriesId={series.id}
+            chapterId={currentChapter.id}
+            sceneImages={chapterImageUrls}
+            onJumpToParagraph={handleJumpToScene}
+          />
         </div>
 
       </div>
+
+      {/* POSITION-AWARE MANHWA SCENE COMMENTS DRAWER (Desktop Right Sidebar / Mobile Bottom Sheet) */}
+      {activeScene && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[65] md:bg-black/25"
+            onClick={() => setActiveScene(null)}
+          />
+
+          <aside
+            className="fixed z-[70] inset-x-0 bottom-0 max-h-[85dvh] rounded-t-3xl md:inset-y-0 md:right-0 md:left-auto md:w-[430px] lg:w-[470px] md:max-h-none md:rounded-none bg-gray-950/98 border-t md:border-t-0 md:border-l border-purple-500/40 shadow-2xl flex flex-col text-white animate-fadeIn"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Mobile Drag Handle */}
+            <div className="md:hidden w-12 h-1.5 bg-gray-700 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
+
+            {/* Drawer Header */}
+            <div className="px-4 py-3.5 border-b border-gray-800/90 flex items-center justify-between gap-3 bg-gray-900/70 shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-purple-600/20 border border-purple-500/40 flex items-center justify-center text-amber-300 shrink-0">
+                  <MessageCircle size={16} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm sm:text-base font-black text-white truncate">
+                      Sahne Yorumları
+                    </h3>
+                    <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-200 border border-purple-500/30 font-mono">
+                      {sceneCommentCounts[activeScene.key] || 0}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-400 truncate">
+                    {activeScene.imgIdx + 1}. Şerit • %{activeScene.yPct} Yüksekliği
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveScene(null)}
+                className="p-2 rounded-xl bg-gray-800/80 hover:bg-gray-700 text-gray-300 hover:text-white transition cursor-pointer shrink-0"
+                title="Kapat"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Cropped Scene Slice Preview + Vertical Position Fine-Tuning Controls */}
+            <div className="px-4 py-3 bg-purple-950/30 border-b border-purple-500/20 space-y-2.5 shrink-0">
+              {chapterImageUrls[activeScene.imgIdx] && !isIframeUrl(chapterImageUrls[activeScene.imgIdx]) && (
+                <div className="relative w-full h-28 sm:h-32 rounded-2xl overflow-hidden border border-purple-400/40 bg-black shadow-inner">
+                  <img
+                    src={chapterImageUrls[activeScene.imgIdx]}
+                    alt="Seçili Sahne Kesiti"
+                    referrerPolicy="no-referrer"
+                    className="w-full h-full object-cover transition-all duration-200"
+                    style={{ objectPosition: `50% ${activeScene.yPct}%` }}
+                  />
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-1.5 flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-amber-300">
+                      📸 Seçili Sahne Kesiti (%{activeScene.yPct})
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextY = Math.max(0, activeScene.yPct - 5);
+                          setActiveScene({
+                            key: `scene_${activeScene.imgIdx}_${nextY}`,
+                            imgIdx: activeScene.imgIdx,
+                            yPct: nextY
+                          });
+                        }}
+                        className="px-2 py-0.5 rounded bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer"
+                        title="Sahne kesitini biraz yukarı kaydır"
+                      >
+                        ▲ Yukarı
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextY = Math.min(95, activeScene.yPct + 5);
+                          setActiveScene({
+                            key: `scene_${activeScene.imgIdx}_${nextY}`,
+                            imgIdx: activeScene.imgIdx,
+                            yPct: nextY
+                          });
+                        }}
+                        className="px-2 py-0.5 rounded bg-gray-900/90 hover:bg-purple-700 text-gray-200 font-bold text-[10px] border border-white/15 cursor-pointer"
+                        title="Sahne kesitini biraz aşağı kaydır"
+                      >
+                        ▼ Aşağı
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Scrollable Scene Comments Body (Full Chibis, Themes, Replies, Likes) */}
+            <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <CommentsSection
+                key={`${currentChapter.id}__p__${activeScene.key}`}
+                seriesId={series.id}
+                chapterId={`${currentChapter.id}__p__${activeScene.key}`}
+                isParagraphMode={true}
+              />
+            </div>
+          </aside>
+        </>
+      )}
 
     </div>
   );
