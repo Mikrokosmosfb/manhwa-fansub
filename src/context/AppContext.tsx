@@ -3156,11 +3156,6 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
       return trimReadingHistory(newState, 500);
     });
-
-    // Award +1 Cosmo-Puan for finishing 100% of chapter
-    if (user) {
-      earnPoints(1, 'Bölüm Okuma');
-    }
   };
 
   const toggleChapterRead = (
@@ -3373,11 +3368,6 @@ const deleteShopItemAndStyle = (itemId: string) => {
       } catch (e) {}
       return next;
     });
-
-    // Award +10 Cosmo-Puan for posting a comment
-    if (user) {
-      earnPoints(10, 'Yorum Yapma');
-    }
 
     fetch('/api/comments', {
       method: 'POST',
