@@ -73,6 +73,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     showToast,
     openPublicProfile,
     getUserTeamRoles,
+    knownUsers,
     themeStyles: appThemeStyles,
     shopItems: appShopItems
   } = useApp();
@@ -624,9 +625,62 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
     // Theme & Badge Styling Resolution
     const themeStyle = c.equippedTheme ? themeMap[c.equippedTheme] : null;
-    const commentBadges: string[] = c.equippedBadges && c.equippedBadges.length > 0
-      ? c.equippedBadges.slice(0, 5)
-      : (c.equippedBadge ? [c.equippedBadge] : []);
+
+    // Resolve all active / purchased badges for this comment author
+    const getCommentAuthorBadges = (): string[] => {
+      let rawBadges: string[] = [];
+
+      const isCurrentUser = Boolean(
+        user && (
+          (c.userId && c.userId === user.uid) ||
+          (c.userName && user.name && c.userName.toLowerCase().trim() === user.name.toLowerCase().trim()) ||
+          (c.userId && user.email && c.userId.toLowerCase().trim() === user.email.toLowerCase().trim())
+        )
+      );
+
+      if (isCurrentUser && user) {
+        const equipped = user.equippedBadges && user.equippedBadges.length > 0
+          ? user.equippedBadges
+          : (user.equippedBadge ? [user.equippedBadge] : []);
+        
+        const normalizedInv = normalizeShopInventory(
+          [user.inventory, user.unlockedEmojiPacks],
+          user.inventoryExpiresAt
+        ).activeInventory;
+
+        const purchasedBadgeItems = currentShopItems.filter(
+          i => i.category === 'badge' && normalizedInv.includes(i.id)
+        );
+        const purchasedBadgeTexts = purchasedBadgeItems.map(i => i.badgeText || i.name);
+
+        rawBadges = Array.from(new Set([...equipped, ...purchasedBadgeTexts]));
+      } else {
+        const matchedKnown = (knownUsers || []).find(k => 
+          (c.userId && k.uid === c.userId) ||
+          (c.userName && k.name && k.name.toLowerCase().trim() === c.userName.toLowerCase().trim()) ||
+          (c.userId && k.email && c.userId.toLowerCase().trim() === k.email.toLowerCase().trim())
+        );
+
+        if (matchedKnown) {
+          const knownEquipped = matchedKnown.equippedBadges && matchedKnown.equippedBadges.length > 0
+            ? matchedKnown.equippedBadges
+            : (matchedKnown.equippedBadge ? [matchedKnown.equippedBadge] : []);
+          rawBadges = knownEquipped;
+        }
+
+        if (rawBadges.length === 0) {
+          if (c.equippedBadges && c.equippedBadges.length > 0) {
+            rawBadges = c.equippedBadges;
+          } else if (c.equippedBadge) {
+            rawBadges = [c.equippedBadge];
+          }
+        }
+      }
+
+      return Array.from(new Set(rawBadges));
+    };
+
+    const authorBadges = getCommentAuthorBadges();
 
     return (
       <div
@@ -683,7 +737,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         )}
 
         {/* Symmetrical User Info Header */}
-        <div className="relative z-10 flex items-center justify-between gap-2.5">
+        <div className="relative z-10 flex items-start justify-between gap-2.5">
           <div className="flex items-center min-w-0 gap-2 sm:gap-3">
             {/* Avatar Container in foreground */}
             <div className="relative z-20 shrink-0 cursor-pointer hover:opacity-80 transition" onClick={() => c.userId && openPublicProfile(c.userId)}>
@@ -696,11 +750,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               />
             </div>
 
-            {/* Name and Date Container */}
+            {/* Name, Team Roles and Purchased Badges Container */}
             <div
-              className={`min-w-0 ${
+              className={`min-w-0 flex-1 ${
                 themeStyle?.cardBgImageUrl
-                  ? 'bg-black/75 px-3 py-1 rounded-xl border border-white/10 shadow-sm z-10 inline-flex items-center'
+                  ? 'bg-black/75 px-3 py-1.5 rounded-xl border border-white/10 shadow-sm z-10'
                   : 'pl-1'
               }`}
             >
@@ -711,6 +765,26 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                 <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
                 <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
               </div>
+
+              {/* Purchased Badges / Etiketler (Displayed directly under the username) */}
+              {authorBadges.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  {authorBadges.map((badgeText, idx) => {
+                    const badgeItem = currentShopItems.find(
+                      i => i.category === 'badge' && (i.badgeText === badgeText || i.name === badgeText)
+                    );
+                    const badgeClass = badgeItem?.badgeStyle || (themeStyle ? themeStyle.badgeBgClass : 'bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-600 text-black font-extrabold');
+                    return (
+                      <span
+                        key={idx}
+                        className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-black tracking-tight shadow-sm border border-white/10 flex items-center gap-1 whitespace-nowrap leading-tight transition-transform hover:scale-105 ${badgeClass}`}
+                      >
+                        <span>{badgeText}</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -755,26 +829,6 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             )}
           </div>
         </div>
-
-        {/* VIP Titles / Badges (Compact, full-width responsive horizontal row) */}
-        {commentBadges.length > 0 && (
-          <div className="relative z-10 flex items-center gap-1.5 flex-wrap pt-0.5">
-            {commentBadges.map((badgeText, idx) => {
-              const badgeItem = currentShopItems.find(
-                i => i.category === 'badge' && (i.badgeText === badgeText || i.name === badgeText)
-              );
-              const badgeClass = badgeItem?.badgeStyle || (themeStyle ? themeStyle.badgeBgClass : 'bg-gradient-to-r from-amber-400 to-yellow-500 text-black');
-              return (
-                <span
-                  key={idx}
-                  className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-bold tracking-tight shadow-sm border border-white/10 flex items-center gap-1 whitespace-nowrap leading-tight transition-transform hover:scale-105 ${badgeClass}`}
-                >
-                  <span>{badgeText}</span>
-                </span>
-              );
-            })}
-          </div>
-        )}
 
         {/* Quoted Paragraph / Manhwa Scene Box (Shown in Bottom Chapter Comments) */}
         {!isParagraphMode && !isReply && String(c.chapterId || '').includes('__p__') && (() => {

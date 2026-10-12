@@ -1148,18 +1148,14 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     if (item.category === 'theme') {
       updatedUser.equippedTheme = itemId;
-    } else if (item.category === 'badge' && item.badgeText) {
+    } else if (item.category === 'badge') {
+      const badgeTextToEquip = item.badgeText || item.name;
       const currentBadges = user.equippedBadges && user.equippedBadges.length > 0
         ? [...user.equippedBadges]
         : (user.equippedBadge ? [user.equippedBadge] : []);
-      if (!currentBadges.includes(item.badgeText)) {
-        if (currentBadges.length < 5) {
-          updatedUser.equippedBadges = [...currentBadges, item.badgeText];
-          updatedUser.equippedBadge = updatedUser.equippedBadges[0];
-        } else {
-          updatedUser.equippedBadges = currentBadges;
-          updatedUser.equippedBadge = currentBadges[0];
-        }
+      if (!currentBadges.includes(badgeTextToEquip)) {
+        updatedUser.equippedBadges = [...currentBadges, badgeTextToEquip];
+        updatedUser.equippedBadge = updatedUser.equippedBadges[0];
       }
     } else if (item.category === 'frame') {
       updatedUser.equippedFrame = itemId;
@@ -3328,9 +3324,22 @@ const deleteShopItemAndStyle = (itemId: string) => {
   };
 
   const addComment = (data: Omit<Comment, 'id' | 'date' | 'likes' | 'dislikes'>) => {
-    const userBadges = user?.equippedBadges && user.equippedBadges.length > 0
-      ? user.equippedBadges.slice(0, 5)
-      : (user?.equippedBadge ? [user.equippedBadge] : []);
+    const activeInv = normalizeShopInventory(
+      [user?.inventory, user?.unlockedEmojiPacks],
+      user?.inventoryExpiresAt
+    ).activeInventory;
+
+    const purchasedBadgeItems = shopItems.filter(
+      i => i.category === 'badge' && activeInv.includes(i.id)
+    );
+    const purchasedBadgeTexts = purchasedBadgeItems.map(i => i.badgeText || i.name);
+
+    const userBadges = Array.from(new Set([
+      ...(user?.equippedBadges && user.equippedBadges.length > 0
+        ? user.equippedBadges
+        : (user?.equippedBadge ? [user.equippedBadge] : [])),
+      ...purchasedBadgeTexts
+    ]));
 
     const newCm: Comment = {
       ...data,
