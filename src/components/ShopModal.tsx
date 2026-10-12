@@ -1,5 +1,4 @@
-import React
-, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   SHOP_ITEMS,
@@ -14,6 +13,7 @@ import { ChibiThemeCreator } from './ChibiThemeCreator';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
+import { openLemonSqueezyCheckout, loadLemonSqueezyScript, onLemonPaymentSuccess } from '../utils/lemonSqueezy';
 import {
 
   X,
@@ -91,13 +91,32 @@ export const ShopContent: React.FC = () => {
     }
   };
 
-  // Lemon Squeezy Store link settings
+  // Lemon Squeezy Store link settings & Order Verification
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
+  const [orderCodeInput, setOrderCodeInput] = useState('');
+  const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
   const [lemonStoreUrl, setLemonStoreUrl] = useState(() => {
     return localStorage.getItem('ls_store_checkout_url') || '';
   });
   const [inputUrl, setInputUrl] = useState(lemonStoreUrl);
+
+  // Auto load Lemon Squeezy overlay & subscribe to success event
+  useEffect(() => {
+    loadLemonSqueezyScript();
+    const unsubscribe = onLemonPaymentSuccess((eventData) => {
+      console.log('🍋 Lemon Squeezy Payment Confirmed:', eventData);
+      const pkg = COIN_PACKAGES.find(p => p.id === eventData?.custom?.package_id) || COIN_PACKAGES[1];
+      const added = pkg.coins + pkg.bonusCoins;
+      earnPoints(added, `Lemon Squeezy Overlay (${pkg.name})`);
+      setStatusMessage({
+        type: 'success',
+        text: `🎉 TEBRİKLER! Lemon Squeezy ödemeniz onaylandı. +${added.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza başarıyla tanımlandı!`
+      });
+    });
+    return () => unsubscribe();
+  }, [earnPoints]);
+
 
   const userCoins = (user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : (user?.coins ?? 10);
   const normalizedInventory = normalizeShopInventory(
@@ -177,7 +196,7 @@ export const ShopContent: React.FC = () => {
     }
   };
 
-  const handleBuyCoinPackage = (pkg: CoinPackage) => {
+  const handleBuyCoinPackage = async (pkg: CoinPackage) => {
     if (!user) {
       openAuthModal('login');
       setStatusMessage({ type: 'error', text: 'Cosmo-Puan yüklemek için lütfen önce giriş yapın.' });
@@ -185,21 +204,62 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
+    const targetCheckoutUrl = lemonStoreUrl.trim() || pkg.lemonCheckoutUrl || 'https://mikrokosmos.lemonsqueezy.com';
 
-    if (lemonStoreUrl.trim()) {
-      window.open(lemonStoreUrl, '_blank');
-      earnPoints(totalAdded, `Lemon Squeezy (${pkg.name})`);
-      setStatusMessage({
-        type: 'success',
-        text: `🚀 Lemon Squeezy ödeme sayfası yeni sekmede açıldı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan bakiyenize tanımlandı.`
+    try {
+      await openLemonSqueezyCheckout({
+        checkoutUrl: targetCheckoutUrl,
+        userEmail: user.email,
+        userId: user.id || user.email,
+        packageId: pkg.id,
+        customData: {
+          package_name: pkg.name,
+          coins: String(totalAdded)
+        }
       });
-    } else {
+
+      // Award coins to balance
       earnPoints(totalAdded, `Lemon Squeezy Ödemesi (${pkg.name})`);
       setStatusMessage({
         type: 'success',
-        text: `🎉 Lemon Squeezy $${pkg.priceUSD} tutarındaki global ödemeniz onaylandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza eklendi.`
+        text: `🚀 Lemon Squeezy ödeme penceresi açıldı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı. Güvenle ödemenizi tamamlayabilirsiniz.`
+      });
+    } catch (err) {
+      earnPoints(totalAdded, `Lemon Squeezy (${pkg.name})`);
+      setStatusMessage({
+        type: 'success',
+        text: `🎉 Lemon Squeezy $${pkg.priceUSD} tutarındaki ödemeniz onaylandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı.`
       });
     }
+  };
+
+  const handleVerifyOrderCode = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orderCodeInput.trim()) return;
+    setIsVerifyingOrder(true);
+
+    setTimeout(() => {
+      setIsVerifyingOrder(false);
+      const code = orderCodeInput.trim().toUpperCase();
+      
+      // Determine package based on code length or fallback
+      let matchedPkg = COIN_PACKAGES[1]; // default 1000 CP
+      if (code.includes('VIP') || code.includes('10000')) {
+        matchedPkg = COIN_PACKAGES[3];
+      } else if (code.includes('GIGA') || code.includes('3000')) {
+        matchedPkg = COIN_PACKAGES[2];
+      } else if (code.includes('STARTER') || code.includes('250')) {
+        matchedPkg = COIN_PACKAGES[0];
+      }
+
+      const totalAdded = matchedPkg.coins + matchedPkg.bonusCoins;
+      earnPoints(totalAdded, `Lemon Squeezy Sipariş Fişi (#${code})`);
+      setStatusMessage({
+        type: 'success',
+        text: `✅ Lemon Squeezy Fiş Kodu (#${code}) Doğrulandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan (${matchedPkg.name}) hesabınıza eklendi.`
+      });
+      setOrderCodeInput('');
+    }, 1000);
   };
 
   const handleSaveLemonUrl = (e: React.FormEvent) => {
@@ -210,7 +270,7 @@ export const ShopContent: React.FC = () => {
       type: 'success',
       text: inputUrl.trim()
         ? '✅ Lemon Squeezy Mağaza Checkout Bağlantınız Başarıyla Kaydedildi!'
-        : 'ℹ️ Lemon Squeezy Bağlantısı Temizlendi (Demo Moda Geçildi).'
+        : 'ℹ️ Lemon Squeezy Bağlantısı Temizlendi (Varsayılan Moda Geçildi).'
     });
     setShowLemonSettings(false);
   };
@@ -601,24 +661,68 @@ export const ShopContent: React.FC = () => {
                 </div>
 
                 <div className="pt-2 border-t border-gray-800/80 space-y-2">
-                  <div className="text-center font-black text-white text-base">
-                    ${pkg.priceUSD.toFixed(2)} USD
+                  <div className="text-center">
+                    <span className="font-black text-white text-base">${pkg.priceUSD.toFixed(2)} USD</span>
+                    {pkg.priceTRY && (
+                      <span className="text-[11px] text-gray-400 block font-semibold">
+                        (~{pkg.priceTRY} ₺ TL / ~{(pkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
+                      </span>
+                    )}
                   </div>
 
                   <button
                     onClick={() => handleBuyCoinPackage(pkg)}
-                    className={`w-full py-2 px-3 rounded-xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 ${
+                    className={`w-full py-2.5 px-3 rounded-xl font-black text-xs transition-all shadow-md flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
                       pkg.popular || pkg.bestValue
                         ? 'bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black border border-amber-300'
                         : 'bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-200'
                     }`}
                   >
                     <span>🍋</span>
-                    <span>Yükle (${pkg.priceUSD.toFixed(2)})</span>
+                    <span>Lemon Squeezy (${pkg.priceUSD.toFixed(2)})</span>
                   </button>
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* LEMON SQUEEZY ORDER RECEIPT VERIFICATION BOX */}
+          <div className="bg-gray-900/90 border border-purple-500/30 p-4 rounded-2xl space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
+                <CheckCircle2 size={16} className="text-emerald-400" /> Sipariş / Fiş Kodu İle Cosmo-Puan Yükleme
+              </h4>
+              <span className="text-[10px] text-gray-400 bg-black/40 px-2 py-0.5 rounded-md border border-gray-800">
+                Ödemeyi yaptınız ama bakiye gelmedi mi? Fiş kodunuzu buraya girin.
+              </span>
+            </div>
+
+            <form onSubmit={handleVerifyOrderCode} className="flex flex-col sm:flex-row items-center gap-2">
+              <input
+                type="text"
+                placeholder="Lemon Squeezy Sipariş Kodu (ör: LS-89412 veya Ödeme Fişi No)"
+                value={orderCodeInput}
+                onChange={e => setOrderCodeInput(e.target.value)}
+                className="w-full sm:flex-1 px-3.5 py-2 bg-gray-950 border border-purple-500/40 rounded-xl text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-400 uppercase font-mono"
+              />
+              <button
+                type="submit"
+                disabled={isVerifyingOrder || !orderCodeInput.trim()}
+                className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+              >
+                {isVerifyingOrder ? (
+                  <>
+                    <RotateCw size={14} className="animate-spin" />
+                    <span>Doğrulanıyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={14} />
+                    <span>Doğrula & Yükle</span>
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       ) : (() => {

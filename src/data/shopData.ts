@@ -1217,9 +1217,11 @@ export interface CoinPackage {
   coins: number;
   bonusCoins: number;
   priceUSD: number;
+  priceTRY?: number;
   popular?: boolean;
   bestValue?: boolean;
   lemonCheckoutUrl?: string;
+  lemonVariantId?: string;
   iconEmoji: string;
   badge?: string;
 }
@@ -1231,8 +1233,10 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 250,
     bonusCoins: 50,
     priceUSD: 0.99,
+    priceTRY: 35,
     iconEmoji: '🥉',
-    badge: 'Popüler Giriş'
+    badge: 'Popüler Giriş',
+    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_starter'
   },
   {
     id: 'cp_pro',
@@ -1240,9 +1244,11 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 1000,
     bonusCoins: 250,
     priceUSD: 2.99,
+    priceTRY: 105,
     popular: true,
     iconEmoji: '🥈',
-    badge: 'En Çok Tercih Edilen'
+    badge: 'En Çok Tercih Edilen',
+    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_pro'
   },
   {
     id: 'cp_giga',
@@ -1250,8 +1256,10 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 3000,
     bonusCoins: 1000,
     priceUSD: 7.99,
+    priceTRY: 280,
     iconEmoji: '🥇',
-    badge: '+%33 Extra Bonus'
+    badge: '+%33 Extra Bonus',
+    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_giga'
   },
   {
     id: 'cp_vip',
@@ -1259,9 +1267,12 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 10000,
     bonusCoins: 4000,
     priceUSD: 19.99,
+    priceTRY: 700,
     bestValue: true,
     iconEmoji: '👑',
-    badge: 'Maksimum Tasarruf'
+    badge: 'Maksimum Tasarruf',
+    lemonCheckoutUrl: 'https://mikrokosmos.lemonsqueezy.com/buy/cp_vip'
   }
 ];
+
 
