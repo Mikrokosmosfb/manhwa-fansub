@@ -25,7 +25,12 @@ declare global {
 
 let isLemonScriptLoaded = false;
 let isLemonSetupDone = false;
+let isMessageListenerAttached = false;
 const successCallbackMap = new Set<(event: any) => void>();
+
+// Strict Deduplication State to prevent any double-credit
+const processedOrderIds = new Set<string>();
+let lastSuccessfulPaymentTime = 0;
 
 /**
  * Fires multi-burst colorful confetti when a payment is successful
@@ -79,10 +84,37 @@ export function triggerPurchaseConfetti() {
 
 /**
  * Dispatches verified payment success to all listeners and triggers confetti
+ * Strictly deduplicates events so coins are credited exactly once per transaction
  */
 function notifyPaymentSuccess(eventData: any) {
-  console.log('🎉 Lemon Squeezy Payment Confirmed!', eventData);
+  const now = Date.now();
+  const rawOrderId = eventData?.data?.id ||
+    eventData?.order?.id ||
+    eventData?.order_id ||
+    eventData?.data?.attributes?.order_number ||
+    eventData?.attributes?.order_number;
+  const orderId = rawOrderId ? String(rawOrderId).trim() : '';
+
+  // 1. If order ID was already processed, ignore duplicate
+  if (orderId && processedOrderIds.has(orderId)) {
+    console.log('🍋 Ignoring duplicate event for order:', orderId);
+    return;
+  }
+
+  // 2. Debounce window: ignore any duplicate event within 4 seconds
+  if (now - lastSuccessfulPaymentTime < 4000) {
+    console.log('🍋 Debounced duplicate checkout event within 4s window');
+    return;
+  }
+
+  lastSuccessfulPaymentTime = now;
+  if (orderId) {
+    processedOrderIds.add(orderId);
+  }
+
+  console.log('🎉 Lemon Squeezy Payment Confirmed (Processed Exactly Once)!', eventData);
   triggerPurchaseConfetti();
+
   successCallbackMap.forEach((cb) => {
     try {
       cb(eventData);
@@ -163,15 +195,13 @@ export function loadLemonSqueezyScript(): Promise<boolean> {
  * Global Lemon Squeezy Event Listener
  */
 function initLemonEventListener() {
-  if (isLemonSetupDone) return;
-
-  // 1. Official LemonSqueezy.Setup event handler
-  if (window.LemonSqueezy?.Setup) {
+  // 1. Official LemonSqueezy.Setup event handler (Only listen to Checkout.Success, NOT Order.Created)
+  if (window.LemonSqueezy?.Setup && !isLemonSetupDone) {
     try {
       window.LemonSqueezy.Setup({
         eventHandler: (event: any) => {
           console.log('🍋 Lemon Squeezy SDK Event:', event);
-          if (event && (event.event === 'Checkout.Success' || event.event === 'Order.Created')) {
+          if (event && event.event === 'Checkout.Success') {
             notifyPaymentSuccess(event);
           }
         }
@@ -182,21 +212,17 @@ function initLemonEventListener() {
     }
   }
 
-  // 2. Fallback PostMessage listener from iframe overlay
-  if (typeof window !== 'undefined') {
+  // 2. PostMessage listener fallback (attached only once)
+  if (typeof window !== 'undefined' && !isMessageListenerAttached) {
+    isMessageListenerAttached = true;
     window.addEventListener('message', (event) => {
       try {
         let data = event.data;
         if (typeof data === 'string') {
           try { data = JSON.parse(data); } catch(e) {}
         }
-        if (
-          data &&
-          (data.event === 'Checkout.Success' ||
-           data.eventName === 'Checkout.Success' ||
-           data.action === 'checkout:success' ||
-           (typeof data.event === 'string' && data.event.toLowerCase().includes('success')))
-        ) {
+        // ONLY trigger on Checkout.Success
+        if (data && (data.event === 'Checkout.Success' || data.eventName === 'Checkout.Success')) {
           notifyPaymentSuccess(data);
         }
       } catch (err) {}
@@ -237,7 +263,7 @@ export async function openLemonSqueezyCheckout(options: LemonSqueezyCheckoutOpti
   // Store pending purchase locally so if overlay closes we know exactly which package was ordered
   try {
     sessionStorage.setItem('mk_lemon_pending_package', JSON.stringify({
-      packageId: packageId || 'coins_bronze',
+      packageId: packageId || 'cp_pro',
       userEmail,
       userId,
       customData,

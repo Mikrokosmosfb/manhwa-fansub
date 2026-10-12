@@ -120,12 +120,39 @@ export const ShopContent: React.FC = () => {
     return defaultUrls;
   });
   const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls || {});
+  const lastAwardedTimestampRef = React.useRef<number>(0);
+  const awardedOrderIdsRef = React.useRef<Set<string>>(new Set());
 
-  // Auto load Lemon Squeezy overlay & subscribe to real-time success event
+  // Auto load Lemon Squeezy overlay & subscribe to real-time success event (with strict single-credit protection)
   useEffect(() => {
     loadLemonSqueezyScript();
     const unsubscribe = onLemonPaymentSuccess((eventData) => {
       console.log('🍋 Lemon Squeezy Payment Confirmed in Shop:', eventData);
+
+      const rawOrderId = eventData?.data?.id ||
+        eventData?.order?.id ||
+        eventData?.order_id ||
+        eventData?.data?.attributes?.order_number ||
+        eventData?.attributes?.order_number;
+      const orderId = rawOrderId ? String(rawOrderId).trim() : '';
+
+      const now = Date.now();
+      // Block duplicate order ID
+      if (orderId && awardedOrderIdsRef.current.has(orderId)) {
+        console.log('🍋 Order already credited, skipping duplicate:', orderId);
+        return;
+      }
+
+      // Block rapid duplicate calls within 5 seconds
+      if (now - lastAwardedTimestampRef.current < 5000) {
+        console.log('🍋 Skipping duplicate payment event within 5s window');
+        return;
+      }
+
+      lastAwardedTimestampRef.current = now;
+      if (orderId) {
+        awardedOrderIdsRef.current.add(orderId);
+      }
 
       let targetPkgId = eventData?.custom?.package_id || eventData?.custom_data?.package_id;
       if (!targetPkgId) {
@@ -134,15 +161,16 @@ export const ShopContent: React.FC = () => {
           if (saved) {
             const parsed = JSON.parse(saved);
             targetPkgId = parsed?.packageId;
+            sessionStorage.removeItem('mk_lemon_pending_package');
           }
         } catch (e) {}
       }
 
-      // Default to Bronze (cp_pro) if none matched, which is $2.99 (1000 + 150 = 1150 CP)
+      // Match the exact package
       const pkg = COIN_PACKAGES.find(p => p.id === targetPkgId) || COIN_PACKAGES.find(p => p.id === 'cp_pro') || COIN_PACKAGES[1];
       const added = pkg.coins + pkg.bonusCoins;
 
-      // Award coins immediately to balance
+      // Award coins exactly ONCE to balance
       earnPoints(added, `Lemon Squeezy Ödemesi (${pkg.name})`);
 
       // Trigger Celebration Modal
@@ -150,7 +178,7 @@ export const ShopContent: React.FC = () => {
         pkgName: pkg.name,
         coinsEarned: added,
         priceUSD: pkg.priceUSD,
-        orderId: eventData?.data?.id || eventData?.order?.id || eventData?.order_id
+        orderId: orderId || ('LS-' + Date.now().toString().slice(-6))
       });
 
       setStatusMessage({
