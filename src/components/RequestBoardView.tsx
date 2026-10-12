@@ -1,1415 +1,929 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { useApp } from '../context/AppContext';
-import { SeriesRequest, SeriesType } from '../types';
-import {
-  Rocket,
-  RotateCw,
-  ShieldCheck,
-  Info,
-  Flame,
-  Search,
-  BookOpen,
-  Send,
-  Edit3,
-  Bookmark,
-  ThumbsUp,
-  X,
-  Upload,
-  Sparkles,
-  MessageCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Clock,
-  Ban,
-  Tag,
-  Trash2,
-  Lock,
-  ExternalLink
-} from 'lucide-react';
-
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYG7XKo4Wq8_hAaZb-vMomSHq-ZdLAlQhQQ2x9SKbDnPK_0ou5bWXniRcTDHn-vYZX/exec";
-const DISCORD_URL = "https://discord.gg/H4cAsuFSYz";
-const DEFAULT_COVER = "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=300&auto=format&fit=crop";
-const IMGBB_API_KEY = "889bb65f39d53ff8809f0a9a97974b2a";
-
-function getUserToken() {
-  let token = localStorage.getItem("mikro_user_token");
-  if (!token) {
-    token = "usr_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
-    localStorage.setItem("mikro_user_token", token);
-  }
-  return token;
-}
-
-function cleanSingleUrl(url?: string) {
-  if (!url) return "";
-  let str = String(url).trim();
-  if (str.toLowerCase().indexOf('http') === 0) {
-    let nextHttp = str.indexOf('http', 4);
-    if (nextHttp !== -1) str = str.substring(0, nextHttp).trim();
-  }
-  return str;
-}
-
-function isImageUrl(url?: string) {
-  if (!url) return false;
-  const str = String(url).trim().toLowerCase();
-  return (str.includes('ibb.co/') || str.includes('imgur.com/') ||
-          str.includes('googleusercontent.com/') || str.includes('share.google/') ||
-          str.includes('drive.google.com/') || str.includes('photos.app.goo.gl/') ||
-          str.includes('.jpg') || str.includes('.png') ||
-          str.includes('.jpeg') || str.includes('.webp'));
-}
-
-function fixImageUrl(url?: string) {
-  if (!url) return DEFAULT_COVER;
-  let str = cleanSingleUrl(url);
-  if (!str) return DEFAULT_COVER;
-  let dm = str.match(/\/d\/([a-zA-Z0-9_-]+)/) || str.match(/[?&]id=([a-zA-Z0-9_-]+)/) || str.match(/share\.google\/([a-zA-Z0-9_-]+)/);
-  if (dm && dm[1]) return 'https://lh3.googleusercontent.com/d/' + dm[1];
-  if (str.includes('imgur.com/') && !str.includes('i.imgur.com') && !str.endsWith('.jpg') && !str.endsWith('.png')) {
-    return 'https://i.imgur.com/' + str.split('/').pop()?.split('.')[0] + '.jpg';
-  }
-  return str;
-}
-
-function cleanStatusString(str?: string) {
-  if (!str) return '';
-  return String(str)
-    .replace(/İ/g, 'i')
-    .replace(/I/g, 'i')
-    .replace(/ı/g, 'i')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-}
-
-async function apiCall(payloadObj: any) {
-  try {
-    const res = await fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(payloadObj)
-    });
-    return await res.json();
-  } catch (err) {
-    return { success: false, message: "Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin." };
-  }
-}
-
-const normalizeRequestItem = (raw: any): SeriesRequest => {
-  const row = raw.row !== undefined ? Number(raw.row) : undefined;
-  const title = String(raw.seri || raw.title || raw.name || 'İsimsiz Seri').trim();
-  const requestedBy = String(raw.kullanici || raw.requestedBy || raw.user || 'Okuyucu').trim();
-  const type = String(raw.kat || raw.type || raw.category || 'Manhwa').trim();
-  const rawDurum = String(raw.durum || raw.status || 'Beklemede').trim();
-  const votes = typeof raw.oy === 'number' ? raw.oy : typeof raw.votes === 'number' ? raw.votes : 0;
-  const createdAt = String(raw.tarih || raw.createdAt || raw.date || 'Az önce').trim();
-  const rawResim = String(raw.resim || raw.coverImage || raw.cover || '').trim();
-  const rawLink = String(raw.link || raw.note || '').trim();
-  const readLink = String(raw.readLink || '').trim();
-
-  let tagsArray: string[] = [];
-  if (Array.isArray(raw.tags)) {
-    tagsArray = raw.tags;
-  } else if (raw.tur && typeof raw.tur === 'string' && raw.tur !== 'Genel') {
-    tagsArray = raw.tur.split(',').map((t: string) => t.trim()).filter(Boolean);
-  }
-
-  let fixedCover = fixImageUrl(rawResim);
-  if ((!rawResim || rawResim === DEFAULT_COVER) && isImageUrl(rawLink)) {
-    fixedCover = fixImageUrl(rawLink);
-  }
-
-  return {
-    id: raw.id || `req-row-${row || Date.now()}-${title}`,
-    row,
-    seri: title,
-    title,
-    kullanici: requestedBy,
-    requestedBy,
-    kat: type,
-    type,
-    durum: rawDurum,
-    status: rawDurum,
-    seriDurumu: String(raw.seriDurumu || raw.originalStatus || '').trim(),
-    originalStatus: String(raw.seriDurumu || raw.originalStatus || '').trim(),
-    resim: fixedCover,
-    coverImage: fixedCover,
-    link: rawLink,
-    note: rawLink,
-    readLink,
-    tur: tagsArray.join(', '),
-    tags: tagsArray,
-    oy: votes,
-    votes,
-    tarih: createdAt,
-    createdAt,
-    votedUserIds: Array.isArray(raw.votedUserIds) ? raw.votedUserIds : []
-  };
-};
+import React, { useEffect } from 'react';
 
 export const RequestBoardView: React.FC = () => {
-  const { user, isAdminLoggedIn, showToast, seriesRequests, setSeriesRequests } = useApp();
-
-  const [requestsList, setRequestsList] = useState<SeriesRequest[]>(() => {
-    try {
-      const cached = localStorage.getItem("mikro_requests_cache");
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map(normalizeRequestItem);
-        }
-      }
-      const cached2 = localStorage.getItem("mk_series_requests");
-      if (cached2) {
-        const parsed2 = JSON.parse(cached2);
-        if (Array.isArray(parsed2) && parsed2.length > 0) {
-          return parsed2.map(normalizeRequestItem);
-        }
-      }
-      if (seriesRequests && seriesRequests.length > 0) {
-        return seriesRequests;
-      }
-    } catch (e) {}
-    return [];
-  });
-
-  const [isLoading, setIsLoading] = useState<boolean>(() => requestsList.length === 0);
-  const [adminPass, setAdminPass] = useState<string>(() => localStorage.getItem("mikro_admin_pass") || "");
-
-  // Filters & Sorting
-  const [currentCategoryFilter, setCurrentCategoryFilter] = useState<string>('all');
-  const [currentStatusFilter, setCurrentStatusFilter] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'votes'>('newest');
-
-  // Modals
-  const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
-  const [editingRequest, setEditingRequest] = useState<SeriesRequest | null>(null);
-
-  // New Request Form
-  const [reqUser, setReqUser] = useState<string>(user?.name || '');
-  const [reqTitle, setReqTitle] = useState<string>('');
-  const [reqKat, setReqKat] = useState<string>('Manhwa');
-  const [reqSeriDurum, setReqSeriDurum] = useState<string>('');
-  const [reqImg, setReqImg] = useState<string>('');
-  const [reqLink, setReqLink] = useState<string>('');
-  const [reqTags, setReqTags] = useState<string[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<string>('');
-  const [duplicateWarning, setDuplicateWarning] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-
-  // Admin Edit Form
-  const [editTitle, setEditTitle] = useState<string>('');
-  const [editKat, setEditKat] = useState<string>('Manhwa');
-  const [editDurum, setEditDurum] = useState<string>('Beklemede');
-  const [editSeriDurum, setEditSeriDurum] = useState<string>('');
-  const [editImg, setEditImg] = useState<string>('');
-  const [editReadLink, setEditReadLink] = useState<string>('');
-  const [editNote, setEditNote] = useState<string>('');
-  const [editTags, setEditTags] = useState<string>('');
-  const [editUploadStatus, setEditUploadStatus] = useState<string>('');
-
-  const isAdminActive = Boolean(adminPass || isAdminLoggedIn || (user && (user.email === 'aseleliyeva77@gmail.com' || user.email === 'mikrokosmosfansub@gmail.com')));
-
-  // Fetch live requests from Google Apps Script / Sheet
-  const loadLiveSheetData = async (showRefreshToast = false) => {
-    if (showRefreshToast) {
-      showToast?.({ title: "🔄 Liste Yenileniyor...", message: "Google E-Tablo verileri çekiliyor.", type: "info" });
-    }
-    if (requestsList.length === 0) {
-      setIsLoading(true);
-    }
-
-    const res = await apiCall({ action: "list" });
-    setIsLoading(false);
-
-    if (res && res.success && Array.isArray(res.data)) {
-      const normalized = res.data.map(normalizeRequestItem);
-      setRequestsList(normalized);
-      if (typeof setSeriesRequests === 'function') {
-        setSeriesRequests(normalized);
-      }
-      try {
-        localStorage.setItem("mikro_requests_cache", JSON.stringify(res.data));
-        localStorage.setItem("mk_series_requests", JSON.stringify(normalized));
-      } catch (e) {}
-      if (showRefreshToast) {
-        showToast?.({ title: "✅ Liste Güncellendi", message: `Toplam ${normalized.length} istek yüklendi.`, type: "success" });
-      }
-    } else {
-      if (showRefreshToast) {
-        showToast?.({ title: "⚠️ Bağlantı Hatası", message: "Google E-Tablo verisi çekilemedi.", type: "warning" });
-      }
-    }
-  };
-
   useEffect(() => {
-    loadLiveSheetData(false);
-  }, []);
+    // Global variable declarations on window to prevent duplicate script re-declarations
+    const win = window as any;
 
-  const toggleAdminAuth = () => {
-    if (!adminPass && !isAdminLoggedIn) {
-      const p = prompt('Yönetici Şifrenizi Girin:');
-      if (p) {
-        setAdminPass(p);
-        localStorage.setItem('mikro_admin_pass', p);
-        showToast?.({ title: '🔑 Yönetici Modu Aktif', message: 'Değişiklikleri kartların altından yapabilirsiniz.', type: 'success' });
+    win.SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxYG7XKo4Wq8_hAaZb-vMomSHq-ZdLAlQhQQ2x9SKbDnPK_0ou5bWXniRcTDHn-vYZX/exec";
+    win.DISCORD_URL = "https://discord.gg/H4cAsuFSYz";
+    win.DEFAULT_COVER = "https://images.unsplash.com/photo-1506703719100-a0f3a48c0f86?q=80&w=200&auto=format&fit=crop";
+    win.IMGBB_API_KEY = "889bb65f39d53ff8809f0a9a97974b2a";
+
+    win.currentStatusFilter = 'all';
+    win.currentCategoryFilter = 'all';
+    win.adminPassword = localStorage.getItem("mikro_admin_pass") || "";
+    win.globalDataList = [];
+    win.isSubmitting = false;
+
+    win.normalizeText = function(str: any) {
+      if (!str) return "";
+      return String(str).replace(/İ/g, "i").replace(/I/g, "ı").replace(/Ş/g, "ş")
+        .replace(/Ğ/g, "ğ").replace(/Ü/g, "ü").replace(/Ö/g, "ö").replace(/Ç/g, "ç")
+        .toLowerCase().trim();
+    };
+
+    win.getUserToken = function() {
+      let token = localStorage.getItem("mikro_user_token");
+      if (!token) {
+        token = "usr_" + Date.now() + "_" + Math.random().toString(36).substring(2, 9);
+        localStorage.setItem("mikro_user_token", token);
       }
-    } else {
-      setAdminPass('');
-      localStorage.removeItem('mikro_admin_pass');
-      showToast?.({ title: 'Çıkış Yapıldı', message: 'Yönetici modundan çıkıldı.', type: 'info' });
-    }
-  };
+      return token;
+    };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit = false) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      alert("Lütfen 10 MB'tan küçük bir fotoğraf seçin.");
-      return;
-    }
+    win.apiCall = async function(payloadObj: any) {
+      try {
+        const res = await fetch(win.SCRIPT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payloadObj)
+        });
+        return await res.json();
+      } catch (err) {
+        return { success: false, message: "Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin." };
+      }
+    };
 
-    const setStatus = isEdit ? setEditUploadStatus : setUploadStatus;
-    setStatus("⚡ Fotoğraf Yükleniyor...");
+    win.cleanSingleUrl = function(url: any) {
+      if (!url) return "";
+      let str = String(url).trim();
+      if (str.toLowerCase().indexOf('http') === 0) {
+        let nextHttp = str.indexOf('http', 4);
+        if (nextHttp !== -1) str = str.substring(0, nextHttp).trim();
+      }
+      return str;
+    };
 
-    try {
+    win.isImageUrl = function(url: any) {
+      if (!url) return false;
+      const str = String(url).trim().toLowerCase();
+      return (str.includes('ibb.co/') || str.includes('imgur.com/') || 
+              str.includes('googleusercontent.com/') || str.includes('share.google/') ||
+              str.includes('drive.google.com/') || str.includes('photos.app.goo.gl/') ||
+              str.includes('.jpg') || str.includes('.png') || 
+              str.includes('.jpeg') || str.includes('.webp'));
+    };
+
+    win.openModal = function() { const m = document.getElementById("requestModal"); if(m) m.style.display = "flex"; };
+    win.closeModal = function() {
+      const m = document.getElementById("requestModal"); if(m) m.style.display = "none";
+      win.isSubmitting = false;
+      const btn = document.getElementById("submitBtn");
+      if(btn) { btn.disabled = false; btn.innerText = "🚀 Gönder"; }
+    };
+    win.closeEditModal = function() { const m = document.getElementById("editModal"); if(m) m.style.display = "none"; };
+
+    win.forceRefreshData = async function() {
+      localStorage.removeItem("mikro_requests_cache");
+      const loading = document.getElementById("loadingText");
+      if (loading) loading.style.display = "block";
+      win.showToast("🔄 Liste Google'dan yenileniyor...");
+      await win.loadData();
+    };
+
+    win.handleFileUpload = function(input: any, targetInputId: string, statusId: string, boxId: string, imgId: string) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 10 * 1024 * 1024) return alert("Lütfen 10 MB'tan küçük bir fotoğraf seçin.");
+
+      const statusEl = document.getElementById(statusId);
+      if (statusEl) {
+        statusEl.innerText = "⚡ Fotoğraf Yükleniyor...";
+        statusEl.style.color = "var(--neon-gold)";
+        statusEl.style.display = "block";
+      }
+
       const reader = new FileReader();
-      reader.onload = async (ev) => {
-        const base64Data = String(ev.target?.result || '').split(',')[1];
-        if (!base64Data) {
-          setStatus("❌ Yükleme hatası");
-          return;
-        }
-
+      reader.onload = async function(e: any) {
+        const base64Data = e.target.result.split(',')[1];
         try {
-          const params = new URLSearchParams();
-          params.append("key", IMGBB_API_KEY);
-          params.append("image", base64Data);
-
-          const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: params });
-          const json = await res.json();
-
-          if (json && json.data && json.data.url) {
-            if (isEdit) setEditImg(json.data.url);
-            else setReqImg(json.data.url);
-            setStatus("✅ Yüklendi!");
-          } else {
-            const fullUrl = String(ev.target?.result || '');
-            if (isEdit) setEditImg(fullUrl);
-            else setReqImg(fullUrl);
-            setStatus("✅ Yüklendi!");
-          }
-        } catch {
-          const fullUrl = String(ev.target?.result || '');
-          if (isEdit) setEditImg(fullUrl);
-          else setReqImg(fullUrl);
-          setStatus("✅ Yüklendi!");
+          let uploadedUrl = await win.uploadToImgBB(base64Data);
+          if (!uploadedUrl) uploadedUrl = await win.uploadToFreeImageHost(base64Data);
+          if (uploadedUrl) {
+            const targetInp: any = document.getElementById(targetInputId);
+            if (targetInp) targetInp.value = uploadedUrl;
+            win.previewImage(uploadedUrl, boxId, imgId);
+            if (statusEl) { statusEl.innerText = "✅ Başarıyla yüklendi!"; statusEl.style.color = "var(--neon-green)"; }
+          } else { throw new Error("Yükleme başarısız"); }
+        } catch (err) {
+          if (statusEl) { statusEl.innerText = "❌ Yüklenirken sorun oluştu."; statusEl.style.color = "#ff6b6b"; }
         }
       };
       reader.readAsDataURL(file);
-    } catch {
-      setStatus("❌ Yükleme hatası");
-    }
-  };
+    };
 
-  const handleTitleChange = (val: string) => {
-    setReqTitle(val);
-    if (!val || val.trim().length < 2) {
-      setDuplicateWarning('');
-      return;
-    }
-    const cleanInput = val.toLowerCase().trim();
-    const exists = requestsList.find(x => String(x.title || x.seri || '').toLowerCase().trim() === cleanInput);
-    if (exists) {
-      setDuplicateWarning(`⚠️ "${exists.title || exists.seri}" zaten listede var! (Mevcut Oy: ${exists.votes || exists.oy || 0}). Tekrar eklemek yerine ona oy verebilirsiniz.`);
-    } else {
-      setDuplicateWarning('');
-    }
-  };
+    win.uploadToImgBB = async function(b64: string) {
+      try {
+        const p = new URLSearchParams(); p.append("key", win.IMGBB_API_KEY || "3a35a6435c5b4e3bd91dd8bd2b069d35"); p.append("image", b64);
+        const res = await fetch("https://api.imgbb.com/1/upload", { method: "POST", body: p });
+        const json = await res.json(); if(json && json.data) return json.data.url;
+      } catch(e){} return null;
+    };
 
-  const handleTagToggle = (tagVal: string) => {
-    setReqTags(prev => prev.includes(tagVal) ? prev.filter(t => t !== tagVal) : [...prev, tagVal]);
-  };
+    win.uploadToFreeImageHost = async function(b64: string) {
+      try {
+        const p = new URLSearchParams(); p.append("key", "6d207e02198a847aa50d0a2233e07542"); p.append("action", "upload"); p.append("source", b64); p.append("format", "json");
+        const res = await fetch("https://freeimage.host/api/1/upload", { method: "POST", body: p });
+        const json = await res.json(); if(json && json.image) return json.image.url;
+      } catch(e){} return null;
+    };
 
-  const handleVote = async (req: SeriesRequest) => {
-    if (!req.row && req.row !== 0) {
-      showToast?.({ title: '⚠️ Oy Verilemedi', message: 'Seri satır numarası eksik.', type: 'warning' });
-      return;
-    }
+    win.formatDate = function(dStr: any) {
+      if(!dStr) return '';
+      let str = String(dStr);
+      if (str.includes('T')) { try { return new Date(str).toLocaleDateString('tr-TR'); } catch(e) { return str.split('T')[0]; } }
+      return str;
+    };
 
-    const token = getUserToken();
-    const res = await apiCall({
-      action: "vote",
-      row: req.row,
-      seri: req.title || req.seri,
-      userToken: token
-    });
-
-    if (res && res.success) {
-      const newVoteCount = typeof res.votes === 'number' ? res.votes : ((req.votes || 0) + 1);
-      setRequestsList(prev => prev.map(r => r.row === req.row ? { ...r, votes: newVoteCount, oy: newVoteCount } : r));
-      if (typeof setSeriesRequests === 'function') {
-        setSeriesRequests(prev => prev.map(r => r.row === req.row ? { ...r, votes: newVoteCount, oy: newVoteCount } : r));
+    win.fixImageUrl = function(url: any) {
+      if (!url) return win.DEFAULT_COVER;
+      url = win.cleanSingleUrl(url);
+      let dm = url.match(/\/d\/([a-zA-Z0-9_-]+)/) || url.match(/[?&]id=([a-zA-Z0-9_-]+)/) || url.match(/share\.google\/([a-zA-Z0-9_-]+)/);
+      if (dm && dm[1]) return 'https://lh3.googleusercontent.com/d/' + dm[1];
+      if (url.includes('imgur.com/') && !url.includes('i.imgur.com') && !url.endsWith('.jpg') && !url.endsWith('.png')) {
+        return 'https://i.imgur.com/' + url.split('/').pop().split('.')[0] + '.jpg';
       }
-      showToast?.({ title: '👍 Oyunuz Eklendi!', message: `"${req.title}" toplam ${newVoteCount} oya ulaştı.`, type: 'success' });
-    } else {
-      showToast?.({ title: '⚠️ ' + (res?.message || 'Oy verirken sorun oluştu'), type: 'warning' });
-    }
-  };
+      return url;
+    };
 
-  const handleNewRequestSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reqTitle.trim() || isSubmitting) return;
+    win.previewImage = function(url: any, boxId: string, imgId: string) {
+      const box = document.getElementById(boxId), img: any = document.getElementById(imgId);
+      if (!box || !img) return;
+      if(url && url.length > 5) { img.src = win.fixImageUrl(url); img.onerror = function() { this.src = win.DEFAULT_COVER; }; box.style.display = "block"; } else box.style.display = "none";
+    };
 
-    setIsSubmitting(true);
-    const tagsText = reqTags.length > 0 ? reqTags.join(", ") : "Genel";
+    win.checkDuplicateTitle = function(val: string) {
+      const warning = document.getElementById("duplicateWarning");
+      if (!warning) return;
+      if (!val || val.trim().length < 2) { warning.style.display = "none"; return; }
+      const cleanInput = val.toLowerCase().trim();
+      const exists = win.globalDataList.find((x: any) => String(x.seri || "").toLowerCase().trim() === cleanInput);
+      if (exists) {
+        warning.innerHTML = `⚠️ <strong>"${win.escapeHTML(exists.seri)}"</strong> zaten listede var! (Mevcut Oy: ${exists.oy || 0})<br>Tekrar eklemek yerine ona oy verebilirsin.`;
+        warning.style.display = "block";
+      } else warning.style.display = "none";
+    };
 
-    const res = await apiCall({
-      action: "add",
-      kullanici: reqUser.trim() || user?.name || 'Starlight',
-      seri: reqTitle.trim(),
-      kat: reqKat || 'Manhwa',
-      seriDurumu: reqSeriDurum.trim(),
-      resim: reqImg.trim(),
-      link: reqLink.trim(),
-      tur: tagsText
-    });
+    win.showToast = function(msg: string) {
+      const box = document.getElementById("toastBox"); if(!box) return;
+      const t = document.createElement("div"); t.className = "toast"; t.innerText = msg;
+      box.appendChild(t); setTimeout(() => t.remove(), 3500);
+    };
 
-    setIsSubmitting(false);
+    win.toggleAdmin = function() {
+      const app = document.getElementById("mikroApp"), btn = document.getElementById("adminBtnText");
+      if (!win.adminPassword) {
+        const p = prompt("Yönetici Şifrenizi Girin:");
+        if (p) { win.adminPassword = p; localStorage.setItem("mikro_admin_pass", p); if(app) app.classList.add("admin-mode-on"); if(btn) btn.innerText = "Çıkış Yap"; win.showToast("🔑 Giriş Başarılı!"); }
+      } else {
+        win.adminPassword = ""; localStorage.removeItem("mikro_admin_pass");
+        if(app) app.classList.remove("admin-mode-on"); if(btn) btn.innerText = "Admin Girişi"; win.showToast("Çıkış Yapıldı.");
+      }
+    };
 
-    if (res && res.success) {
-      const createdItem = normalizeRequestItem({
-        row: res.row || (requestsList.length > 0 ? Math.max(...requestsList.map(r => Number(r.row) || 0)) + 1 : 1),
-        seri: reqTitle.trim(),
-        kullanici: reqUser.trim() || user?.name || 'Starlight',
-        kat: reqKat || 'Manhwa',
-        seriDurumu: reqSeriDurum.trim(),
-        resim: reqImg.trim(),
-        link: reqLink.trim(),
-        tur: tagsText,
-        durum: 'Beklemede',
-        oy: 1,
-        tarih: 'Az önce'
-      });
+    win.loadData = async function() {
+      const loading = document.getElementById("loadingText");
+      const res = await win.apiCall({ action: "list" });
+      if (loading) loading.style.display = "none";
+      if (res && res.success && Array.isArray(res.data)) {
+        win.globalDataList = res.data;
+        localStorage.setItem("mikro_requests_cache", JSON.stringify(res.data));
+        win.renderDataList(res.data);
+      } else { win.showToast("⚠️ Veriler çekilirken sorun oluştu."); }
+    };
 
-      setRequestsList(prev => [createdItem, ...prev]);
-      if (typeof setSeriesRequests === 'function') {
-        setSeriesRequests(prev => [createdItem, ...prev]);
+    win.initFastLoad = function() {
+      const cachedData = localStorage.getItem("mikro_requests_cache");
+      if (cachedData) {
+        try { win.globalDataList = JSON.parse(cachedData); if (win.globalDataList.length > 0) win.renderDataList(win.globalDataList); } catch(e){}
+      }
+      win.loadData();
+    };
+
+    win.getStatusInfo = function(raw: any) {
+      const st = win.normalizeText(raw || "Beklemede");
+      if (st.includes("incele")) return { bClass: "badge-incelemede", dataStatus: "incelemede", text: "İncelemede" };
+      if (st.includes("kabul")) return { bClass: "badge-kabul", dataStatus: "kabul", text: "Kabul Edildi" };
+      if (st.includes("yapim") || st.includes("yapım")) return { bClass: "badge-yapim", dataStatus: "yapim", text: "Yapımda" };
+      if (st.includes("yakin") || st.includes("yakın")) return { bClass: "badge-yakin", dataStatus: "yakin", text: "Yakında" };
+      if (st.includes("yayin") || st.includes("yayın")) return { bClass: "badge-yayin", dataStatus: "yayin", text: "Yayında!" };
+      if (st.includes("red")) return { bClass: "badge-red", dataStatus: "red", text: "Reddedildi" };
+      return { bClass: "badge-beklemede", dataStatus: "beklemede", text: "Beklemede" };
+    };
+
+    win.renderDataList = function(dataList: any[]) {
+      const grid = document.getElementById("cardGrid");
+      if (!grid) return;
+      grid.innerHTML = "";
+      if(!dataList || dataList.length === 0) {
+        grid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; color:var(--text-sub); padding:20px;">Henüz hiç istek yok. İlk isteği siz gönderin!</div>';
+        win.renderTrendCard(null); return;
+      }
+      const topTrend = [...dataList].filter(i => { const st = win.getStatusInfo(i.durum); return st.dataStatus !== "yayin" && st.dataStatus !== "red"; })
+                                    .sort((a,b) => (b.oy || 0) - (a.oy || 0))[0];
+      if (topTrend && (topTrend.oy || 0) > 0) win.renderTrendCard(topTrend);
+      else {
+        const trendEl = document.getElementById("trendShowcase");
+        if (trendEl) trendEl.style.display = "none";
       }
 
-      showToast?.({ title: '✨ İstek Eklendi!', message: `"${reqTitle.trim()}" isteğiniz Google E-Tabloya eklendi.`, type: 'success' });
-      setIsNewModalOpen(false);
-      setReqTitle('');
-      setReqSeriDurum('');
-      setReqImg('');
-      setReqLink('');
-      setReqTags([]);
-      setDuplicateWarning('');
-      await loadLiveSheetData(false);
-    } else {
-      alert("Hata: " + (res?.message || "İstek eklenemedi"));
-    }
-  };
+      [...dataList].reverse().forEach(item => win.renderCard(item, grid));
+      win.filterCards();
+    };
 
-  const openEditModal = (req: SeriesRequest) => {
-    if (!isAdminActive) {
-      alert('Admin girişi yapmalısınız!');
-      return;
-    }
-    setEditingRequest(req);
-    setEditTitle(req.title || req.seri || '');
-    setEditKat(req.type || req.kat || 'Manhwa');
-    setEditDurum(req.status || req.durum || 'Beklemede');
-    setEditSeriDurum(req.originalStatus || req.seriDurumu || '');
-    setEditImg(req.coverImage || req.resim || '');
-    setEditReadLink(req.readLink || '');
-    setEditNote(req.note || req.link || '');
-    setEditTags(req.tags ? req.tags.join(', ') : (req.tur || 'Genel'));
-    setIsEditModalOpen(true);
-  };
+    win.renderTrendCard = function(item: any) {
+      const box = document.getElementById("trendShowcase"), c = document.getElementById("trendContent");
+      if (!box || !c) return;
+      if (!item) { box.style.display = "none"; return; }
+      box.style.display = "block";
+      let img = win.fixImageUrl(item.resim); if ((!item.resim || item.resim === win.DEFAULT_COVER) && win.isImageUrl(item.link)) img = win.fixImageUrl(item.link);
+      const st = win.getStatusInfo(item.durum);
+      let tags = "";
+      if (item.tur && item.tur !== "Genel") item.tur.split(',').forEach((t: any) => { let cls = "tag-badge" + (t.includes("+18") ? " tag-18" : "") + (t.includes("BL") ? " tag-bl" : ""); tags += `<span class="${cls}">${win.escapeHTML(t.trim())}</span>`; });
+      
+      let note = "";
+      if (st.dataStatus === "red" && item.link && item.link.includes("Red Nedeni")) note = `<div class="red-reason-box">❌ ${win.escapeHTML(item.link)}</div>`;
+      else if (item.link && !win.isImageUrl(item.link)) note = `<div class="note-display-box" title="${win.escapeHTML(item.link)}"><strong>Not:</strong> ${win.escapeHTML(item.link)}</div>`;
 
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingRequest || !adminPass) return alert("Admin şifresi gerekli!");
+      c.innerHTML = `
+        <img class="trend-img" src="${win.escapeHTML(img)}" referrerpolicy="no-referrer" onerror="this.src='${win.DEFAULT_COVER}';">
+        <div class="trend-info">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
+            <h3>${win.escapeHTML(item.seri)}</h3><span class="badge ${st.bClass}">${st.text}</span>
+          </div>
+          <p style="margin:0 0 6px 0; font-size:12px; color:var(--text-sub);">
+            <strong>İsteyen:</strong> ${win.escapeHTML(item.kullanici)} (${win.formatDate(item.tarih)}) | <span style="color:var(--neon-purple); font-weight:bold;">${win.escapeHTML(item.kat)}</span> ${item.seriDurumu ? '| <span style="color:var(--neon-gold); font-size:11px; font-weight:600;"><i class="fa-solid fa-bookmark"></i> '+win.escapeHTML(item.seriDurumu)+'</span>' : ''}
+          </p>
+          ${tags ? `<div style="margin-bottom:6px;">${tags}</div>` : ''}
+          ${note}
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn-vote voted" onclick="window.voteItem(${item.row})">👍 ${item.oy || 0} Oy</button>
+            ${st.dataStatus === "yayin" && item.readLink ? `<a href="${win.escapeHTML(item.readLink)}" target="_blank" class="btn-read-now"><i class="fa-solid fa-book-open"></i> Oku</a>` : ''}
+            <a href="${win.DISCORD_URL}" target="_blank" class="btn-cosmic" style="padding:5px 12px; font-size:11px;"><i class="fa-brands fa-discord"></i> Sor</a>
+          </div>
+        </div>`;
+    };
 
-    const res = await apiCall({
-      action: "edit",
-      row: editingRequest.row,
-      oldSeri: editingRequest.seri || editingRequest.title,
-      seri: editTitle.trim(),
-      kat: editKat,
-      durum: editDurum,
-      seriDurumu: editSeriDurum.trim(),
-      resim: editImg.trim(),
-      readLink: editReadLink.trim(),
-      link: editNote.trim(),
-      tur: editTags.trim() || "Genel",
-      passcode: adminPass
-    });
+    win.renderCard = function(item: any, container: HTMLElement) {
+      const st = win.getStatusInfo(item.durum);
+      let img = win.fixImageUrl(item.resim); if ((!item.resim || item.resim === win.DEFAULT_COVER) && win.isImageUrl(item.link)) img = win.fixImageUrl(item.link);
+      let tags = "";
+      if (item.tur && item.tur !== "Genel") item.tur.split(',').forEach((t: any) => { let cls = "tag-badge" + (t.includes("+18") ? " tag-18" : "") + (t.includes("BL") ? " tag-bl" : ""); tags += `<span class="${cls}">${win.escapeHTML(t.trim())}</span>`; });
+      
+      let note = "";
+      if (st.dataStatus === "red" && item.link && item.link.includes("Red Nedeni")) note = `<div class="red-reason-box">❌ ${win.escapeHTML(item.link)}</div>`;
+      else if (item.link && !win.isImageUrl(item.link)) note = `<div class="note-display-box" title="${win.escapeHTML(item.link)}"><strong>Not:</strong> ${win.escapeHTML(item.link)}</div>`;
 
-    if (res && res.success) {
-      showToast?.({ title: '💾 Değişiklikler Kaydedildi', message: `"${editTitle.trim()}" bilgileri güncellendi.`, type: 'success' });
-      setIsEditModalOpen(false);
-      setEditingRequest(null);
-      await loadLiveSheetData(false);
-    } else {
-      alert("Hata: " + (res?.message || "Düzenlenemedi"));
-    }
-  };
+      const card = document.createElement("div"); card.className = "series-card"; card.setAttribute("data-status", st.dataStatus); card.setAttribute("data-category", item.kat || "Manhwa");
+      card.innerHTML = `
+        <img class="cover-img" src="${win.escapeHTML(img)}" referrerpolicy="no-referrer" onerror="this.src='${win.DEFAULT_COVER}';">
+        <div class="card-details">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:3px;">
+            <h4 title="${win.escapeHTML(item.seri)}">${win.escapeHTML(item.seri)}</h4><span class="badge ${st.bClass}">${st.text}</span>
+          </div>
+          <div class="card-meta">
+            <span><strong>İsteyen:</strong> ${win.escapeHTML(item.kullanici)} (${win.formatDate(item.tarih)})</span> | <span style="color:var(--neon-purple); font-weight:bold;">${win.escapeHTML(item.kat)}</span> ${item.seriDurumu ? ' | <span style="color:var(--neon-gold); font-size:10.5px; font-weight:600;"><i class="fa-solid fa-bookmark"></i> '+win.escapeHTML(item.seriDurumu)+'</span>' : ''}
+          </div>
+          ${tags ? `<div style="margin-bottom:4px;">${tags}</div>` : ''}
+          ${note}
+          <div class="card-action-bar">
+            <button class="btn-vote" id="vote-btn-${item.row}" onclick="window.voteItem(${item.row})">👍 <span id="vote-cnt-${item.row}">${item.oy || 0}</span> Oy</button>
+            ${st.dataStatus === "yayin" && item.readLink ? `<a href="${win.escapeHTML(item.readLink)}" target="_blank" class="btn-read-now"><i class="fa-solid fa-book-open"></i> Oku</a>` : ''}
+            <a href="${win.DISCORD_URL}" target="_blank" style="font-size:10px; color:var(--text-sub); text-decoration:none;"><i class="fa-brands fa-discord"></i> Ekibe Sor</a>
+          </div>
+          <div class="admin-tools">
+            <button class="act-btn act-edit" onclick="window.openEditModal(${item.row})">✏️ Düzenle</button>
+            <button class="act-btn act-inceleme" onclick="window.updateStatus(${item.row}, 'İncelemede')">🔍 İnceleme</button>
+            <button class="act-btn act-kabul" onclick="window.updateStatus(${item.row}, 'Kabul Edildi')">🟢 Kabul</button>
+            <button class="act-btn act-yapim" onclick="window.updateStatus(${item.row}, 'Yapımda')">🔵 Yapım</button>
+            <button class="act-btn act-yakin" onclick="window.updateStatus(${item.row}, 'Yakında')">⏳ Yakında</button>
+            <button class="act-btn act-yayin" onclick="window.updateStatus(${item.row}, 'Yayında!')">🔮 Yayında</button>
+            <button class="act-btn act-red" onclick="window.rejectItem(${item.row})">🔴 Reddet</button>
+            <button class="act-btn act-sil" onclick="window.deleteItem(${item.row})">🗑️ Sil</button>
+          </div>
+        </div>`;
+      container.appendChild(card);
+    };
 
-  const handleQuickStatusUpdate = async (req: SeriesRequest, newStatus: string, customNote = '') => {
-    if (!adminPass) return alert("Admin girişi yapmalısınız!");
+    win.voteItem = async function(row: any) {
+      const item = win.globalDataList.find((x: any) => x.row == row); if (!item) return;
+      const res = await win.apiCall({ action: "vote", row: row, seri: item.seri, userToken: win.getUserToken() });
+      if (res && res.success) {
+        item.oy = res.votes;
+        const c = document.getElementById("vote-cnt-" + row), b = document.getElementById("vote-btn-" + row);
+        if(c) c.innerText = res.votes; if(b) b.classList.add("voted");
+        localStorage.setItem("mikro_requests_cache", JSON.stringify(win.globalDataList)); win.showToast("👍 Oyunuz eklendi!");
+      } else { win.showToast("⚠️ " + (res.message || "Oy verirken sorun oluştu")); }
+    };
 
-    const res = await apiCall({
-      action: "update",
-      row: req.row,
-      seri: req.title || req.seri,
-      durum: newStatus,
-      link: customNote || req.note || req.link || '',
-      passcode: adminPass
-    });
+    win.openEditModal = function(row: any) {
+      if (!win.adminPassword) return alert("Admin girişi yapmalısınız!");
+      const item = win.globalDataList.find((x: any) => x.row == row); if (!item) return;
+      (document.getElementById("editRow") as any).value = item.row;
+      (document.getElementById("editOldSeri") as any).value = item.seri;
+      (document.getElementById("editTitle") as any).value = item.seri;
+      (document.getElementById("editKat") as any).value = item.kat || "Manhwa";
+      (document.getElementById("editDurum") as any).value = item.durum || "Beklemede";
+      (document.getElementById("editSeriDurum") as any).value = item.seriDurumu || "";
+      (document.getElementById("editImg") as any).value = item.resim || "";
+      (document.getElementById("editReadLink") as any).value = item.readLink || "";
+      (document.getElementById("editLink") as any).value = item.link || "";
+      (document.getElementById("editTur") as any).value = item.tur || "Genel";
+      win.previewImage(item.resim, 'editPreviewBox', 'editPreviewImg');
+      const m = document.getElementById("editModal"); if(m) m.style.display = "flex";
+    };
 
-    if (res && res.success) {
-      showToast?.({ title: '✅ Durum Güncellendi', message: `"${req.title}" durumu "${newStatus}" yapıldı.`, type: 'success' });
-      await loadLiveSheetData(false);
-    } else {
-      alert("Hata: " + (res?.message || "Güncellenemedi"));
-    }
-  };
+    win.updateStatus = async function(row: any, newStatus: string, customNote = "") {
+      if (!win.adminPassword) return alert("Admin girişi yapmalısınız!");
+      const item = win.globalDataList.find((x: any) => x.row == row); if (!item) return;
+      const res = await win.apiCall({ action: "update", row: row, seri: item.seri, durum: newStatus, link: customNote, passcode: win.adminPassword });
+      if (res && res.success) {
+        item.durum = newStatus; if (customNote) item.link = customNote;
+        localStorage.setItem("mikro_requests_cache", JSON.stringify(win.globalDataList));
+        win.renderDataList(win.globalDataList); win.showToast(`✅ Durum "${newStatus}" yapıldı.`);
+      } else alert("Hata: " + (res.message || "Güncellenemedi"));
+    };
 
-  const handleReject = (req: SeriesRequest) => {
-    if (!adminPass) return alert("Admin girişi yapmalısınız!");
-    const reason = prompt("Reddetme nedenini yazın (İsteğe bağlı):", "Başka ekip çeviriyor");
-    handleQuickStatusUpdate(req, 'Reddedildi', reason ? "Red Nedeni: " + reason : "");
-  };
+    win.rejectItem = function(row: any) {
+      if (!win.adminPassword) return alert("Admin girişi yapmalısınız!");
+      const reason = prompt("Reddetme nedenini yazın (İsteğe bağlı):", "Örn: Başka ekip çeviriyor");
+      win.updateStatus(row, 'Reddedildi', reason ? "Red Nedeni: " + reason : "");
+    };
 
-  const handleDelete = async (req: SeriesRequest) => {
-    if (!adminPass) return alert("Admin girişi yapmalısınız!");
-    if (!confirm(`"${req.title}" isteğini tamamen silmek istediğinize emin misiniz?`)) return;
-
-    const res = await apiCall({
-      action: "delete",
-      row: req.row,
-      seri: req.title || req.seri,
-      passcode: adminPass
-    });
-
-    if (res && res.success) {
-      setRequestsList(prev => prev.filter(r => r.row !== req.row));
-      if (typeof setSeriesRequests === 'function') {
-        setSeriesRequests(prev => prev.filter(r => r.row !== req.row));
+    win.deleteItem = async function(row: any) {
+      if (!win.adminPassword) return alert("Admin girişi yapmalısınız!");
+      if (!confirm("Bu isteği silmek istediğinize emin misiniz?")) return;
+      
+      const item = win.globalDataList.find((x: any) => x.row == row); if (!item) return;
+      const res = await win.apiCall({ action: "delete", row: row, seri: item.seri, passcode: win.adminPassword });
+      
+      if (res && res.success) {
+        win.showToast("🗑️ İstek tamamen silindi. Liste yenileniyor...");
+        await win.loadData();
+      } else {
+        alert("Hata: " + (res.message || "Silinemedi"));
       }
-      showToast?.({ title: '🗑️ İstek Silindi', message: 'Liste Google E-Tablo ile eşitleniyor...', type: 'info' });
-      await loadLiveSheetData(false);
-    } else {
-      alert("Hata: " + (res?.message || "Silinemedi"));
-    }
-  };
+    };
 
-  const getStatusBadge = (rawStatus?: string) => {
-    const st = cleanStatusString(rawStatus);
+    win.setCategoryFilter = function(category: string, el: HTMLElement) {
+      document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+      if (el) el.classList.add('active');
+      win.currentCategoryFilter = category;
+      win.filterCards();
+    };
 
-    if (st.includes('incele')) {
-      return { class: 'bg-purple-950/80 text-purple-300 border-purple-500/50', dataStatus: 'incelemede', text: 'İncelemede', icon: <Clock size={12} /> };
-    }
-    if (st.includes('kabul')) {
-      return { class: 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50', dataStatus: 'kabul', text: 'Kabul Edildi', icon: <CheckCircle2 size={12} /> };
-    }
-    if (st.includes('yapim')) {
-      return { class: 'bg-cyan-950/80 text-cyan-300 border-cyan-500/50', dataStatus: 'yapim', text: 'Yapımda', icon: <Sparkles size={12} /> };
-    }
-    if (st.includes('yakin')) {
-      return { class: 'bg-amber-950/80 text-amber-300 border-amber-500/50', dataStatus: 'yakin', text: 'Yakında', icon: <Clock size={12} /> };
-    }
-    if (st.includes('yayin')) {
-      return { class: 'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-500/50', dataStatus: 'yayin', text: 'Yayında!', icon: <BookOpen size={12} /> };
-    }
-    if (st.includes('red')) {
-      return { class: 'bg-rose-950/80 text-rose-300 border-rose-500/50', dataStatus: 'red', text: 'Reddedildi', icon: <Ban size={12} /> };
-    }
-    if (st.includes('bekle')) {
-      return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: 'Beklemede', icon: <Clock size={12} /> };
-    }
-    return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: rawStatus || 'Beklemede', icon: <Clock size={12} /> };
-  };
+    win.setFilter = function(status: string, el: HTMLElement) {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      if (el) el.classList.add('active');
+      win.currentStatusFilter = status;
+      win.filterCards();
+    };
 
-  // Filtered and Sorted requests calculation
-  const filteredRequests = useMemo(() => {
-    let result = requestsList.filter(req => {
-      const q = searchQuery.toLowerCase().trim();
-      const matchQuery = !q ||
-        (req.title && req.title.toLowerCase().includes(q)) ||
-        (req.requestedBy && req.requestedBy.toLowerCase().includes(q)) ||
-        (req.synopsis && req.synopsis.toLowerCase().includes(q));
-
-      const matchCategory = currentCategoryFilter === 'all' ||
-        (req.type && req.type.toLowerCase() === currentCategoryFilter.toLowerCase());
-
-      const stInfo = getStatusBadge(req.status || req.durum);
-      let matchStatus = currentStatusFilter === 'all' || stInfo.dataStatus === currentStatusFilter;
-
-      return matchQuery && matchCategory && matchStatus;
-    });
-
-    if (sortBy === 'newest') {
-      result.sort((a, b) => {
-        const rowA = a.row !== undefined ? a.row : 0;
-        const rowB = b.row !== undefined ? b.row : 0;
-        if (rowA !== rowB) return rowB - rowA;
-        return String(b.id || '').localeCompare(String(a.id || ''));
+    win.filterCards = function() {
+      const qInp = document.getElementById("searchInput") as HTMLInputElement;
+      const q = qInp ? win.normalizeText(qInp.value) : "";
+      document.querySelectorAll(".series-card").forEach((card: any) => {
+        const matchS = win.currentStatusFilter === 'all' || card.getAttribute("data-status") === win.currentStatusFilter;
+        const matchC = win.currentCategoryFilter === 'all' || card.getAttribute("data-category") === win.currentCategoryFilter;
+        card.style.display = (matchS && matchC && win.normalizeText(card.innerText).includes(q)) ? "flex" : "none";
       });
-    } else if (sortBy === 'oldest') {
-      result.sort((a, b) => {
-        const rowA = a.row !== undefined ? a.row : 0;
-        const rowB = b.row !== undefined ? b.row : 0;
-        if (rowA !== rowB) return rowA - rowB;
-        return String(a.id || '').localeCompare(String(b.id || ''));
-      });
-    } else if (sortBy === 'votes') {
-      result.sort((a, b) => (b.votes || b.oy || 0) - (a.votes || a.oy || 0));
-    }
+    };
 
-    return result;
-  }, [requestsList, searchQuery, currentCategoryFilter, currentStatusFilter, sortBy]);
+    win.escapeHTML = function(str: any) {
+      return String(str || '').replace(/[&<>'"]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[t] || t));
+    };
 
-  // #1 Top Trend Showcase
-  const topTrendRequest = useMemo(() => {
-    const activeCandidates = requestsList.filter(r => {
-      const stInfo = getStatusBadge(r.status || r.durum);
-      return stInfo.dataStatus !== 'yayin' && stInfo.dataStatus !== 'red';
-    });
-    if (activeCandidates.length === 0) return null;
-    const sorted = [...activeCandidates].sort((a, b) => (b.votes || b.oy || 0) - (a.votes || a.oy || 0));
-    return (sorted[0] && (sorted[0].votes || sorted[0].oy || 0) > 0) ? sorted[0] : null;
-  }, [requestsList]);
+    win.initApp = function() {
+      const a = document.getElementById("mikroApp"), b = document.getElementById("adminBtnText");
+      if (win.adminPassword) { if(a) a.classList.add("admin-mode-on"); if(b) b.innerText = "Çıkış Yap"; }
+
+      const reqF = document.getElementById("requestForm");
+      if (reqF && !(reqF as any)._initialized) {
+        (reqF as any)._initialized = true;
+        reqF.addEventListener("submit", async function(e) {
+          e.preventDefault(); if (win.isSubmitting) return;
+          win.isSubmitting = true; const btn = document.getElementById("submitBtn") as HTMLButtonElement; if(btn) { btn.disabled=true; btn.innerText="Gönderiliyor..."; }
+          let tags: string[] = []; document.querySelectorAll(".tag-check:checked").forEach((cb: any) => tags.push(cb.value));
+          const res = await win.apiCall({
+            action: "add", kullanici: (document.getElementById("reqUser") as HTMLInputElement)?.value || "",
+            seri: (document.getElementById("reqTitle") as HTMLInputElement)?.value || "", kat: (document.getElementById("reqKat") as HTMLSelectElement)?.value || "Manhwa",
+            seriDurumu: (document.getElementById("reqSeriDurum") as HTMLInputElement)?.value || "", resim: (document.getElementById("reqImg") as HTMLInputElement)?.value || "",
+            link: (document.getElementById("reqLink") as HTMLInputElement)?.value || "", tur: tags.length > 0 ? tags.join(", ") : "Genel"
+          });
+          win.isSubmitting = false; if(btn) { btn.disabled = false; btn.innerText = "🚀 Gönder"; }
+          if (res && res.success) {
+            win.showToast("✨ İstek eklendi!");
+            win.closeModal();
+            (reqF as HTMLFormElement).reset();
+            const prevBox = document.getElementById("previewBox");
+            if (prevBox) prevBox.style.display="none";
+            await win.loadData();
+          }
+          else alert("Hata: " + (res.message || "İstek eklenemedi"));
+        });
+      }
+
+      const editF = document.getElementById("editForm");
+      if (editF && !(editF as any)._initialized) {
+        (editF as any)._initialized = true;
+        editF.addEventListener("submit", async function(e) {
+          e.preventDefault(); if (!win.adminPassword) return alert("Admin girişi yapmalısınız!");
+          const res = await win.apiCall({
+            action: "edit", row: (document.getElementById("editRow") as HTMLInputElement)?.value, oldSeri: (document.getElementById("editOldSeri") as HTMLInputElement)?.value,
+            seri: (document.getElementById("editTitle") as HTMLInputElement)?.value, kat: (document.getElementById("editKat") as HTMLSelectElement)?.value, durum: (document.getElementById("editDurum") as HTMLSelectElement)?.value,
+            seriDurumu: (document.getElementById("editSeriDurum") as HTMLInputElement)?.value, resim: (document.getElementById("editImg") as HTMLInputElement)?.value, readLink: (document.getElementById("editReadLink") as HTMLInputElement)?.value,
+            link: (document.getElementById("editLink") as HTMLInputElement)?.value, tur: (document.getElementById("editTur") as HTMLInputElement)?.value, passcode: win.adminPassword
+          });
+          if (res && res.success) { win.showToast("💾 Kaydedildi!"); win.closeEditModal(); await win.loadData(); } else alert("Hata: " + (res.message || "Düzenlenemedi"));
+        });
+      }
+      win.initFastLoad();
+    };
+
+    win.initApp();
+  }, []);
 
   return (
-    <div className="max-w-6xl mx-auto px-3 sm:px-4 py-6 space-y-6 animate-fadeIn text-gray-100">
+    <div className="w-full">
+      <style>{`
+        *, *:before, *:after { box-sizing: border-box; }
 
-      {/* HEADER SECTION */}
-      <div className="relative overflow-hidden rounded-3xl p-6 sm:p-8 text-center bg-gradient-to-br from-purple-950/80 via-slate-900 to-indigo-950 border border-purple-500/30 shadow-[0_0_40px_rgba(157,78,221,0.15)]">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
+        :root {
+          --bg-space: #0b0614;
+          --card-bg: rgba(23, 13, 41, 0.75);
+          --border-glow: #3c1e70;
+          --neon-purple: #9d4edd;
+          --neon-pink: #f72585;
+          --neon-cyan: #4cc9f0;
+          --neon-green: #28a745;
+          --neon-gold: #ffc107;
+          --text-bright: #f1e6ff;
+          --text-sub: #a392c1;
+        }
 
-        <h2 className="text-2xl sm:text-3xl font-black text-white drop-shadow-[0_0_15px_rgba(157,78,221,0.8)] tracking-tight mb-2">
-          ✨ Mikrokosmos İstek Havuzu
-        </h2>
-        <p className="text-xs sm:text-sm text-purple-200/80 max-w-xl mx-auto leading-relaxed mb-6">
-          Çevrilmesini istediğiniz serileri bize iletin veya mevcut isteklerin durumunu canlı takip edin!
-        </p>
+        .mikro-wrapper {
+          background: var(--bg-space);
+          background-image: radial-gradient(circle at 50% 0%, #29104d 0%, #0b0614 80%);
+          color: var(--text-bright);
+          padding: 20px 15px; border-radius: 20px; font-family: 'Segoe UI', Tahoma, sans-serif;
+          border: 1px solid var(--border-glow); box-shadow: 0 0 40px rgba(157, 78, 221, 0.15);
+          max-width: 1000px; margin: 0 auto; position: relative; overflow-x: hidden;
+        }
 
-        {/* HEADER ACTION BUTTONS */}
-        <div className="flex flex-wrap items-center justify-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setIsNewModalOpen(true)}
-            className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-purple-950/80 flex items-center gap-2 transition transform hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <Rocket size={15} />
-            <span>Yeni İstek Gönder</span>
-          </button>
+        .mikro-header {
+          background: linear-gradient(135deg, rgba(60,30,112,0.6), rgba(157,78,221,0.2));
+          border: 1px solid var(--border-glow); padding: 25px 15px; border-radius: 16px;
+          text-align: center; margin-bottom: 20px; backdrop-filter: blur(10px);
+        }
+        .mikro-header h2 { margin: 0 0 8px 0; font-size: 1.8rem; color: #fff; text-shadow: 0 0 15px var(--neon-purple); word-break: break-word; }
+        .mikro-header p { margin: 0 0 18px 0; color: var(--text-sub); font-size: 0.9rem; line-height: 1.4; }
 
-          <button
-            type="button"
-            onClick={() => loadLiveSheetData(true)}
-            className="px-4 py-2.5 bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 border border-cyan-500/40 font-bold text-xs rounded-full shadow-md flex items-center gap-2 transition active:scale-95 cursor-pointer"
-          >
-            <RotateCw size={14} className={isLoading ? 'animate-spin' : ''} />
-            <span>Listeyi Yenile</span>
-          </button>
+        .header-btns { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .btn-cosmic {
+          background: linear-gradient(135deg, #7b2cbf, #9d4edd); color: #fff; border: none;
+          padding: 10px 18px; border-radius: 30px; font-weight: 700; cursor: pointer; transition: 0.3s;
+          box-shadow: 0 0 15px rgba(157, 78, 221, 0.4); display: inline-flex; align-items: center; gap: 6px;
+          text-decoration: none; font-size: 13px; justify-content: center;
+        }
+        .btn-cosmic:hover { transform: translateY(-2px); box-shadow: 0 0 25px rgba(199, 125, 255, 0.7); }
+        .btn-cosmic:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .btn-admin-login { background: rgba(255,255,255,0.1); border: 1px solid var(--border-glow); }
+        .btn-discord { background: linear-gradient(135deg, #5865F2, #7289da); box-shadow: 0 0 15px rgba(88,101,242,0.4); }
+        .btn-refresh { background: rgba(76, 201, 240, 0.15); border: 1px solid var(--neon-cyan); color: var(--neon-cyan); }
+        
+        .admin-indicator {
+          display: none; background: rgba(247, 37, 133, 0.2); border: 1px solid var(--neon-pink);
+          color: #fff; padding: 8px 12px; border-radius: 15px; font-size: 11px; font-weight: bold;
+          margin-top: 12px; text-align: center; align-items: center; justify-content: center; gap: 8px;
+        }
+        .admin-mode-on .admin-indicator { display: flex; }
 
-          <a
-            href={DISCORD_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-full shadow-md flex items-center gap-2 transition active:scale-95"
-          >
-            <MessageCircle size={14} />
-            <span>Ekibe Sor (Discord)</span>
-          </a>
+        /* DUYURU KUTUSU */
+        .notice-box {
+          background: rgba(25, 12, 45, 0.85); border: 1px solid var(--neon-purple);
+          border-left: 4px solid var(--neon-pink); border-radius: 14px;
+          padding: 16px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(157, 78, 221, 0.15);
+        }
+        .notice-header {
+          font-size: 1rem; font-weight: 700; color: var(--neon-pink); margin-bottom: 10px;
+          display: flex; align-items: center; gap: 6px; text-shadow: 0 0 8px rgba(247,37,133,0.4);
+        }
+        .notice-list {
+          display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px 15px;
+          font-size: 11.5px; color: var(--text-bright); line-height: 1.4;
+        }
+        .notice-item { display: flex; align-items: flex-start; gap: 6px; }
+        .notice-item i { color: var(--neon-cyan); margin-top: 2px; flex-shrink: 0; }
 
-          <button
-            type="button"
-            onClick={toggleAdminAuth}
-            className={`px-4 py-2.5 border font-bold text-xs rounded-full shadow-md flex items-center gap-2 transition active:scale-95 cursor-pointer ${
-              isAdminActive
-                ? 'bg-fuchsia-950 text-fuchsia-300 border-fuchsia-500'
-                : 'bg-white/10 hover:bg-white/20 border-purple-500/30 text-gray-200'
-            }`}
-          >
-            <ShieldCheck size={14} />
-            <span>{isAdminActive ? 'Çıkış Yap' : 'Admin Girişi'}</span>
-          </button>
+        /* KATEGORİ SEKMELERİ */
+        .category-tabs {
+          display: flex; justify-content: center; gap: 6px; margin-bottom: 15px; flex-wrap: wrap;
+          border-bottom: 1px solid var(--border-glow); padding-bottom: 12px;
+        }
+        .cat-tab {
+          background: rgba(15, 8, 28, 0.8); border: 1px solid var(--border-glow);
+          color: var(--text-sub); padding: 8px 14px; border-radius: 20px; font-size: 12px;
+          font-weight: 700; cursor: pointer; transition: 0.25s; user-select: none;
+        }
+        .cat-tab:hover, .cat-tab.active {
+          background: linear-gradient(135deg, #7b2cbf, #9d4edd); color: #fff;
+          border-color: var(--neon-purple); box-shadow: 0 0 12px rgba(157,78,221,0.5);
+        }
+
+        /* TREND VİTRİN KARTI */
+        .trend-showcase {
+          display: none; background: linear-gradient(135deg, rgba(247,37,133,0.15), rgba(157,78,221,0.25));
+          border: 2px solid var(--neon-pink); border-radius: 16px; padding: 16px; margin-bottom: 20px;
+          box-shadow: 0 0 25px rgba(247, 37, 133, 0.3); position: relative; overflow: hidden;
+        }
+        .trend-badge-title {
+          position: absolute; top: 10px; right: 10px; background: var(--neon-pink);
+          color: #fff; font-size: 10px; font-weight: bold; padding: 3px 10px; border-radius: 10px;
+          box-shadow: 0 0 10px var(--neon-pink); text-transform: uppercase;
+        }
+        .trend-content { display: flex; gap: 15px; align-items: center; }
+        .trend-img { width: 85px; height: 120px; object-fit: cover; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.6); flex-shrink: 0; }
+        .trend-info { flex-grow: 1; min-width: 0; }
+        .trend-info h3 { margin: 0 0 6px 0; font-size: 1.2rem; color: #fff; text-shadow: 0 0 10px var(--neon-purple); word-break: break-word; }
+
+        /* Arama ve Filtreler */
+        .search-box { position: relative; margin-bottom: 15px; }
+        .search-box i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--neon-purple); }
+        .search-input {
+          width: 100%; padding: 12px 12px 12px 45px; border-radius: 25px;
+          background: rgba(15, 8, 28, 0.9); border: 1px solid var(--border-glow);
+          color: #fff; font-size: 0.9rem; outline: none; box-sizing: border-box; transition: 0.3s;
+        }
+
+        .filter-bar { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+        .filter-chip {
+          background: rgba(25, 14, 43, 0.8); border: 1px solid var(--border-glow);
+          color: var(--text-sub); padding: 6px 12px; border-radius: 18px; font-size: 11px;
+          font-weight: 600; cursor: pointer; transition: 0.2s; user-select: none;
+        }
+        .filter-chip:hover, .filter-chip.active { background: var(--neon-purple); color: #fff; border-color: var(--neon-purple); }
+
+        /* CARD GRID */
+        .card-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+
+        .series-card {
+          background: var(--card-bg); border: 1px solid var(--border-glow);
+          border-radius: 12px; padding: 12px; display: flex; gap: 12px; align-items: flex-start;
+          backdrop-filter: blur(8px); transition: 0.3s; position: relative; overflow: hidden;
+        }
+        .series-card:hover { border-color: var(--neon-purple); box-shadow: 0 0 15px rgba(157, 78, 221, 0.25); }
+        
+        .cover-img { width: 75px; height: 110px; object-fit: cover; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.5); flex-shrink: 0; }
+        .card-details { flex-grow: 1; min-width: 0; }
+        .card-details h4 { margin: 0 0 4px 0; font-size: 1rem; color: #fff; word-break: break-word; line-height: 1.3; }
+        .card-meta { font-size: 0.75rem; color: var(--text-sub); margin-bottom: 6px; }
+
+        /* Rozetler */
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 9px; font-weight: bold; text-transform: uppercase; display: inline-block; white-space: nowrap; flex-shrink: 0; }
+        .badge-beklemede { background: rgba(255, 193, 7, 0.15); color: #ffc107; border: 1px solid #ffc107; }
+        .badge-incelemede { background: rgba(187, 134, 252, 0.2); color: #c77dff; border: 1px solid #c77dff; }
+        .badge-kabul { background: rgba(40, 167, 69, 0.15); color: #28a745; border: 1px solid #28a745; }
+        .badge-yapim { background: rgba(76, 201, 240, 0.15); color: var(--neon-cyan); border: 1px solid var(--neon-cyan); }
+        .badge-yakin { background: rgba(255, 152, 0, 0.15); color: #ff9800; border: 1px solid #ff9800; }
+        .badge-yayin { background: rgba(247, 37, 133, 0.2); color: var(--neon-pink); border: 1px solid var(--neon-pink); }
+        .badge-red { background: rgba(220, 53, 69, 0.15); color: #dc3545; border: 1px solid #dc3545; }
+
+        .tag-badge { background: rgba(157, 78, 221, 0.2); color: #d8b4fe; border: 1px solid rgba(157, 78, 221, 0.4); padding: 1px 5px; border-radius: 4px; font-size: 9px; margin-right: 3px; display: inline-block; }
+        .tag-18 { background: rgba(247, 37, 133, 0.25); color: var(--neon-pink); border-color: var(--neon-pink); }
+        .tag-bl { background: rgba(76, 201, 240, 0.2); color: var(--neon-cyan); border-color: var(--neon-cyan); }
+
+        .note-display-box {
+          font-size: 11px;
+          color: var(--neon-cyan);
+          margin-bottom: 6px;
+          line-height: 1.35;
+          word-break: break-word;
+          display: -webkit-box;
+          -webkit-line-clamp: 3;
+          -webkit-box-orient: vertical;
+          overflow: hidden;
+        }
+
+        .red-reason-box {
+          font-size: 10.5px; color: #ff6b6b; background: rgba(220,53,69,0.15);
+          border: 1px solid rgba(220,53,69,0.35); padding: 4px 8px; border-radius: 6px;
+          margin-bottom: 6px; font-weight: 600; line-height: 1.3; word-break: break-word;
+        }
+
+        .card-action-bar { display: flex; gap: 6px; margin-top: 6px; align-items: center; flex-wrap: wrap; }
+        .btn-vote {
+          background: rgba(255, 193, 7, 0.15); border: 1px solid var(--neon-gold); color: var(--neon-gold);
+          padding: 3px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        .btn-vote:hover, .btn-vote.voted { background: var(--neon-gold); color: #000; }
+
+        .btn-read-now {
+          background: linear-gradient(135deg, #28a745, #20c997); color: #fff;
+          padding: 3px 10px; border-radius: 10px; font-size: 10px; font-weight: bold; text-decoration: none;
+          display: inline-flex; align-items: center; gap: 3px;
+        }
+
+        .admin-tools { display: none; gap: 4px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border-glow); flex-wrap: wrap; }
+        .admin-mode-on .admin-tools { display: flex; }
+        .act-btn { padding: 3px 7px; border-radius: 5px; border: none; font-size: 9.5px; font-weight: bold; cursor: pointer; color: #fff; }
+        .act-edit { background: #ff9800; }
+        .act-inceleme { background: #9d4edd; }
+        .act-kabul { background: #28a745; }
+        .act-yapim { background: #00b4d8; }
+        .act-yakin { background: #ff9800; }
+        .act-yayin { background: #f72585; }
+        .act-red { background: #dc3545; }
+        .act-sil { background: #495057; }
+
+        .modal-overlay {
+          display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(7, 3, 14, 0.85); backdrop-filter: blur(8px); z-index: 99999;
+          justify-content: center; align-items: center; padding: 12px;
+        }
+        .modal-box {
+          background: #140b24; border: 1px solid var(--border-glow); border-radius: 16px;
+          padding: 20px; width: 100%; max-width: 450px; box-shadow: 0 0 30px rgba(157,78,221,0.3);
+          position: relative; color: #fff; max-height: 92vh; overflow-y: auto;
+        }
+        .modal-close { position: absolute; top: 12px; right: 16px; font-size: 20px; cursor: pointer; color: var(--text-sub); }
+        
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 11.5px; margin-bottom: 4px; color: var(--text-sub); }
+        .form-control {
+          width: 100%; padding: 10px; border-radius: 8px; background: rgba(8, 4, 15, 0.9);
+          border: 1px solid var(--border-glow); color: #fff; box-sizing: border-box; outline: none; font-size: 13px;
+        }
+
+        .upload-btn-wrapper { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+        .btn-file-upload {
+          background: rgba(157, 78, 221, 0.2); border: 1px dashed var(--neon-purple);
+          color: var(--neon-purple); padding: 8px 14px; border-radius: 8px; font-size: 11.5px;
+          font-weight: bold; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
+          transition: 0.2s; width: 100%; justify-content: center;
+        }
+        .btn-file-upload:hover { background: var(--neon-purple); color: #fff; }
+        .upload-status { font-size: 11px; margin-top: 4px; display: none; }
+
+        .tag-select-group { display: flex; flex-wrap: wrap; gap: 5px; }
+        .tag-check { display: none; }
+        .tag-label {
+          padding: 4px 8px; border-radius: 10px; border: 1px solid var(--border-glow);
+          font-size: 10px; cursor: pointer; color: var(--text-sub); background: rgba(15,8,28,0.8);
+        }
+        .tag-check:checked + .tag-label { background: var(--neon-purple); color: #fff; border-color: var(--neon-purple); }
+
+        .duplicate-warning {
+          display: none; background: rgba(255,193,7,0.15); border: 1px solid #ffc107;
+          color: #ffc107; padding: 6px 10px; border-radius: 6px; font-size: 10.5px; margin-top: 5px;
+        }
+
+        .preview-box { text-align: center; margin-top: 8px; display: none; }
+        .preview-box img { width: 65px; height: 95px; object-fit: cover; border-radius: 6px; border: 1px solid var(--neon-purple); }
+
+        #toastBox { position: fixed; bottom: 15px; right: 15px; z-index: 999999; display: flex; flex-direction: column; gap: 8px; }
+        .toast {
+          background: #1f1038; border: 1px solid var(--neon-purple); color: #fff; padding: 10px 16px;
+          border-radius: 8px; font-size: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        @media (max-width: 800px) {
+          .card-grid { grid-template-columns: 1fr; }
+          .notice-list { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 500px) {
+          .mikro-wrapper { padding: 15px 10px; }
+          .header-btns { flex-direction: column; width: 100%; }
+          .btn-cosmic { width: 100%; }
+          .trend-content { flex-direction: column; text-align: center; }
+          .trend-badge-title { position: static; display: inline-block; margin-bottom: 10px; }
+          .series-card { align-items: flex-start; }
+        }
+      `}</style>
+
+      <div className="mikro-wrapper" id="mikroApp">
+
+        {/* Header */}
+        <div className="mikro-header">
+          <h2>✨ Mikrokosmos İstek Havuzu</h2>
+          <p>Çevrilmesini istediğiniz serileri bize iletin veya mevcut isteklerin durumunu takip edin!</p>
+          <div className="header-btns">
+            <button className="btn-cosmic" onClick={() => (window as any).openModal()}><i className="fa-solid fa-paper-plane"></i> Yeni İstek Gönder</button>
+            <button className="btn-cosmic btn-refresh" onClick={() => (window as any).forceRefreshData()}><i class="fa-solid fa-rotate-right"></i> Listeyi Yenile</button>
+            <a href="https://discord.gg/H4cAsuFSYz" target="_blank" rel="noopener noreferrer" className="btn-cosmic btn-discord"><i className="fa-brands fa-discord"></i> Ekibe Sor (Discord)</a>
+            <button className="btn-cosmic btn-admin-login" onClick={() => (window as any).toggleAdmin()}><i className="fa-solid fa-user-shield"></i> <span id="adminBtnText">Admin Girişi</span></button>
+          </div>
+          <div className="admin-indicator">
+            <span>🔑 Yönetici Modu Aktif (Değişiklikleri kartların altından yapabilirsiniz)</span>
+          </div>
         </div>
 
-        {isAdminActive && (
-          <div className="mt-4 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs font-bold animate-pulse">
-            <ShieldCheck size={14} className="text-rose-400" />
-            <span>🔑 Yönetici Modu Aktif (Değişiklikleri kartların altındaki panelden yapabilirsiniz)</span>
+        {/* DUYURU KUTUSU */}
+        <div className="notice-box">
+          <div className="notice-header">
+            <i className="fa-solid fa-circle-info"></i> 📌 Okuyucularımızın Dikkatine (Seri Kabul Kriterlerimiz)
           </div>
-        )}
-      </div>
-
-      {/* DUYURU KUTUSU / SERİ KABUL KRİTERLERİ */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-purple-950/40 border border-purple-500/40 border-l-4 border-l-fuchsia-500 shadow-xl space-y-3">
-        <div className="flex items-center gap-2 text-fuchsia-300 font-extrabold text-sm sm:text-base">
-          <Info size={18} className="text-fuchsia-400 shrink-0" />
-          <span>📌 Okuyucularımızın Dikkatine (Seri Kabul Kriterlerimiz)</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs text-purple-100/90 leading-relaxed">
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <Flame size={14} className="text-amber-400 shrink-0 mt-0.5" />
-            <span><strong>Oy Sayısı:</strong> En çok oy alan seriler en çabuk değerlendirmeye alınır. Oylarda aktif olalım.</span>
-          </div>
-
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <Sparkles size={14} className="text-fuchsia-400 shrink-0 mt-0.5" />
-            <span><strong>Çizim Kalitesi:</strong> Çizimi profesyonel ve kaliteli olan serilerin alınma olasılığı yüksektir. Çizimi süper olmasa bile konusu çok ilgi çekici serileri tabii ki alıyoruz.</span>
-          </div>
-
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <Clock size={14} className="text-cyan-400 shrink-0 mt-0.5" />
-            <span><strong>Güncellik:</strong> Kısa, tamamlanmış ve en yeni/güncel serileri de hızlı alıyoruz. Çünkü kısa oluyorlar.</span>
-          </div>
-
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <CheckCircle2 size={14} className="text-emerald-400 shrink-0 mt-0.5" />
-            <span><strong>Emeğimiz:</strong> Bir seriyi başka fansubların yapması veya yapmış olması bizi ilgilendirmez; biz kendi emeğimizle istenilen her seriyi yapıyoruz.</span>
-          </div>
-
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <Bookmark size={14} className="text-indigo-400 shrink-0 mt-0.5" />
-            <span><strong>Uzun Seriler:</strong> Uzun serilerin tamamlanmış olması bir artıdır. Devam eden uzun bir seri ise çizim ve konusuna ekstra dikkat ediyoruz.</span>
-          </div>
-
-          <div className="flex items-start gap-2 bg-black/30 p-2.5 rounded-xl border border-purple-500/20">
-            <Info size={14} className="text-amber-300 shrink-0 mt-0.5" />
-            <span><strong>İncelemede olan Seriler:</strong> İncelemede olan seriler bizim bile yapmakta kararsız kaldığımız serilerdir. Oylara bakılarak karar verilecek.</span>
-          </div>
-        </div>
-      </div>
-
-      {/* KATEGORİ SEKMELERİ */}
-      <div className="flex items-center justify-center gap-2 flex-wrap border-b border-purple-500/20 pb-3">
-        {[
-          { id: 'all', label: 'Tüm İstekler' },
-          { id: 'Manhwa', label: 'Manhwa' },
-          { id: 'Novel', label: 'Novel' },
-          { id: 'Manga', label: 'Manga' },
-          { id: 'Manhua', label: 'Manhua' }
-        ].map(cat => (
-          <button
-            key={cat.id}
-            type="button"
-            onClick={() => setCurrentCategoryFilter(cat.id)}
-            className={`px-4 py-1.5 rounded-full text-xs font-extrabold transition border cursor-pointer ${
-              currentCategoryFilter === cat.id
-                ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-fuchsia-400 shadow-md shadow-purple-950/60 scale-105'
-                : 'bg-gray-900/80 text-gray-400 border-purple-500/20 hover:text-white hover:border-purple-500/40'
-            }`}
-          >
-            {cat.label}
-          </button>
-        ))}
-      </div>
-
-      {/* HAFTANIN TREND İSTEĞİ VİTRİNİ */}
-      {topTrendRequest && (
-        <div className="relative overflow-hidden p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-fuchsia-950/40 via-purple-950/50 to-indigo-950/40 border-2 border-fuchsia-500/60 shadow-[0_0_25px_rgba(247,37,133,0.2)]">
-          <div className="absolute top-3 right-3 bg-fuchsia-600 text-white font-black text-[10px] uppercase px-3 py-1 rounded-full shadow-md flex items-center gap-1">
-            <Flame size={12} /> HAFTANIN TREND İSTEĞİ
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 pt-4 sm:pt-0">
-            <img
-              src={topTrendRequest.coverImage || topTrendRequest.resim || DEFAULT_COVER}
-              alt={topTrendRequest.title || topTrendRequest.seri}
-              onError={e => { (e.target as any).src = DEFAULT_COVER; }}
-              className="w-24 h-36 sm:w-28 sm:h-40 object-cover rounded-2xl shadow-2xl border border-fuchsia-500/40 shrink-0"
-            />
-
-            <div className="flex-1 min-w-0 text-center sm:text-left space-y-2">
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <h3 className="text-lg sm:text-xl font-black text-white tracking-wide">
-                  {topTrendRequest.title || topTrendRequest.seri}
-                </h3>
-                {(() => {
-                  const badge = getStatusBadge(topTrendRequest.status || topTrendRequest.durum);
-                  return (
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 ${badge.class}`}>
-                      {badge.icon} {badge.text}
-                    </span>
-                  );
-                })()}
-              </div>
-
-              <p className="text-xs text-gray-300/90 leading-relaxed line-clamp-2">
-                <strong>İsteyen:</strong> <span className="text-fuchsia-300 font-bold">{topTrendRequest.requestedBy || topTrendRequest.kullanici}</span> ({topTrendRequest.createdAt || topTrendRequest.tarih}) • <span className="text-purple-300 font-bold">{topTrendRequest.type || topTrendRequest.kat}</span> {(topTrendRequest.originalStatus || topTrendRequest.seriDurumu) ? `• ${topTrendRequest.originalStatus || topTrendRequest.seriDurumu}` : ''}
-              </p>
-
-              {topTrendRequest.tags && topTrendRequest.tags.length > 0 && (
-                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1">
-                  {topTrendRequest.tags.map((t, idx) => (
-                    <span key={idx} className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-950/80 border border-purple-500/40 text-purple-200">
-                      #{t}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {(topTrendRequest.note || topTrendRequest.link) && (
-                <div className="p-2 rounded-xl bg-black/40 border border-cyan-500/30 text-xs text-cyan-200 font-medium">
-                  <strong>Not:</strong> {topTrendRequest.note || topTrendRequest.link}
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => handleVote(topTrendRequest)}
-                  className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black text-xs shadow-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                >
-                  <ThumbsUp size={14} />
-                  <span>{topTrendRequest.votes || topTrendRequest.oy || 0} Oy</span>
-                </button>
-
-                {topTrendRequest.readLink && (
-                  <a
-                    href={topTrendRequest.readLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition"
-                  >
-                    <BookOpen size={14} />
-                    <span>Oku</span>
-                  </a>
-                )}
-
-                <a
-                  href={DISCORD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3.5 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs flex items-center gap-1.5 transition"
-                >
-                  <MessageCircle size={14} />
-                  <span>Sor</span>
-                </a>
-              </div>
+          <div className="notice-list">
+            <div className="notice-item">
+              <i className="fa-solid fa-fire"></i>
+              <span><strong>Oy Sayısı:</strong> En çok oy alan seriler en çabuk değerlendirmeye alınır. Oylarda aktif olalım.</span>
+            </div>
+            <div className="notice-item">
+              <i className="fa-solid fa-palette"></i>
+              <span><strong>Çizim Kalitesi:</strong> Çizimi profesyonel ve kaliteli olan serilerin alınma olasılığı yüksektir. Çizimi süper olmasa bile konusu çok ilgi çekici serileri tabii ki alıyoruz. Ama lütfen amatör ve ilgi çekmeyen çizimli serileri önermekten kaçının. Gerçekten bazen serinin çizimi yüzünden insan okumak istemiyor.</span>
+            </div>
+            <div className="notice-item">
+              <i className="fa-solid fa-bolt"></i>
+              <span><strong>Güncellik:</strong> Kısa, tamamlanmış ve en yeni/güncel serileri de hızlı alıyoruz.Cünki kısa oluyorlar.</span>
+            </div>
+            <div className="notice-item">
+              <i className="fa-solid fa-hands-holding-circle"></i>
+              <span><strong>Emeğimiz:</strong> Bir seriyi başka fansubların yapması veya yapmış olması bizi ilgilendirmez; biz kendi emeğimizle istenilen her seriyi yapıyoruz. Bu yüzden bu seri bu fansubda var niye yapıyorsunuz ve ya yeni serileri yapın başka fansubların yaptığı serileri yapmayın cümlelerini ciddiye almıyoruz. </span>
+            </div>
+            <div className="notice-item">
+              <i className="fa-solid fa-book-bookmark"></i>
+              <span><strong>Uzun Seriler:</strong> Uzun serilerin tamamlanmış olması bir artıdır. Devam eden uzun bir seri ise çizim ve konusuna ekstra dikkat ediyoruz. Her taraflı 4-4lük bir seriyse uzun olması sorununu kıyak geçiyoruz. </span>
+            </div>
+            <div className="notice-item">
+              <i className="fa-solid fa-book-bookmark"></i>
+              <span><strong>İncelemede olan Seriler:</strong> İncelemede olan seriler bizim bile yapmakta kararsız kaldığımız serilerdir. Bu serilerin alınıp alınmayacağına oylara yani isteklere bakılarak karar verilecek.</span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* ARAMA VE DURUM FİLTRE ÇİPLERİ */}
-      <div className="space-y-3">
-        <div className="relative">
-          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400" />
-          <input
-            type="text"
-            placeholder="Seri adı veya kullanıcı ara..."
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-11 pr-4 py-2.5 bg-gray-900/90 border border-purple-500/30 focus:border-fuchsia-400 rounded-2xl text-xs sm:text-sm text-white placeholder:text-gray-500 focus:outline-none transition shadow-inner"
-          />
+        {/* KATEGORİ SEKMELERİ */}
+        <div className="category-tabs">
+          <div className="cat-tab active" onClick={(e) => (window as any).setCategoryFilter('all', e.currentTarget)}>Tüm İstekler</div>
+          <div className="cat-tab" onClick={(e) => (window as any).setCategoryFilter('Manhwa', e.currentTarget)}>Manhwa</div>
+          <div className="cat-tab" onClick={(e) => (window as any).setCategoryFilter('Novel', e.currentTarget)}>Novel</div>
+          <div className="cat-tab" onClick={(e) => (window as any).setCategoryFilter('Manga', e.currentTarget)}>Manga</div>
+          <div className="cat-tab" onClick={(e) => (window as any).setCategoryFilter('Manhua', e.currentTarget)}>Manhua</div>
         </div>
 
-        {/* Status Filter Chips */}
-        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-          {[
-            { id: 'all', label: 'Tümü' },
-            { id: 'beklemede', label: 'Beklemede' },
-            { id: 'incelemede', label: 'İncelemede' },
-            { id: 'kabul', label: 'Kabul Edildi' },
-            { id: 'yapim', label: 'Yapımda' },
-            { id: 'yakin', label: 'Yakında' },
-            { id: 'yayin', label: 'Yayında!' },
-            { id: 'red', label: 'Reddedildi' }
-          ].map(chip => (
-            <button
-              key={chip.id}
-              type="button"
-              onClick={() => setCurrentStatusFilter(chip.id)}
-              className={`px-3 py-1 rounded-full text-[11px] font-bold transition border cursor-pointer ${
-                currentStatusFilter === chip.id
-                  ? 'bg-purple-600 text-white border-purple-400 shadow-md scale-105'
-                  : 'bg-gray-900/80 text-gray-400 border-purple-500/20 hover:text-white hover:border-purple-500/40'
-              }`}
-            >
-              {chip.label}
-            </button>
-          ))}
+        {/* TREND İSTEK VİTRİNİ */}
+        <div className="trend-showcase" id="trendShowcase">
+          <div className="trend-badge-title">🔥 HAFTANIN TREND İSTEĞİ</div>
+          <div className="trend-content" id="trendContent"></div>
         </div>
 
-        {/* SIRALAMA SEKMELERİ (VARSAYILAN: YENİDEN ESKİYE) */}
-        <div className="flex items-center justify-between gap-2 flex-wrap bg-gray-900/90 border border-purple-500/20 p-2.5 rounded-2xl">
-          <span className="text-xs font-extrabold text-purple-300 flex items-center gap-1.5 pl-1">
-            <Sparkles size={14} className="text-fuchsia-400" />
-            <span>Sıralama Modu:</span>
-          </span>
+        {/* Arama ve Durum Filtreleri */}
+        <div className="search-box">
+          <i className="fa-solid fa-magnifying-glass"></i>
+          <input type="text" className="search-input" id="searchInput" onKeyUp={() => (window as any).filterCards()} placeholder="Seri adı veya kullanıcı ara..." />
+        </div>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <button
-              type="button"
-              onClick={() => setSortBy('newest')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
-                sortBy === 'newest'
-                  ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-fuchsia-400 shadow-md scale-105'
-                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
-              }`}
-            >
-              ✨ Yeniden Eskiye (Varsayılan)
-            </button>
+        {/* FİLTRE ÇİPLERİ */}
+        <div className="filter-bar">
+          <div className="filter-chip active" onClick={(e) => (window as any).setFilter('all', e.currentTarget)}>Tümü</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('beklemede', e.currentTarget)}>Beklemede</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('incelemede', e.currentTarget)}>İncelemede</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('kabul', e.currentTarget)}>Kabul Edildi</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('yapim', e.currentTarget)}>Yapımda</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('yakin', e.currentTarget)}>Yakında</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('yayin', e.currentTarget)}>Yayında</div>
+          <div className="filter-chip" onClick={(e) => (window as any).setFilter('red', e.currentTarget)}>Reddedildi</div>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => setSortBy('oldest')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
-                sortBy === 'oldest'
-                  ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-fuchsia-400 shadow-md scale-105'
-                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
-              }`}
-            >
-              ⏳ Eskiden Yeniye
-            </button>
+        <div id="loadingText" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-sub)' }}>
+          <i className="fa-solid fa-spinner fa-spin fa-2x"></i><br /><br />Galaksi verileri çekiliyor...
+        </div>
 
-            <button
-              type="button"
-              onClick={() => setSortBy('votes')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
-                sortBy === 'votes'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black border-amber-300 shadow-md scale-105'
-                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
-              }`}
-            >
-              🔥 En Çok Oy Alan
-            </button>
-          </div>
+        <div className="card-grid" id="cardGrid"></div>
+
+      </div>
+
+      {/* İSTEK MODALI */}
+      <div className="modal-overlay" id="requestModal">
+        <div className="modal-box">
+          <span className="modal-close" onClick={() => (window as any).closeModal()}>✕</span>
+          <h3 style={{ margin: '0 0 15px 0', color: 'var(--neon-purple)' }}><i className="fa-solid fa-rocket"></i> Seri İsteğinde Bulun</h3>
+          <form id="requestForm">
+            <div className="form-group">
+              <label>Kullanıcı Adınız:</label>
+              <input type="text" className="form-control" id="reqUser" required placeholder="Örn: Starlight" />
+            </div>
+            <div className="form-group">
+              <label>İstediğiniz Seri Adı:</label>
+              <input type="text" className="form-control" id="reqTitle" onInput={(e: any) => (window as any).checkDuplicateTitle(e.target.value)} required placeholder="Örn: Solo Leveling" />
+              <div className="duplicate-warning" id="duplicateWarning"></div>
+            </div>
+            <div className="form-group">
+              <label>Kategori:</label>
+              <select className="form-control" id="reqKat">
+                <option value="Manhwa">Manhwa</option>
+                <option value="Novel">Novel</option>
+                <option value="Manga">Manga</option>
+                <option value="Manhua">Manhua</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>📖 Serinin Orijinal Durumu (İsteğe Bağlı):</label>
+              <input type="text" className="form-control" id="reqSeriDurum" placeholder="Örn: Tamamlandı (80 Bölüm), Devam Ediyor vb." />
+            </div>
+            <div className="form-group">
+              <label>Tür / Etiketler (İsteğe Bağlı):</label>
+              <div className="tag-select-group">
+                <input type="checkbox" id="tag_bl" className="tag-check" value="BL" /><label htmlFor="tag_bl" className="tag-label">BL</label>
+                <input type="checkbox" id="tag_gl" className="tag-check" value="GL" /><label htmlFor="tag_gl" className="tag-label">GL</label>
+                <input type="checkbox" id="tag_yeni" className="tag-check" value="Yeni Seri" /><label htmlFor="tag_yeni" className="tag-label">Yeni Seri</label>
+                <input type="checkbox" id="tag_18" className="tag-check" value="+18" /><label htmlFor="tag_18" className="tag-label">+18</label>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>🖼️ Kapak Resmi (Yükleyin veya Link Yapıştırın):</label>
+              <div className="upload-btn-wrapper">
+                <label htmlFor="reqFileInput" className="btn-file-upload">
+                  <i className="fa-solid fa-cloud-arrow-up"></i> Galeriden / Bilgisayardan Fotoğraf Seç
+                </label>
+                <input type="file" id="reqFileInput" accept="image/*" style={{ display: 'none' }} onChange={(e: any) => (window as any).handleFileUpload(e.target, 'reqImg', 'uploadStatus', 'previewBox', 'previewImg')} />
+              </div>
+              <div className="upload-status" id="uploadStatus"></div>
+              <input type="url" className="form-control" id="reqImg" style={{ marginTop: '6px' }} onInput={(e: any) => (window as any).previewImage(e.target.value, 'previewBox', 'previewImg')} placeholder="Veya doğrudan https://... resim linki yapıştırın" />
+              <div className="preview-box" id="previewBox">
+                <img id="previewImg" src="" referrerPolicy="no-referrer" alt="Önizleme" />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Not veya Bağlantı (İsteğe Bağlı):</label>
+              <input type="text" className="form-control" id="reqLink" placeholder="Örn: Raw linki veya açıklaması" />
+            </div>
+            <button type="submit" className="btn-cosmic" style={{ width: '100%', justifyContent: 'center' }} id="submitBtn">🚀 Gönder</button>
+          </form>
         </div>
       </div>
 
-      {/* LOADING INDICATOR (ONLY SHOWN IF INITIAL LIST IS EMPTY) */}
-      {isLoading && requestsList.length === 0 && (
-        <div className="text-center py-10 space-y-3">
-          <RotateCw size={28} className="animate-spin text-purple-400 mx-auto" />
-          <p className="text-xs text-purple-300 font-bold">Galaksi verileri Google E-Tablo'dan çekiliyor...</p>
-        </div>
-      )}
-
-      {/* CARD GRID (ALWAYS SHOWN IF WE HAVE ITEMS OR FINISHED LOADING) */}
-      {(!isLoading || requestsList.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filteredRequests.length === 0 ? (
-            <div className="col-span-full text-center py-12 bg-gray-900/60 border border-purple-500/20 rounded-3xl p-6 space-y-3">
-              <AlertTriangle size={32} className="mx-auto text-amber-400" />
-              <p className="text-gray-300 font-bold text-sm">Aramanıza veya filtreye uygun seri isteği bulunamadı.</p>
-              <button
-                type="button"
-                onClick={() => setIsNewModalOpen(true)}
-                className="px-5 py-2 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition"
-              >
-                İlk İsteği Siz Gönderin!
-              </button>
+      {/* ADMIN DÜZENLEME MODALI */}
+      <div className="modal-overlay" id="editModal">
+        <div className="modal-box">
+          <span className="modal-close" onClick={() => (window as any).closeEditModal()}>✕</span>
+          <h3 style={{ margin: '0 0 15px 0', color: 'var(--neon-purple)' }}><i className="fa-solid fa-pen-to-square"></i> Seri Bilgilerini Düzenle</h3>
+          <form id="editForm">
+            <input type="hidden" id="editRow" />
+            <input type="hidden" id="editOldSeri" />
+            <div className="form-group">
+              <label>Seri Adı:</label>
+              <input type="text" className="form-control" id="editTitle" required />
             </div>
-          ) : (
-            filteredRequests.map((item, idx) => {
-              const statusBadge = getStatusBadge(item.status || item.durum);
-
-              return (
-                <div
-                  key={item.id || item.row || idx}
-                  className="bg-gray-900/90 border border-purple-500/20 hover:border-purple-500/50 rounded-2xl p-3.5 sm:p-4 flex gap-3 sm:gap-4 shadow-xl transition-all duration-300 hover:shadow-purple-950/50 relative overflow-hidden group"
-                >
-                  {/* Cover Image */}
-                  <img
-                    src={item.coverImage || item.resim || DEFAULT_COVER}
-                    alt={item.title || item.seri}
-                    onError={e => { (e.target as any).src = DEFAULT_COVER; }}
-                    className="w-20 h-28 sm:w-24 sm:h-32 object-cover rounded-xl shadow-lg border border-purple-500/30 shrink-0 group-hover:scale-105 transition-transform"
-                  />
-
-                  {/* Card Details */}
-                  <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div className="space-y-1">
-                      {/* Header: Title + Status Badge */}
-                      <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-extrabold text-sm sm:text-base text-white truncate group-hover:text-purple-300 transition" title={item.title || item.seri}>
-                          {item.title || item.seri}
-                        </h4>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-black border flex items-center gap-1 shrink-0 ${statusBadge.class}`}>
-                          {statusBadge.icon} {statusBadge.text}
-                        </span>
-                      </div>
-
-                      {/* Requester & Category Meta */}
-                      <div className="text-[11px] text-gray-400 space-x-1">
-                        <span><strong>İsteyen:</strong> <span className="text-purple-300 font-bold">{item.requestedBy || item.kullanici}</span> ({item.createdAt || item.tarih})</span>
-                        <span>|</span>
-                        <span className="text-fuchsia-300 font-bold">{item.type || item.kat}</span>
-                        {(item.originalStatus || item.seriDurumu) && (
-                          <span className="text-amber-300 font-bold"> | 🔖 {item.originalStatus || item.seriDurumu}</span>
-                        )}
-                      </div>
-
-                      {/* Genre Tags */}
-                      {item.tags && item.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {item.tags.map((t, tIdx) => (
-                            <span
-                              key={tIdx}
-                              className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${
-                                t.includes('+18')
-                                  ? 'bg-rose-950 text-rose-300 border-rose-500/50'
-                                  : t.includes('BL')
-                                  ? 'bg-cyan-950 text-cyan-300 border-cyan-500/50'
-                                  : 'bg-purple-950 text-purple-300 border-purple-500/30'
-                              }`}
-                            >
-                              {t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Note / Rejection Reason Box */}
-                      {statusBadge.dataStatus === 'red' && (item.link || item.note || item.rejectionReason) ? (
-                        <div className="text-[10.5px] font-bold text-rose-300 bg-rose-950/60 border border-rose-500/40 px-2.5 py-1 rounded-lg mt-1 line-clamp-2">
-                          ❌ {item.rejectionReason || item.note || item.link}
-                        </div>
-                      ) : (item.note || item.link) ? (
-                        <div className="text-[10.5px] text-cyan-300 bg-black/40 border border-cyan-500/30 px-2.5 py-1 rounded-lg mt-1 line-clamp-2">
-                          <strong>Not:</strong> {item.note || item.link}
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Card Action Bar */}
-                    <div className="pt-2 border-t border-gray-800/80 flex items-center gap-2 flex-wrap mt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleVote(item)}
-                        className="px-3 py-1 rounded-xl text-xs font-black transition border cursor-pointer bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border-amber-500/40 active:scale-95"
-                      >
-                        👍 {item.votes || item.oy || 0} Oy
-                      </button>
-
-                      {statusBadge.dataStatus === 'yayin' && item.readLink && (
-                        <a
-                          href={item.readLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center gap-1 shadow transition"
-                        >
-                          <BookOpen size={12} /> Oku
-                        </a>
-                      )}
-
-                      <a
-                        href={DISCORD_URL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[10px] text-gray-400 hover:text-white flex items-center gap-1 ml-auto"
-                      >
-                        <MessageCircle size={12} /> Ekibe Sor
-                      </a>
-                    </div>
-
-                    {/* ADMIN TOOLS PANEL */}
-                    {isAdminActive && (
-                      <div className="mt-2 pt-2 border-t border-dashed border-purple-500/30 flex items-center gap-1.5 flex-wrap">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="px-2 py-0.5 rounded bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          ✏️ Düzenle
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickStatusUpdate(item, 'İncelemede')}
-                          className="px-2 py-0.5 rounded bg-purple-700 hover:bg-purple-600 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          🔍 İnceleme
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickStatusUpdate(item, 'Kabul Edildi')}
-                          className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          🟢 Kabul
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickStatusUpdate(item, 'Yapımda')}
-                          className="px-2 py-0.5 rounded bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          🔵 Yapım
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickStatusUpdate(item, 'Yakında')}
-                          className="px-2 py-0.5 rounded bg-orange-600 hover:bg-orange-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          ⏳ Yakında
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleQuickStatusUpdate(item, 'Yayında!')}
-                          className="px-2 py-0.5 rounded bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          🔮 Yayında
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleReject(item)}
-                          className="px-2 py-0.5 rounded bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-black cursor-pointer"
-                        >
-                          🔴 Reddet
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item)}
-                          className="px-2 py-0.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-200 text-[10px] font-black cursor-pointer"
-                        >
-                          🗑️ Sil
-                        </button>
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-              );
-            })
-          )}
+            <div className="form-group">
+              <label>Kategori:</label>
+              <select className="form-control" id="editKat">
+                <option value="Manhwa">Manhwa</option>
+                <option value="Novel">Novel</option>
+                <option value="Manga">Manga</option>
+                <option value="Manhua">Manhua</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Durum:</label>
+              <select className="form-control" id="editDurum">
+                <option value="Beklemede">Beklemede</option>
+                <option value="İncelemede">İncelemede</option>
+                <option value="Kabul Edildi">Kabul Edildi</option>
+                <option value="Yapımda">Yapımda</option>
+                <option value="Yakında">Yakında</option>
+                <option value="Yayında!">Yayında!</option>
+                <option value="Reddedildi">Reddedildi</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>📖 Serinin Orijinal Durumu:</label>
+              <input type="text" className="form-control" id="editSeriDurum" placeholder="Örn: Tamamlandı (100 Bölüm)" />
+            </div>
+            <div className="form-group">
+              <label>🖼️ Kapak Resmi (Yükleyin veya Değiştirin):</label>
+              <div className="upload-btn-wrapper">
+                <label htmlFor="editFileInput" className="btn-file-upload">
+                  <i className="fa-solid fa-cloud-arrow-up"></i> Yeni Fotoğraf Yükle
+                </label>
+                <input type="file" id="editFileInput" accept="image/*" style={{ display: 'none' }} onChange={(e: any) => (window as any).handleFileUpload(e.target, 'editImg', 'editUploadStatus', 'editPreviewBox', 'editPreviewImg')} />
+              </div>
+              <div className="upload-status" id="editUploadStatus"></div>
+              <input type="url" className="form-control" id="editImg" style={{ marginTop: '6px' }} onInput={(e: any) => (window as any).previewImage(e.target.value, 'editPreviewBox', 'editPreviewImg')} />
+              <div className="preview-box" id="editPreviewBox">
+                <img id="editPreviewImg" src="" referrerPolicy="no-referrer" alt="Önizleme" />
+              </div>
+            </div>
+            <div className="form-group">
+              <label>📖 Okuma Linki (Yayında Seriler İçin):</label>
+              <input type="url" className="form-control" id="editReadLink" placeholder="https://mikrokosmosfb.blogspot.com/..." />
+            </div>
+            <div className="form-group">
+              <label>Not / Bağlantı / ❌ Red Nedeni:</label>
+              <input type="text" className="form-control" id="editLink" placeholder="Örn: Red Nedeni: Başka ekip çeviriyor" />
+            </div>
+            <div className="form-group">
+              <label>Tür / Etiketler (Virgülle Ayırın):</label>
+              <input type="text" className="form-control" id="editTur" placeholder="BL, Romantizm, +18" />
+            </div>
+            <button type="submit" className="btn-cosmic" style={{ width: '100%', justifyContent: 'center' }}>💾 Değişiklikleri Kaydet</button>
+          </form>
         </div>
-      )}
+      </div>
 
-      {/* YENİ İSTEK GÖNDERME MODALI */}
-      {isNewModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setIsNewModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-lg font-black text-purple-300 flex items-center gap-2 mb-4">
-              <Rocket size={20} className="text-fuchsia-400" />
-              <span>Seri İsteğinde Bulun</span>
-            </h3>
-
-            <form onSubmit={handleNewRequestSubmit} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Kullanıcı Adınız:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: Starlight"
-                  value={reqUser}
-                  onChange={e => setReqUser(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">İstediğiniz Seri Adı:</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Örn: Solo Leveling"
-                  value={reqTitle}
-                  onChange={e => handleTitleChange(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                />
-                {duplicateWarning && (
-                  <div className="mt-1.5 p-2.5 bg-amber-950/80 border border-amber-500/50 text-amber-200 text-xs rounded-xl font-medium leading-relaxed">
-                    {duplicateWarning}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Kategori:</label>
-                <select
-                  value={reqKat}
-                  onChange={e => setReqKat(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                >
-                  <option value="Manhwa">Manhwa</option>
-                  <option value="Novel">Novel</option>
-                  <option value="Manga">Manga</option>
-                  <option value="Manhua">Manhua</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">📖 Serinin Orijinal Durumu (İsteğe Bağlı):</label>
-                <input
-                  type="text"
-                  placeholder="Örn: Tamamlandı (80 Bölüm), Devam Ediyor vb."
-                  value={reqSeriDurum}
-                  onChange={e => setReqSeriDurum(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1.5">Tür / Etiketler (İsteğe Bağlı):</label>
-                <div className="flex flex-wrap gap-2">
-                  {['BL', 'GL', 'Yeni Seri', '+18'].map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => handleTagToggle(t)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                        reqTags.includes(t)
-                          ? 'bg-purple-600 text-white border-purple-400 shadow-md'
-                          : 'bg-gray-950 text-gray-400 border-purple-500/20 hover:text-white'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">🖼️ Kapak Resmi (Yükleyin veya Link Yapıştırın):</label>
-                <div className="space-y-2">
-                  <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-dashed border-purple-500/50 text-purple-200 text-xs font-bold rounded-xl cursor-pointer transition">
-                    <Upload size={14} />
-                    <span>Galeriden / Bilgisayardan Fotoğraf Seç</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={e => handleFileUpload(e, false)}
-                      className="hidden"
-                    />
-                  </label>
-                  {uploadStatus && (
-                    <div className="text-xs font-bold text-cyan-300">{uploadStatus}</div>
-                  )}
-
-                  <input
-                    type="url"
-                    placeholder="Veya doğrudan https://... resim linki yapıştırın"
-                    value={reqImg}
-                    onChange={e => setReqImg(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                  />
-
-                  {reqImg && (
-                    <div className="text-center pt-1">
-                      <img
-                        src={fixImageUrl(reqImg)}
-                        alt="Önizleme"
-                        onError={e => { (e.target as any).src = DEFAULT_COVER; }}
-                        className="w-16 h-24 object-cover mx-auto rounded-lg border border-purple-400 shadow-md"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Not veya Bağlantı (İsteğe Bağlı):</label>
-                <input
-                  type="text"
-                  placeholder="Örn: Raw linki veya açıklaması"
-                  value={reqLink}
-                  onChange={e => setReqLink(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsNewModalOpen(false)}
-                  className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-extrabold rounded-xl shadow-lg transition disabled:opacity-50"
-                >
-                  {isSubmitting ? 'Gönderiliyor...' : '🚀 Gönder'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ADMIN EDİT MODALI */}
-      {isEditModalOpen && editingRequest && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="bg-slate-900 border border-purple-500/40 rounded-3xl p-6 max-w-lg w-full shadow-2xl relative max-h-[92vh] overflow-y-auto">
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white p-2 rounded-full hover:bg-white/10 transition"
-            >
-              <X size={20} />
-            </button>
-
-            <h3 className="text-lg font-black text-purple-300 flex items-center gap-2 mb-4">
-              <Edit3 size={20} className="text-amber-400" />
-              <span>Seri Bilgilerini Düzenle</span>
-            </h3>
-
-            <form onSubmit={handleEditSubmit} className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Seri Adı:</label>
-                <input
-                  type="text"
-                  required
-                  value={editTitle}
-                  onChange={e => setEditTitle(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Kategori:</label>
-                <select
-                  value={editKat}
-                  onChange={e => setEditKat(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                >
-                  <option value="Manhwa">Manhwa</option>
-                  <option value="Novel">Novel</option>
-                  <option value="Manga">Manga</option>
-                  <option value="Manhua">Manhua</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Durum:</label>
-                <select
-                  value={editDurum}
-                  onChange={e => setEditDurum(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                >
-                  <option value="Beklemede">Beklemede</option>
-                  <option value="İncelemede">İncelemede</option>
-                  <option value="Kabul Edildi">Kabul Edildi</option>
-                  <option value="Yapımda">Yapımda</option>
-                  <option value="Yakında">Yakında</option>
-                  <option value="Yayında!">Yayında!</option>
-                  <option value="Reddedildi">Reddedildi</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">📖 Serinin Orijinal Durumu:</label>
-                <input
-                  type="text"
-                  placeholder="Örn: Tamamlandı (100 Bölüm)"
-                  value={editSeriDurum}
-                  onChange={e => setEditSeriDurum(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">🖼️ Kapak Resmi (Yükleyin veya Değiştirin):</label>
-                <div className="space-y-2">
-                  <label className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-950/60 hover:bg-purple-900/80 border border-dashed border-purple-500/50 text-purple-200 text-xs font-bold rounded-xl cursor-pointer transition">
-                    <Upload size={14} />
-                    <span>Yeni Fotoğraf Yükle</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={e => handleFileUpload(e, true)}
-                      className="hidden"
-                    />
-                  </label>
-                  {editUploadStatus && (
-                    <div className="text-xs font-bold text-cyan-300">{editUploadStatus}</div>
-                  )}
-
-                  <input
-                    type="url"
-                    value={editImg}
-                    onChange={e => setEditImg(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                  />
-
-                  {editImg && (
-                    <div className="text-center pt-1">
-                      <img
-                        src={fixImageUrl(editImg)}
-                        alt="Önizleme"
-                        onError={e => { (e.target as any).src = DEFAULT_COVER; }}
-                        className="w-16 h-24 object-cover mx-auto rounded-lg border border-purple-400 shadow-md"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">📖 Okuma Linki (Yayında Seriler İçin):</label>
-                <input
-                  type="url"
-                  placeholder="https://mikrokosmosfb.blogspot.com/..."
-                  value={editReadLink}
-                  onChange={e => setEditReadLink(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Not / Bağlantı / ❌ Red Nedeni:</label>
-                <input
-                  type="text"
-                  placeholder="Örn: Red Nedeni: Başka ekip çeviriyor"
-                  value={editNote}
-                  onChange={e => setEditNote(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-gray-300 mb-1">Tür / Etiketler (Virgülle Ayırın):</label>
-                <input
-                  type="text"
-                  placeholder="BL, Romantizm, +18"
-                  value={editTags}
-                  onChange={e => setEditTags(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-950 border border-purple-500/30 rounded-xl text-white text-xs focus:outline-none focus:border-purple-400"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl transition"
-                >
-                  İptal
-                </button>
-                <button
-                  type="submit"
-                  className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 text-white font-extrabold rounded-xl shadow-lg transition"
-                >
-                  💾 Değişiklikleri Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
+      <div id="toastBox"></div>
     </div>
   );
 };
