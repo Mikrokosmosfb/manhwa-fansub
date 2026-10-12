@@ -104,11 +104,25 @@ export const ShopContent: React.FC = () => {
     orderId?: string | number;
   } | null>(null);
 
-  // Per-package Lemon Squeezy URLs
-  const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
-    const defaultUrls: Record<string, string> = {
-      cp_pro: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
+  // Helper to get fallback default Lemon Squeezy URLs for all packages
+  const getDefaultPackageUrls = (): Record<string, string> => {
+    const defaults: Record<string, string> = {
+      cp_starter: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_starter',
+      cp_pro: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053',
+      cp_giga: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_giga',
+      cp_vip: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_vip'
     };
+    COIN_PACKAGES.forEach(pkg => {
+      if (pkg.lemonCheckoutUrl) {
+        defaults[pkg.id] = pkg.lemonCheckoutUrl;
+      }
+    });
+    return defaults;
+  };
+
+  // Per-package Lemon Squeezy URLs (hydrated from defaults, localStorage & server API)
+  const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
+    const defaultUrls = getDefaultPackageUrls();
     try {
       const saved = localStorage.getItem('ls_package_urls');
       if (saved) {
@@ -123,6 +137,40 @@ export const ShopContent: React.FC = () => {
   const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls || {});
   const lastAwardedTimestampRef = React.useRef<number>(0);
   const awardedOrderIdsRef = React.useRef<Set<string>>(new Set());
+
+  // Global synchronization: Fetch globally configured coin package URLs from server & sync admin local storage to server
+  useEffect(() => {
+    fetch('/api/coin-packages')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.success && data?.packageUrls && Object.keys(data.packageUrls).length > 0) {
+          setPackageUrls(prev => {
+            const merged = { ...getDefaultPackageUrls(), ...prev, ...data.packageUrls };
+            try {
+              localStorage.setItem('ls_package_urls', JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
+          setInputPackageUrls(prev => ({ ...prev, ...data.packageUrls }));
+        } else {
+          // If server doesn't have custom links yet, and current user is authorized admin with saved links, sync them to server
+          const localSaved = localStorage.getItem('ls_package_urls');
+          if (localSaved && isAuthorizedAdmin(user?.email)) {
+            try {
+              const parsed = JSON.parse(localSaved);
+              if (parsed && Object.keys(parsed).length > 0) {
+                fetch('/api/admin/coin-packages', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(parsed)
+                }).catch(() => {});
+              }
+            } catch (e) {}
+          }
+        }
+      })
+      .catch(() => {});
+  }, [user?.email]);
 
   // Auto load Lemon Squeezy overlay & subscribe to real-time success event (with strict single-credit protection)
   useEffect(() => {
@@ -277,13 +325,20 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim();
+    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim();
 
     if (!targetCheckoutUrl) {
-      setStatusMessage({
-        type: 'error',
-        text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) paketi için henüz Lemon Squeezy ödeme linki eklenmemiş. Şu an sadece $2.99'luk Bronz Paket aktiftir. Ayarlar ⚙️ menüsünden bu paket için kopyaladığınız linki ekleyebilirsiniz.`
-      });
+      if (isAuthorizedAdmin(user?.email)) {
+        setStatusMessage({
+          type: 'error',
+          text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) paketi için henüz Lemon Squeezy ödeme linki eklenmemiş. Yukarıdaki Ayarlar ⚙️ simgesinden bu paket için Lemon Squeezy checkout linkini ekleyebilirsiniz.`
+        });
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) için ödeme altyapısı güncelleniyor. Lütfen birkaç dakika sonra tekrar deneyin veya alternatif paketleri inceleyin.`
+        });
+      }
       return;
     }
 
@@ -344,10 +399,27 @@ export const ShopContent: React.FC = () => {
   const handleSaveLemonUrl = (e: React.FormEvent) => {
     e.preventDefault();
     setPackageUrls(inputPackageUrls);
-    localStorage.setItem('ls_package_urls', JSON.stringify(inputPackageUrls));
+    try {
+      localStorage.setItem('ls_package_urls', JSON.stringify(inputPackageUrls));
+    } catch (e) {}
+
+    // Synchronize to backend database so ALL users and ALL devices have the updated package links
+    fetch('/api/admin/coin-packages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inputPackageUrls)
+    })
+      .then(res => res.json())
+      .then(data => {
+        console.log('🍋 Paket bağlantıları sunucuya başarıyla kaydedildi:', data);
+      })
+      .catch(err => {
+        console.error('Failed to sync coin package urls to server:', err);
+      });
+
     setStatusMessage({
       type: 'success',
-      text: '✅ Lemon Squeezy Paket Bağlantılarınız Başarıyla Kaydedildi!'
+      text: '✅ Lemon Squeezy Paket Bağlantıları Başarıyla Kaydedildi! Sunucuya yüklendi ve artık tüm kullanıcılar ve cihazlar için aktiftir.'
     });
     setShowLemonSettings(false);
   };

@@ -1960,7 +1960,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   // Attempt to fetch live Cloudflare R2/KV data on mount
   useEffect(() => {
-    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; adSettings?: any; siteBranding?: any; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
+    safeFetchJson<{ success: boolean; data: any[]; announcement?: any; adSettings?: any; siteBranding?: any; coinPackageUrls?: Record<string, string>; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
       .then(data => {
         setIsLoadingSeries(false);
         if (data && data.success && Array.isArray(data.data)) {
@@ -2006,6 +2006,11 @@ const deleteShopItemAndStyle = (itemId: string) => {
             setSiteBranding(mergedBranding);
             try {
               localStorage.setItem('mk_site_branding', JSON.stringify(mergedBranding));
+            } catch (e) {}
+          }
+          if (data.coinPackageUrls && typeof data.coinPackageUrls === 'object') {
+            try {
+              localStorage.setItem('ls_package_urls', JSON.stringify(data.coinPackageUrls));
             } catch (e) {}
           }
           if (data.globalNotifications && Array.isArray(data.globalNotifications)) {

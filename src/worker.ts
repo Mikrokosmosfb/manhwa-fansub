@@ -1176,7 +1176,7 @@ ${seriesXml}
               const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
                 db.prepare("SELECT * FROM series").all(),
                 db.prepare("SELECT * FROM chapters").all(),
-                activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions')").all().catch(() => ({ results: [] })),
+                activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions', 'coin_package_urls')").all().catch(() => ({ results: [] })),
                 activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
               ]);
 
@@ -1234,6 +1234,7 @@ ${seriesXml}
               let adSettings = null;
               let siteBranding = null;
               let reactions = null;
+              let coinPackageUrls = null;
               let globalNotifications: any[] = [];
               try {
                 const setRes = setResObj?.results || [];
@@ -1242,6 +1243,7 @@ ${seriesXml}
                   if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
                   if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
                   if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
+                  if (row.key === 'coin_package_urls' && row.value) coinPackageUrls = JSON.parse(row.value);
                 }
                 const notifRes = notifResObj?.results || [];
                 globalNotifications = (notifRes as any[]).map((n: any) => ({
@@ -1259,6 +1261,7 @@ ${seriesXml}
                 adSettings,
                 siteBranding,
                 reactions,
+                coinPackageUrls,
                 globalNotifications
               });
               cachedSeriesResponseJson = responseBody;
@@ -2066,6 +2069,27 @@ ${seriesXml}
               cachedSeriesResponseJson = null;
               cachedSeriesExpiresAt = 0;
               return new Response(JSON.stringify({ success: true }), { headers });
+            }
+          }
+          return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
+        if (path.startsWith('/api/admin/coin-packages') || path.startsWith('/api/coin-packages')) {
+          const activeDb = usersDb || db;
+          if (request.method === 'POST') {
+            const urls = await request.json();
+            if (activeDb) {
+              await activeDb.prepare(`INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)`).bind('coin_package_urls', JSON.stringify(urls)).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
+              return new Response(JSON.stringify({ success: true, packageUrls: urls }), { headers });
+            }
+          }
+          if (request.method === 'GET') {
+            if (activeDb) {
+              const row: any = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'coin_package_urls'").first().catch(() => null);
+              const packageUrls = row?.value ? JSON.parse(row.value) : null;
+              return new Response(JSON.stringify({ success: true, packageUrls }), { headers });
             }
           }
           return new Response(JSON.stringify({ success: false }), { headers });
