@@ -312,7 +312,7 @@ export const Header: React.FC = () => {
                       size="sm"
                     />
                     <span className="text-[11px] font-extrabold text-amber-300 font-mono">
-                      {isAuthorizedAdmin(user.email) ? '∞' : (user.coins ?? 250)} CP
+                      {(user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? '∞' : (user.coins ?? 250)} CP
                     </span>
                   </button>
 

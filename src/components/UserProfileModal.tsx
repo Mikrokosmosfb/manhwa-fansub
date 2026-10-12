@@ -707,7 +707,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             <div className="bg-black/40 border border-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-4 flex flex-col items-center justify-center shadow-lg transition hover:border-emerald-500/30">
               <div className="flex items-center gap-1.5 text-base sm:text-lg font-black text-emerald-400">
                 <Coins size={18} />
-                <span>{user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' ? '∞' : (user.coins ?? 10)}</span>
+                <span>{user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? '∞' : (user.coins ?? 10)}</span>
               </div>
               <span className="text-[10px] text-emerald-400/70 uppercase font-bold tracking-wider mt-1">Cosmo</span>
             </div>

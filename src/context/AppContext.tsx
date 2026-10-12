@@ -711,7 +711,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('mk_user');
         return null;
       }
-      const isUnlimitedUser = (parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com');
+      const isUnlimitedUser = parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+      let effectiveCoins = parsed.coins ?? 250;
+      if (isUnlimitedUser) {
+        effectiveCoins = 999999999;
+      } else if (parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com' && effectiveCoins >= 9999999) {
+        effectiveCoins = 10;
+      }
       const normalized = normalizeShopInventory(
         [parsed.inventory, parsed.unlockedEmojiPacks],
         parsed.inventoryExpiresAt
@@ -719,7 +725,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const stripped = stripExpiredEquippedFromUser(parsed, normalized.activeInventory, SHOP_ITEMS);
       return {
         ...parsed,
-        coins: isUnlimitedUser ? 999999999 : (parsed.coins ?? 250),
+        coins: effectiveCoins,
         inventory: normalized.activeInventory,
         inventoryExpiresAt: normalized.expiresAtMap,
         unlockedEmojiPacks: normalized.activeInventory,
@@ -965,7 +971,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
   const earnPoints = (amount: number, reason: string) => {
     setUser(prev => {
       if (!prev) return null;
-      if ((prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com')) {
+      if (prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') {
         return { ...prev, coins: 999999999 };
       }
       const currentCoins = prev.coins ?? 10;
@@ -976,12 +982,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
   };
 
-  // Add Unlimited Points (+999.999 CP) - Only allowed for aseleliyeva77@gmail.com
+  // Add Unlimited Points (+999.999 CP) - Only allowed for mikrokosmosfansub@gmail.com
   const addUnlimitedPoints = () => {
     setUser(prev => {
       if (!prev) return null;
-      if ((prev.email?.toLowerCase() !== 'aseleliyeva77@gmail.com' && prev.email?.toLowerCase() !== 'mikrokosmosfansub@gmail.com')) {
-        alert('Sınırsız Cosmo-Puan yetkisi sadece admin hesaplarına tanımlıdır!');
+      if (prev.email?.toLowerCase() !== 'mikrokosmosfansub@gmail.com') {
+        alert('Sınırsız Cosmo-Puan yetkisi sadece mikrokosmosfansub hesabına tanımlıdır!');
         return prev;
       }
       return {
@@ -990,6 +996,18 @@ const deleteShopItemAndStyle = (itemId: string) => {
       };
     });
   };
+
+  // Auto-sanitize existing infinite coins on aseleliyeva77@gmail.com if set historically
+  useEffect(() => {
+    if (user && user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' && (user.coins === 999999999 || (user.coins ?? 0) >= 9999999)) {
+      setUser(prev => {
+        if (!prev) return null;
+        const sanitized = { ...prev, coins: 10 };
+        try { localStorage.setItem('mk_user', JSON.stringify(sanitized)); } catch (e) {}
+        return sanitized;
+      });
+    }
+  }, [user?.email, user?.coins]);
 
   // 7-Day Starter Daily Check-in (5 - 20 CP)
   const claimDailyCheckin = () => {
@@ -1018,7 +1036,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
     const rewardInfo = DAILY_STARTER_REWARDS.find(r => r.day === nextDay) || { day: nextDay, points: 5 };
     const reward = rewardInfo.points;
 
-    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+    const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
     const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 10);
     const claimedDays = user.claimedCheckinDays || [];
     const updatedClaimedDays = [...claimedDays, nextDay];
@@ -1069,7 +1087,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       { pts: 8, name: '8 Cosmo-Puan!' }
     ];
     const prize = rewards[Math.floor(Math.random() * rewards.length)];
-    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+    const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
     const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 10);
     const updatedUser: User = {
       ...user,
@@ -1122,7 +1140,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return { success: false, message: `Bu ürüne zaten sahipsiniz! (${remText})` };
     }
 
-    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+    const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
     const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
     if (!isUnlimited && currentCoins < item.price) {
       return { success: false, message: `Yetersiz Cosmo-Puan! Bu ürün için ${item.price} CP gerekiyor, bakiyeniz: ${currentCoins} CP.` };
@@ -1273,7 +1291,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return { success: false, message: 'Bu promosyon kodunu daha önce kullandınız.' };
     }
 
-    const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+    const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
     const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
     const updatedUser: User = {
       ...user,
@@ -1324,7 +1342,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       const cleanEmail = user.email.toLowerCase().trim();
       const existingInRegistry = knownUsers.find(k => k.email.toLowerCase() === cleanEmail);
       if (existingInRegistry) {
-        if (user.coins !== existingInRegistry.coins && cleanEmail !== 'aseleliyeva77@gmail.com' && cleanEmail !== 'mikrokosmosfansub@gmail.com') {
+        if (user.coins !== existingInRegistry.coins && cleanEmail !== 'mikrokosmosfansub@gmail.com') {
           setUser(prev => prev ? { ...prev, coins: existingInRegistry.coins } : null);
         }
       }
@@ -1679,7 +1697,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }
 
     // Special check for super admin account
-    const isTargetUnlimited = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com');
+    const isTargetUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com';
 
     let previousBalance = 0;
     const existingUser = knownUsers.find(u => u.email.toLowerCase() === cleanEmail);
@@ -3617,7 +3635,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   const prepareUserCoins = (u: User): User => {
     const cleanEmail = u.email?.toLowerCase().trim();
-    const isUnlimited = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com');
+    const isUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com';
     
     // Look up real coins from knownUsers registry
     const existingInRegistry = knownUsers.find(k => k.email.toLowerCase() === cleanEmail);
@@ -3628,9 +3646,14 @@ const deleteShopItemAndStyle = (itemId: string) => {
     );
     const stripped = stripExpiredEquippedFromUser(u, normalized.activeInventory, shopItems || SHOP_ITEMS);
 
+    let finalCoins = isUnlimited ? 999999999 : (registryCoins ?? u.coins ?? 10);
+    if (!isUnlimited && cleanEmail === 'aseleliyeva77@gmail.com' && finalCoins >= 9999999) {
+      finalCoins = registryCoins ?? 10;
+    }
+
     return {
       ...u,
-      coins: isUnlimited ? 999999999 : (registryCoins ?? u.coins ?? 10),
+      coins: finalCoins,
       inventory: normalized.activeInventory,
       inventoryExpiresAt: normalized.expiresAtMap,
       unlockedEmojiPacks: normalized.activeInventory,
@@ -3716,7 +3739,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(trimmedEmail)}`,
       provider: 'email',
       role: isAdmin ? 'admin' : 'user',
-      coins: (trimmedEmail === 'aseleliyeva77@gmail.com' || trimmedEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
+      coins: (trimmedEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
     };
     const prepared = prepareUserCoins(u);
     setUser(prepared);
@@ -3754,7 +3777,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name.trim())}`,
       provider: 'email',
       role: isAdmin ? 'admin' : 'user',
-      coins: (trimmedEmail === 'aseleliyeva77@gmail.com' || trimmedEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
+      coins: (trimmedEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
     };
     const prepared = prepareUserCoins(u);
     setUser(prepared);
@@ -3790,7 +3813,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       email: googleEmail.trim(),
       avatar: isAysel ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(googleEmail)}`,
       provider: 'google',
-      coins: isAysel ? 999999999 : 10,
+      coins: googleEmail.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 999999999 : 10,
       role: (isAysel || googleEmail.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 'admin' : 'user'
     };
     const prepared = prepareUserCoins(fallbackUser);
@@ -3828,7 +3851,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       email: googleEmail.trim(),
       avatar: isAysel ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(googleEmail)}`,
       provider: 'google',
-      coins: isAysel ? 999999999 : 10,
+      coins: googleEmail.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 999999999 : 10,
       role: (isAysel || googleEmail.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 'admin' : 'user'
     };
     const prepared = prepareUserCoins(fallbackUser);

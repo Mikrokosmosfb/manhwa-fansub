@@ -131,7 +131,7 @@ export const ShopContent: React.FC = () => {
   }, [earnPoints]);
 
 
-  const userCoins = (user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : (user?.coins ?? 10);
+  const userCoins = (user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : (user?.coins ?? 10);
   const normalizedInventory = normalizeShopInventory(
     [user?.inventory, user?.unlockedEmojiPacks],
     user?.inventoryExpiresAt
@@ -1270,7 +1270,7 @@ export const ShopView: React.FC = () => {
           <div className="text-right">
             <span className="text-[10px] text-amber-300/80 uppercase font-bold block leading-none">Bakiyeniz</span>
             <span className="text-sm font-black text-amber-300 font-mono">
-              {(user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 'Sınırsız CP' : `${(user?.coins ?? 10).toLocaleString('tr-TR')} CP`}
+              {(user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 'Sınırsız CP' : `${(user?.coins ?? 10).toLocaleString('tr-TR')} CP`}
             </span>
           </div>
         </div>

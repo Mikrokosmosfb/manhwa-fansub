@@ -2431,7 +2431,7 @@ ${seriesXml}
                   email: r.email,
                   name: r.name,
                   avatar: r.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.email)}`,
-                  coins: r.cosmo_points !== null && r.cosmo_points !== undefined ? r.cosmo_points : ((r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10),
+                  coins: r.cosmo_points !== null && r.cosmo_points !== undefined ? r.cosmo_points : (r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 999999999 : 10),
                   role: (r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 'admin' : 'user',
                   created_at: r.created_at
                 }));
@@ -2444,7 +2444,7 @@ ${seriesXml}
                     email: r.email,
                     name: r.name,
                     avatar: r.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.email)}`,
-                    coins: (r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10,
+                    coins: (r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10,
                     role: (r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 'admin' : 'user',
                     created_at: r.created_at
                   }));
@@ -2713,7 +2713,7 @@ ${seriesXml}
 
             const hashedPassword = await hashPassword(password);
             const isAdmin = ADMIN_EMAILS.has(cleanEmail);
-            const startingCoins = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10;
+            const startingCoins = (cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10;
             const uid = 'u-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
             const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
             const createdAt = new Date().toISOString();
@@ -3020,7 +3020,7 @@ ${seriesXml}
                     const name = cleanEmail === 'aseleliyeva77@gmail.com' ? 'Aseleliyeva' : 'Mikrokosmos';
                     const avatar = `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name)}`;
                     const createdAt = new Date().toISOString();
-                    const coins = 999999999;
+                    const coins = cleanEmail === 'mikrokosmosfansub@gmail.com' ? 999999999 : 10;
                     const hashedPass = await hashPassword(password);
 
                     try {
@@ -3078,7 +3078,7 @@ ${seriesXml}
                 } catch(e) {}
 
                 // Fetch real Cosmo-points and library info
-                let userCoins = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10;
+                let userCoins = (cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10;
                 let equippedTheme = null;
                 let equippedBadge = null;
                 let equippedBadges = [];
@@ -3092,7 +3092,7 @@ ${seriesXml}
                   if (libRes.results && libRes.results.length > 0) {
                     const row: any = libRes.results[0];
                     if (row.cosmo_points !== undefined && row.cosmo_points !== null) {
-                      userCoins = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : Number(row.cosmo_points);
+                      userCoins = (cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : Number(row.cosmo_points);
                     }
                     equippedTheme = row.equipped_theme;
                     equippedBadge = row.equipped_badge;
@@ -3151,7 +3151,7 @@ ${seriesXml}
                 avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
                 provider: 'email',
                 role: isAdmin ? 'admin' : 'user',
-                coins: (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
+                coins: (cleanEmail === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10
               }
             }), { headers });
           }
@@ -3169,7 +3169,7 @@ ${seriesXml}
             const cleanName = (name || cleanEmail.split('@')[0]).trim();
             const userAvatar = avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
             const isAdmin = ADMIN_EMAILS.has(cleanEmail);
-            const isUnlimited = (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com');
+            const isUnlimited = (cleanEmail === 'mikrokosmosfansub@gmail.com');
 
             if (userDb) {
               try {
