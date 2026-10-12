@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { THEME_STYLES, SHOP_ITEMS, ShopItem, ChibiEmoji } from '../data/shopData';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { UserAvatar } from './UserAvatar';
+import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
 import {
   MessageSquare,
   ThumbsUp,
@@ -230,9 +231,12 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     return c.seriesId === seriesId && !String(c.chapterId || '').includes('__p__');
   });
 
-  const unlockedEmojiPacks = Array.from(
-    new Set([...(user?.unlockedEmojiPacks || []), ...(user?.inventory || [])])
+  const normalizedEmojiInv = normalizeShopInventory(
+    [user?.unlockedEmojiPacks, user?.inventory],
+    user?.inventoryExpiresAt
   );
+  const unlockedEmojiPacks = normalizedEmojiInv.activeInventory;
+  const emojiExpiresAtMap = normalizedEmojiInv.expiresAtMap;
   const emojiPackItems = currentShopItems.filter(i => i.category === 'emoji_pack');
   const ownedEmojiPacks = emojiPackItems.filter(p => unlockedEmojiPacks.includes(p.id));
   const lockedEmojiPacks = emojiPackItems.filter(p => !unlockedEmojiPacks.includes(p.id));
@@ -947,7 +951,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                             <span className="text-sm">{pack.icon || '✨'}</span> {pack.name}
                           </span>
                           <span className="text-[10px] text-emerald-400 font-extrabold bg-emerald-950/80 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
-                            <Check size={10} /> Açık
+                            <Check size={10} /> Açık • ⏳ {formatRemainingDuration(emojiExpiresAtMap[pack.id])}
                           </span>
                         </div>
 
@@ -1027,7 +1031,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                           className="text-[10px] text-amber-300 bg-amber-950/90 border border-amber-500/50 hover:bg-amber-900 px-2.5 py-1 rounded-xl font-black flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
                         >
                           <Lock size={11} className="text-amber-400" />
-                          Hemen Aç ({pack.price} CP)
+                          Hemen Aç ({pack.price} CP • 1 Ay)
                         </button>
                       </div>
 

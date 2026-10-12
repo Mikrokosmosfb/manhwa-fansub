@@ -268,10 +268,45 @@ export async function onRequest(context: any) {
             ? (typeof body.shop_items === 'string' ? JSON.parse(body.shop_items) : body.shop_items)
             : [];
           if (Array.isArray(existingArr) || Array.isArray(incomingArr)) {
-            finalShop = JSON.stringify(Array.from(new Set([
-              ...(Array.isArray(existingArr) ? existingArr : []),
-              ...(Array.isArray(incomingArr) ? incomingArr : [])
-            ])));
+            const nowMs = Date.now();
+            const durationMs = 30 * 24 * 60 * 60 * 1000;
+            const expMap: Record<string, number> = {};
+            const rawIds = new Set<string>();
+            for (const arr of [existingArr, incomingArr]) {
+              if (!Array.isArray(arr)) continue;
+              for (const entry of arr) {
+                if (typeof entry !== 'string' || !entry.trim()) continue;
+                const t = entry.trim();
+                if (t.startsWith('__exp__:')) {
+                  const rest = t.slice(8);
+                  const idx = rest.lastIndexOf(':');
+                  if (idx > 0) {
+                    const id = rest.slice(0, idx);
+                    const ts = Number(rest.slice(idx + 1));
+                    if (id && !isNaN(ts) && ts > 0) {
+                      expMap[id] = Math.max(expMap[id] || 0, ts);
+                    }
+                  }
+                } else {
+                  rawIds.add(t);
+                }
+              }
+            }
+            const activeSet = new Set<string>();
+            for (const id of rawIds) {
+              if (id.startsWith('promo_') || id.startsWith('ach_') || id.startsWith('b-')) {
+                activeSet.add(id);
+              } else if (expMap[id] === undefined) {
+                expMap[id] = nowMs + durationMs;
+              }
+            }
+            for (const [id, ts] of Object.entries(expMap)) {
+              if (ts > nowMs) activeSet.add(id);
+            }
+            finalShop = JSON.stringify([
+              ...Array.from(activeSet),
+              ...Object.entries(expMap).map(([id, ts]) => `__exp__:${id}:${ts}`)
+            ]);
           }
         } catch (e) {}
         await db.prepare(`

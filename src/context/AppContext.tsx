@@ -25,6 +25,12 @@ import { INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
 import { sendDeviceNotification } from '../utils/pushNotifications';
+import {
+  SHOP_ITEM_DURATION_MS,
+  normalizeShopInventory,
+  stripExpiredEquippedFromUser,
+  formatRemainingDuration
+} from '../utils/shopExpiration';
 
 type ViewState =
   | { type: 'home' }
@@ -696,13 +702,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       }
       const isUnlimitedUser = (parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com');
+      const normalized = normalizeShopInventory(
+        [parsed.inventory, parsed.unlockedEmojiPacks],
+        parsed.inventoryExpiresAt
+      );
+      const stripped = stripExpiredEquippedFromUser(parsed, normalized.activeInventory, SHOP_ITEMS);
       return {
         ...parsed,
         coins: isUnlimitedUser ? 999999999 : (parsed.coins ?? 250),
-        inventory: parsed.inventory || [],
-        unlockedEmojiPacks: Array.from(
-          new Set([...(parsed.unlockedEmojiPacks || []), ...(parsed.inventory || [])])
-        )
+        inventory: normalized.activeInventory,
+        inventoryExpiresAt: normalized.expiresAtMap,
+        unlockedEmojiPacks: normalized.activeInventory,
+        equippedTheme: stripped.equippedTheme,
+        equippedFrame: stripped.equippedFrame,
+        equippedBadge: stripped.equippedBadge,
+        equippedBadges: stripped.equippedBadges
       };
     } catch (e) {
       localStorage.removeItem('mk_user');
@@ -1071,25 +1085,31 @@ const deleteShopItemAndStyle = (itemId: string) => {
     const item = shopItems.find(i => i.id === itemId) || SHOP_ITEMS.find(i => i.id === itemId);
     if (!item) return { success: false, message: 'Ürün bulunamadı.' };
 
-    const userInventory = Array.from(
-      new Set([...(user.inventory || []), ...(user.unlockedEmojiPacks || [])])
+    const normalizedCurrent = normalizeShopInventory(
+      [user.inventory, user.unlockedEmojiPacks],
+      user.inventoryExpiresAt
     );
+    const userInventory = normalizedCurrent.activeInventory;
+    const currentExpiresAtMap = { ...normalizedCurrent.expiresAtMap };
+
     if (userInventory.includes(itemId)) {
+      const remText = formatRemainingDuration(currentExpiresAtMap[itemId]);
       if (item.category === 'emoji_pack') {
         const currentEmojiPacks = user.unlockedEmojiPacks || [];
         if (!currentEmojiPacks.includes(itemId) || !(user.inventory || []).includes(itemId)) {
           setUser({
             ...user,
             inventory: userInventory,
+            inventoryExpiresAt: currentExpiresAtMap,
             unlockedEmojiPacks: userInventory
           });
         }
         return {
           success: true,
-          message: `"${item.name}" zaten hesabınızda açık ve kullanıma hazır!`
+          message: `"${item.name}" zaten hesabınızda açık ve kullanıma hazır! (${remText})`
         };
       }
-      return { success: false, message: 'Bu ürüne zaten sahipsiniz!' };
+      return { success: false, message: `Bu ürüne zaten sahipsiniz! (${remText})` };
     }
 
     const isUnlimited = user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
@@ -1098,12 +1118,23 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return { success: false, message: `Yetersiz Cosmo-Puan! Bu ürün için ${item.price} CP gerekiyor, bakiyeniz: ${currentCoins} CP.` };
     }
 
-    const newInventory = Array.from(new Set([...userInventory, itemId]));
+    const newExpiresAt = Date.now() + SHOP_ITEM_DURATION_MS;
+    const nextExpiresAtMap: Record<string, number> = {
+      ...currentExpiresAtMap,
+      [itemId]: newExpiresAt
+    };
+    const nextNormalized = normalizeShopInventory(
+      [[...userInventory, itemId]],
+      nextExpiresAtMap
+    );
+    const newInventory = nextNormalized.activeInventory;
+
     let updatedUser: User = {
       ...user,
       coins: isUnlimited ? 999999999 : Math.max(0, currentCoins - item.price),
       inventory: newInventory,
-      unlockedEmojiPacks: Array.from(new Set([...(user.unlockedEmojiPacks || []), ...newInventory]))
+      inventoryExpiresAt: nextNormalized.expiresAtMap,
+      unlockedEmojiPacks: newInventory
     };
 
     if (item.category === 'theme') {
@@ -1134,7 +1165,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       body: JSON.stringify({
         uid: user.uid,
         cosmo_points: updatedUser.coins,
-        shop_items: JSON.stringify(newInventory),
+        shop_items: JSON.stringify(nextNormalized.serializedForCloud),
         equipped_theme: updatedUser.equippedTheme || null,
         equipped_badge: updatedUser.equippedBadge || null,
         equipped_badges: JSON.stringify(updatedUser.equippedBadges || (updatedUser.equippedBadge ? [updatedUser.equippedBadge] : [])),
@@ -1144,7 +1175,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     return {
       success: true,
-      message: `🎉 Tebrikler! "${item.name}" başarıyla satın alındı ve profilinize uygulandı!`
+      message: `🎉 Tebrikler! "${item.name}" 1 aylığına (30 Gün) satın alındı ve profilinize uygulandı!`
     };
   };
 
@@ -1931,7 +1962,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
             cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(user.inventory || []),
+            shop_items: JSON.stringify(
+              normalizeShopInventory([user.inventory, user.unlockedEmojiPacks], user.inventoryExpiresAt).serializedForCloud
+            ),
             equipped_theme: user.equippedTheme || null,
             equipped_badge: user.equippedBadge || null,
             equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
@@ -2001,7 +2034,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
             cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(user.inventory || []),
+            shop_items: JSON.stringify(
+              normalizeShopInventory([user.inventory, user.unlockedEmojiPacks], user.inventoryExpiresAt).serializedForCloud
+            ),
             equipped_theme: user.equippedTheme || null,
             equipped_badge: user.equippedBadge || null,
             equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
@@ -2173,18 +2208,36 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 const safeInventory = Array.isArray(fetchedInventory)
                   ? fetchedInventory
                   : (prev.inventory || []);
-                const mergedInventory = Array.from(
-                  new Set([...(prev.inventory || []), ...(prev.unlockedEmojiPacks || []), ...safeInventory])
+                const normalized = normalizeShopInventory(
+                  [prev.inventory, prev.unlockedEmojiPacks, safeInventory],
+                  prev.inventoryExpiresAt
                 );
 
-                if (mergedInventory.length > safeInventory.length && prev.uid) {
+                const candidateUser: User = {
+                  ...prev,
+                  equippedTheme: data.equipped_theme !== undefined ? data.equipped_theme : prev.equippedTheme,
+                  equippedBadge: data.equipped_badge !== undefined ? data.equipped_badge : prev.equippedBadge,
+                  equippedBadges: Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : [],
+                  equippedFrame: data.equipped_frame !== undefined ? data.equipped_frame : prev.equippedFrame
+                };
+                const stripped = stripExpiredEquippedFromUser(
+                  candidateUser,
+                  normalized.activeInventory,
+                  shopItems || SHOP_ITEMS
+                );
+
+                if ((normalized.hasExpiredChanges || stripped.didUnequip || normalized.serializedForCloud.length !== safeInventory.length) && prev.uid) {
                   fetch('/api/auth/library', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     keepalive: true,
                     body: JSON.stringify({
                       uid: prev.uid,
-                      shop_items: JSON.stringify(mergedInventory)
+                      shop_items: JSON.stringify(normalized.serializedForCloud),
+                      equipped_theme: stripped.equippedTheme,
+                      equipped_badge: stripped.equippedBadge,
+                      equipped_badges: JSON.stringify(stripped.equippedBadges),
+                      equipped_frame: stripped.equippedFrame
                     })
                   }).catch(() => {});
                 }
@@ -2192,12 +2245,13 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return {
                   ...prev,
                   coins: typeof data.cosmo_points === 'number' ? data.cosmo_points : prev.coins,
-                  inventory: mergedInventory,
-                  unlockedEmojiPacks: mergedInventory,
-                  equippedTheme: data.equipped_theme !== undefined ? data.equipped_theme : prev.equippedTheme,
-                  equippedBadge: data.equipped_badge !== undefined ? data.equipped_badge : prev.equippedBadge,
-                  equippedBadges: Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : [],
-                  equippedFrame: data.equipped_frame !== undefined ? data.equipped_frame : prev.equippedFrame,
+                  inventory: normalized.activeInventory,
+                  inventoryExpiresAt: normalized.expiresAtMap,
+                  unlockedEmojiPacks: normalized.activeInventory,
+                  equippedTheme: stripped.equippedTheme,
+                  equippedBadge: stripped.equippedBadge,
+                  equippedBadges: stripped.equippedBadges,
+                  equippedFrame: stripped.equippedFrame,
                   dailyCheckinDay: typeof data.daily_checkin_day === 'number' ? data.daily_checkin_day : prev.dailyCheckinDay,
                   lastDailyCheckin: data.last_daily_checkin !== undefined ? data.last_daily_checkin : prev.lastDailyCheckin,
                   claimedCheckinDays: Array.isArray(fetchedClaimedCheckinDays) ? fetchedClaimedCheckinDays : []
@@ -2237,8 +2291,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(() => {
         const packed = packListsAndPinsForCloud(readingLists, kosmosPins);
-        const combinedInventory = Array.from(
-          new Set([...(user.inventory || []), ...(user.unlockedEmojiPacks || [])])
+        const normalizedSync = normalizeShopInventory(
+          [user.inventory, user.unlockedEmojiPacks],
+          user.inventoryExpiresAt
         );
         safeFetchJson('/api/auth/library', {
           method: 'POST',
@@ -2252,7 +2307,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
             reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
             notifications: JSON.stringify(notifications),
             cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(combinedInventory),
+            shop_items: JSON.stringify(normalizedSync.serializedForCloud),
             equipped_theme: user.equippedTheme || null,
             equipped_badge: user.equippedBadge || null,
             equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
@@ -2273,7 +2328,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           .catch(() => {});
       }, 300);
     }
-  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.unlockedEmojiPacks, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists, kosmosPins]);
+  }, [bookmarks, followedSeriesIds, readingHistory, notifications, user?.coins, user?.inventory, user?.inventoryExpiresAt, user?.unlockedEmojiPacks, user?.equippedTheme, user?.equippedBadge, user?.equippedBadges, user?.equippedFrame, user?.dailyCheckinDay, user?.lastDailyCheckin, user?.claimedCheckinDays, user?.uid, readingLists, kosmosPins]);
 
   useEffect(() => {
     try {
@@ -2302,6 +2357,35 @@ const deleteShopItemAndStyle = (itemId: string) => {
       }
     } catch (e) {}
   }, [user]);
+
+  // Periodically check and remove expired 1-month shop items while the app is open
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      setUser(prev => {
+        if (!prev) return prev;
+        const normalized = normalizeShopInventory(
+          [prev.inventory, prev.unlockedEmojiPacks],
+          prev.inventoryExpiresAt
+        );
+        const stripped = stripExpiredEquippedFromUser(prev, normalized.activeInventory, shopItems || SHOP_ITEMS);
+        if (!normalized.hasExpiredChanges && !stripped.didUnequip) {
+          return prev;
+        }
+        return {
+          ...prev,
+          inventory: normalized.activeInventory,
+          inventoryExpiresAt: normalized.expiresAtMap,
+          unlockedEmojiPacks: normalized.activeInventory,
+          equippedTheme: stripped.equippedTheme,
+          equippedFrame: stripped.equippedFrame,
+          equippedBadge: stripped.equippedBadge,
+          equippedBadges: stripped.equippedBadges
+        };
+      });
+    }, 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user?.uid, shopItems]);
 
   const unreadNotificationsCount = !user ? 0 : notifications.filter(n => {
     if (n.isRead) return false;
@@ -3180,15 +3264,22 @@ const deleteShopItemAndStyle = (itemId: string) => {
     // Look up real coins from knownUsers registry
     const existingInRegistry = knownUsers.find(k => k.email.toLowerCase() === cleanEmail);
     const registryCoins = existingInRegistry?.coins;
-    const mergedInv = Array.from(
-      new Set([...(u.inventory || []), ...(u.unlockedEmojiPacks || [])])
+    const normalized = normalizeShopInventory(
+      [u.inventory, u.unlockedEmojiPacks],
+      u.inventoryExpiresAt
     );
+    const stripped = stripExpiredEquippedFromUser(u, normalized.activeInventory, shopItems || SHOP_ITEMS);
 
     return {
       ...u,
       coins: isUnlimited ? 999999999 : (registryCoins ?? u.coins ?? 10),
-      inventory: mergedInv,
-      unlockedEmojiPacks: mergedInv
+      inventory: normalized.activeInventory,
+      inventoryExpiresAt: normalized.expiresAtMap,
+      unlockedEmojiPacks: normalized.activeInventory,
+      equippedTheme: stripped.equippedTheme,
+      equippedFrame: stripped.equippedFrame,
+      equippedBadge: stripped.equippedBadge,
+      equippedBadges: stripped.equippedBadges
     };
   };
 

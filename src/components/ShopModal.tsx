@@ -13,6 +13,7 @@ import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { ChibiThemeCreator } from './ChibiThemeCreator';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
+import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
 import {
 
   X,
@@ -82,9 +83,12 @@ export const ShopContent: React.FC = () => {
   const [inputUrl, setInputUrl] = useState(lemonStoreUrl);
 
   const userCoins = (user?.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || user?.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : (user?.coins ?? 10);
-  const userInventory = Array.from(
-    new Set([...(user?.inventory || []), ...(user?.unlockedEmojiPacks || [])])
+  const normalizedInventory = normalizeShopInventory(
+    [user?.inventory, user?.unlockedEmojiPacks],
+    user?.inventoryExpiresAt
   );
+  const userInventory = normalizedInventory.activeInventory;
+  const expiresAtMap = normalizedInventory.expiresAtMap;
   const equippedTheme = user?.equippedTheme || null;
   const equippedBadges: string[] = user?.equippedBadges && user.equippedBadges.length > 0
     ? user.equippedBadges
@@ -612,25 +616,33 @@ export const ShopContent: React.FC = () => {
                       </span>
                     )}
                     <div>
-                      <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
-                        {item.name}
+                      <h3 className="text-sm font-extrabold text-white flex items-center gap-2 flex-wrap">
+                        <span>{item.name}</span>
                         {isOwned && (
-                          <span className="text-[10px] bg-emerald-950 border border-emerald-500/50 text-emerald-400 font-bold px-1.5 py-0.2 rounded">
-                            Satın Alındı
+                          <span className="text-[10px] bg-emerald-950 border border-emerald-500/50 text-emerald-400 font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span>⏳ {formatRemainingDuration(expiresAtMap[item.id])}</span>
                           </span>
                         )}
                       </h3>
-                      <span className={`text-[10px] px-2 py-0.5 rounded-md ${getRarityBadge(item.rarity)}`}>
-                        {item.rarity}
-                      </span>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-md ${getRarityBadge(item.rarity)}`}>
+                          {item.rarity}
+                        </span>
+                        <span className="text-[10px] text-amber-300/80 font-semibold bg-amber-950/50 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                          1 Aylık Süre
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Price Badge */}
                   {!isOwned && (
-                    <div className="flex items-center gap-1 bg-amber-950/80 border border-amber-500/50 px-2.5 py-1 rounded-xl text-xs font-black text-amber-300">
-                      <Coins size={14} className="text-amber-400" />
-                      <span>{item.price} CP</span>
+                    <div className="flex flex-col items-end gap-0.5 shrink-0">
+                      <div className="flex items-center gap-1 bg-amber-950/80 border border-amber-500/50 px-2.5 py-1 rounded-xl text-xs font-black text-amber-300">
+                        <Coins size={14} className="text-amber-400" />
+                        <span>{item.price} CP</span>
+                      </div>
+                      <span className="text-[9px] text-amber-300/75 font-bold">30 Günlük</span>
                     </div>
                   )}
                 </div>
@@ -933,7 +945,7 @@ export const ShopContent: React.FC = () => {
                     )
                   ) : (
                     <span className="text-xs font-bold text-emerald-400 flex items-center gap-1">
-                      <Check size={14} /> Kullanıma Hazır
+                      <Check size={14} /> Kullanıma Hazır ({formatRemainingDuration(expiresAtMap[item.id])})
                     </span>
                   )
                 ) : (
@@ -948,7 +960,7 @@ export const ShopContent: React.FC = () => {
                   >
                     {userCoins >= item.price ? (
                       <>
-                        <Coins size={14} /> Satın Al ({item.price} CP)
+                        <Coins size={14} /> Satın Al ({item.price} CP • 1 Ay)
                       </>
                     ) : (
                       <>

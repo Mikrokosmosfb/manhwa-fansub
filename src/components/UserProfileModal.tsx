@@ -8,6 +8,7 @@ import { SeriesCard } from './SeriesCard';
 import { THEME_STYLES, ThemeStyle } from '../data/shopData';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
+import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
 import {
 
   Award,
@@ -248,8 +249,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     ? user.equippedBadges
     : (user.equippedBadge ? [user.equippedBadge] : []);
 
-  // User purchased themes and badges inventory
-  const userInventory = user.inventory || [];
+  // User purchased themes and badges inventory (1-month active duration)
+  const normalizedProfileInv = normalizeShopInventory(
+    [user.inventory, user.unlockedEmojiPacks],
+    user.inventoryExpiresAt
+  );
+  const userInventory = normalizedProfileInv.activeInventory;
+  const profileExpiresAtMap = normalizedProfileInv.expiresAtMap;
   const ownedThemeItems = shopItems.filter(
     item => item.category === 'theme' && userInventory.includes(item.id)
   );
@@ -1116,6 +1122,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                               <div className="min-w-0">
                                 <h5 className="text-xs font-bold text-white truncate">{item.name}</h5>
                                 <p className="text-[11px] text-gray-400 leading-snug">{item.description}</p>
+                                <span className="text-[10px] text-emerald-400 font-semibold mt-0.5 block">
+                                  ⏳ {formatRemainingDuration(profileExpiresAtMap[item.id])}
+                                </span>
                               </div>
                             </div>
 
@@ -1188,7 +1197,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                                 <h5 className="text-xs font-bold text-white truncate">{item.name}</h5>
                                 <p className="text-[11px] text-gray-400 leading-snug">{item.description}</p>
                                 <span className="text-[10px] text-purple-300 font-semibold mt-0.5 block">
-                                  {item.themeType === 'photo' ? '🖼️ Özel Görsel' : '✨ Kozmik Aura'}
+                                  {item.themeType === 'photo' ? '🖼️ Özel Görsel' : '✨ Kozmik Aura'} • ⏳ {formatRemainingDuration(profileExpiresAtMap[item.id])}
                                 </span>
                               </div>
                             </div>
@@ -1268,7 +1277,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                                 <h5 className="text-xs font-bold text-white truncate">{item.name}</h5>
                                 <p className="text-[11px] text-gray-400 leading-snug">{item.description}</p>
                                 <span className="text-[10px] text-cyan-300 font-semibold mt-0.5 block">
-                                  {item.frameImageUrl ? '🖼️ Özel Katman Görseli' : '✨ Işıltılı Efekt'}
+                                  {item.frameImageUrl ? '🖼️ Özel Katman Görseli' : '✨ Işıltılı Efekt'} • ⏳ {formatRemainingDuration(profileExpiresAtMap[item.id])}
                                 </span>
                               </div>
                             </div>

@@ -5,6 +5,7 @@ import { ReadingProgress } from '../types';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { THEME_STYLES, SHOP_ITEMS } from '../data/shopData';
 import { UserAvatar } from './UserAvatar';
+import { normalizeShopInventory } from '../utils/shopExpiration';
 import { 
   Award, 
   BookOpen, 
@@ -294,7 +295,8 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
   const completedAchievementsCount = achievementsList.filter(a => a.current >= a.target).length;
 
   const allItems = (shopItems && Array.isArray(shopItems) && shopItems.length > 0) ? shopItems : SHOP_ITEMS;
-  const userInventory: string[] = Array.isArray(profile.inventory) ? profile.inventory : (Array.isArray(profile.shopItems) ? profile.shopItems : []);
+  const rawProfileInv: string[] = Array.isArray(profile.inventory) ? profile.inventory : (Array.isArray(profile.shopItems) ? profile.shopItems : []);
+  const userInventory: string[] = normalizeShopInventory([rawProfileInv]).activeInventory;
   
   const ownedFrames = allItems.filter(i => i.category === 'frame' && userInventory.includes(i.id));
   const ownedThemes = allItems.filter(i => i.category === 'theme' && userInventory.includes(i.id));

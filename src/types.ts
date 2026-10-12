@@ -19,6 +19,7 @@ export interface User {
   createdAt?: string;
   coins?: number; // Cosmo-Puan balance
   inventory?: string[]; // Item IDs purchased e.g. ['theme_gold', 'chibi_solo']
+  inventoryExpiresAt?: Record<string, number>; // Expiration timestamp (ms) per purchased shop item ID (1 month / 30 days)
   equippedTheme?: string | null; // Equipped comment card theme e.g. 'theme_gold'
   equippedBadge?: string | null; // Equipped primary VIP title badge e.g. 'Mutlak Enigma'
   equippedBadges?: string[]; // Up to 5 equipped VIP title badges e.g. ['Mutlak Enigma', 'S-Rank Avcı']
