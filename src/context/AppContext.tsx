@@ -1825,8 +1825,18 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   // Series Requests State
   const [seriesRequests, setSeriesRequests] = useState<SeriesRequest[]>(() => {
-    const saved = localStorage.getItem('mk_series_requests');
-    if (saved) return JSON.parse(saved);
+    try {
+      const saved = localStorage.getItem('mk_series_requests');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+      const cached = localStorage.getItem('mikro_requests_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
     return [];
   });
 
@@ -2148,6 +2158,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
   useEffect(() => {
     try {
       localStorage.setItem('mk_series_requests', JSON.stringify(seriesRequests));
+      if (seriesRequests && seriesRequests.length > 0) {
+        localStorage.setItem('mikro_requests_cache', JSON.stringify(seriesRequests));
+      }
     } catch (e) {}
   }, [seriesRequests]);
 

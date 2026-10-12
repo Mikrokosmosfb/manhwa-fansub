@@ -139,18 +139,28 @@ const normalizeRequestItem = (raw: any): SeriesRequest => {
 };
 
 export const RequestBoardView: React.FC = () => {
-  const { user, isAdminLoggedIn, showToast } = useApp();
+  const { user, isAdminLoggedIn, showToast, seriesRequests, setSeriesRequests } = useApp();
 
   const [requestsList, setRequestsList] = useState<SeriesRequest[]>(() => {
-    const cached = localStorage.getItem("mikro_requests_cache");
-    if (cached) {
-      try {
+    try {
+      const cached = localStorage.getItem("mikro_requests_cache");
+      if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map(normalizeRequestItem);
         }
-      } catch (e) {}
-    }
+      }
+      const cached2 = localStorage.getItem("mk_series_requests");
+      if (cached2) {
+        const parsed2 = JSON.parse(cached2);
+        if (Array.isArray(parsed2) && parsed2.length > 0) {
+          return parsed2.map(normalizeRequestItem);
+        }
+      }
+      if (seriesRequests && seriesRequests.length > 0) {
+        return seriesRequests;
+      }
+    } catch (e) {}
     return [];
   });
 
@@ -198,7 +208,9 @@ export const RequestBoardView: React.FC = () => {
     if (showRefreshToast) {
       showToast?.({ title: "🔄 Liste Yenileniyor...", message: "Google E-Tablo verileri çekiliyor.", type: "info" });
     }
-    setIsLoading(true);
+    if (requestsList.length === 0) {
+      setIsLoading(true);
+    }
 
     const res = await apiCall({ action: "list" });
     setIsLoading(false);
@@ -206,8 +218,12 @@ export const RequestBoardView: React.FC = () => {
     if (res && res.success && Array.isArray(res.data)) {
       const normalized = res.data.map(normalizeRequestItem);
       setRequestsList(normalized);
+      if (typeof setSeriesRequests === 'function') {
+        setSeriesRequests(normalized);
+      }
       try {
         localStorage.setItem("mikro_requests_cache", JSON.stringify(res.data));
+        localStorage.setItem("mk_series_requests", JSON.stringify(normalized));
       } catch (e) {}
       if (showRefreshToast) {
         showToast?.({ title: "✅ Liste Güncellendi", message: `Toplam ${normalized.length} istek yüklendi.`, type: "success" });
@@ -325,6 +341,9 @@ export const RequestBoardView: React.FC = () => {
     if (res && res.success) {
       const newVoteCount = typeof res.votes === 'number' ? res.votes : ((req.votes || 0) + 1);
       setRequestsList(prev => prev.map(r => r.row === req.row ? { ...r, votes: newVoteCount, oy: newVoteCount } : r));
+      if (typeof setSeriesRequests === 'function') {
+        setSeriesRequests(prev => prev.map(r => r.row === req.row ? { ...r, votes: newVoteCount, oy: newVoteCount } : r));
+      }
       showToast?.({ title: '👍 Oyunuz Eklendi!', message: `"${req.title}" toplam ${newVoteCount} oya ulaştı.`, type: 'success' });
     } else {
       showToast?.({ title: '⚠️ ' + (res?.message || 'Oy verirken sorun oluştu'), type: 'warning' });
@@ -352,6 +371,25 @@ export const RequestBoardView: React.FC = () => {
     setIsSubmitting(false);
 
     if (res && res.success) {
+      const createdItem = normalizeRequestItem({
+        row: res.row || (requestsList.length > 0 ? Math.max(...requestsList.map(r => Number(r.row) || 0)) + 1 : 1),
+        seri: reqTitle.trim(),
+        kullanici: reqUser.trim() || user?.name || 'Starlight',
+        kat: reqKat || 'Manhwa',
+        seriDurumu: reqSeriDurum.trim(),
+        resim: reqImg.trim(),
+        link: reqLink.trim(),
+        tur: tagsText,
+        durum: 'Beklemede',
+        oy: 1,
+        tarih: 'Az önce'
+      });
+
+      setRequestsList(prev => [createdItem, ...prev]);
+      if (typeof setSeriesRequests === 'function') {
+        setSeriesRequests(prev => [createdItem, ...prev]);
+      }
+
       showToast?.({ title: '✨ İstek Eklendi!', message: `"${reqTitle.trim()}" isteğiniz Google E-Tabloya eklendi.`, type: 'success' });
       setIsNewModalOpen(false);
       setReqTitle('');
@@ -450,6 +488,10 @@ export const RequestBoardView: React.FC = () => {
     });
 
     if (res && res.success) {
+      setRequestsList(prev => prev.filter(r => r.row !== req.row));
+      if (typeof setSeriesRequests === 'function') {
+        setSeriesRequests(prev => prev.filter(r => r.row !== req.row));
+      }
       showToast?.({ title: '🗑️ İstek Silindi', message: 'Liste Google E-Tablo ile eşitleniyor...', type: 'info' });
       await loadLiveSheetData(false);
     } else {
@@ -834,16 +876,16 @@ export const RequestBoardView: React.FC = () => {
         </div>
       </div>
 
-      {/* LOADING INDICATOR */}
-      {isLoading && (
+      {/* LOADING INDICATOR (ONLY SHOWN IF INITIAL LIST IS EMPTY) */}
+      {isLoading && requestsList.length === 0 && (
         <div className="text-center py-10 space-y-3">
           <RotateCw size={28} className="animate-spin text-purple-400 mx-auto" />
           <p className="text-xs text-purple-300 font-bold">Galaksi verileri Google E-Tablo'dan çekiliyor...</p>
         </div>
       )}
 
-      {/* CARD GRID */}
-      {!isLoading && (
+      {/* CARD GRID (ALWAYS SHOWN IF WE HAVE ITEMS OR FINISHED LOADING) */}
+      {(!isLoading || requestsList.length > 0) && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filteredRequests.length === 0 ? (
             <div className="col-span-full text-center py-12 bg-gray-900/60 border border-purple-500/20 rounded-3xl p-6 space-y-3">
