@@ -780,44 +780,30 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               <button
                 type="button"
                 onClick={() => onJumpToParagraph?.(paraKey)}
-                className="relative z-10 w-fit max-w-[360px] sm:max-w-[420px] text-left group/quote rounded-2xl bg-purple-950/85 hover:bg-purple-900/95 border border-purple-400/50 hover:border-amber-400/70 p-2.5 sm:p-3 transition-all duration-200 flex items-center gap-3.5 shadow-xl cursor-pointer"
-                title="Bu sahnenin bölümdeki tam noktasına gitmek için tıklayın"
+                className="relative z-10 group/quote rounded-2xl overflow-hidden border-2 border-purple-400/50 hover:border-amber-400 transition-all duration-200 shadow-xl cursor-pointer inline-block max-w-fit"
+                title="Bölümdeki bu sahneye gitmek için tıklayın"
               >
-                {sceneImgUrl && (
-                  <div className="relative w-28 h-28 sm:w-32 sm:h-32 aspect-square rounded-2xl overflow-hidden border border-purple-400/60 bg-black shrink-0 shadow-lg">
+                <div className="relative w-40 h-40 sm:w-48 sm:h-48 aspect-square bg-black">
+                  {sceneImgUrl ? (
                     <img
                       src={sceneImgUrl}
                       alt={`${imgIdx + 1}. Şerit Sahnesi`}
                       referrerPolicy="no-referrer"
                       loading="lazy"
-                      className="w-full h-full object-cover group-hover/quote:scale-105 transition-transform duration-300"
+                      className="w-full h-full object-cover group-hover/quote:scale-105 transition-transform duration-300 select-none"
                       style={{ objectPosition: `50% ${yPct}%` }}
                     />
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-1.5 flex items-center justify-between">
-                      <span className="bg-purple-950/90 text-amber-300 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-purple-400/40 shadow-sm">
-                        %{yPct}
-                      </span>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
+                      Görsel Yok
                     </div>
-                  </div>
-                )}
-                <div className="min-w-0 flex-1 space-y-1.5">
-                  <div className="flex items-center justify-between gap-1.5">
-                    <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-                      📸 {imgIdx + 1}. Şerit
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/60 to-transparent px-2.5 py-2 flex items-center justify-between text-xs">
+                    <span className="font-black text-amber-300 drop-shadow flex items-center gap-1 text-[11px] sm:text-xs">
+                      📸 {imgIdx + 1}. Şerit (%{yPct})
                     </span>
-                    <span className="text-[10px] font-extrabold text-purple-200 group-hover/quote:text-amber-200 flex items-center gap-1 shrink-0 px-2 py-0.5 rounded-lg bg-purple-900/90 border border-purple-400/40 shadow-sm">
-                      <span>Git ↑</span>
-                    </span>
-                  </div>
-                  <p className="text-xs text-purple-100 font-semibold leading-snug">
-                    Bölümden alıntılanan sahne kesiti
-                  </p>
-                  <p className="text-[11px] text-purple-300/80 leading-tight">
-                    Yorumun yapıldığı orijinal görsel konumuna gitmek için tıklayın.
-                  </p>
-                  <div className="pt-0.5">
-                    <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold text-amber-300/90 bg-black/40 px-2 py-0.5 rounded-md border border-white/10">
-                      Konum: Yükseklik %{yPct}
+                    <span className="font-extrabold text-white text-[10px] sm:text-[11px] bg-purple-600 hover:bg-purple-500 px-2.5 py-0.5 rounded-lg border border-white/25 shadow-sm flex items-center gap-1 transition">
+                      Git ↑
                     </span>
                   </div>
                 </div>
