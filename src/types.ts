@@ -230,21 +230,32 @@ export interface Announcement {
 }
 
 export interface SeriesRequest {
-  id: string;
+  id?: string;
+  row?: number;
+  seri?: string;
   title: string;
-  type: SeriesType | string;
-  synopsis: string;
-  votes: number;
-  votedUserIds: string[];
-  status: 'Beklemede' | 'İncelemede' | 'Kabul Edildi' | 'Yapımda' | 'Yakında' | 'Yayında!' | 'Reddedildi' | string;
+  kullanici?: string;
   requestedBy: string;
+  kat?: string;
+  type: SeriesType | string;
+  synopsis?: string;
+  oy?: number;
+  votes: number;
+  votedUserIds?: string[];
+  durum?: string;
+  status: 'Beklemede' | 'İncelemede' | 'Kabul Edildi' | 'Yapımda' | 'Yakında' | 'Yayında!' | 'Reddedildi' | string;
+  tarih?: string;
   createdAt: string;
+  resim?: string;
   coverImage?: string;
-  originalStatus?: string; // e.g. "Tamamlandı (80 Bölüm)"
-  tags?: string[]; // e.g. ['BL', '+18']
-  note?: string; // Note or admin comment
-  readLink?: string; // Read link for published series
-  rejectionReason?: string; // Reason if rejected
+  seriDurumu?: string;
+  originalStatus?: string;
+  tur?: string;
+  tags?: string[];
+  link?: string;
+  note?: string;
+  readLink?: string;
+  rejectionReason?: string;
 }
 
 export interface ScheduleItem {
