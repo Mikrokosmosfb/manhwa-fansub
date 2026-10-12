@@ -751,24 +751,27 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             </div>
 
             {/* Name, Team Roles and Purchased Badges Container */}
-            <div
-              className={`min-w-0 flex-1 ${
-                themeStyle?.cardBgImageUrl
-                  ? 'bg-black/75 px-3 py-1.5 rounded-xl border border-white/10 shadow-sm z-10'
-                  : 'pl-1'
-              }`}
-            >
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
-                    themeStyle ? themeStyle.nameClass : 'text-gray-100'
-                  }`} onClick={() => c.userId && openPublicProfile(c.userId)}>{c.userName}</span>
-                <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
-                <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              {/* Name, Team Roles and Date Box */}
+              <div
+                className={`min-w-0 max-w-fit ${
+                  themeStyle?.cardBgImageUrl
+                    ? 'bg-black/75 px-3 py-1 rounded-xl border border-white/10 shadow-sm z-10'
+                    : 'pl-0.5'
+                }`}
+              >
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
+                      themeStyle ? themeStyle.nameClass : 'text-gray-100'
+                    }`} onClick={() => c.userId && openPublicProfile(c.userId)}>{c.userName}</span>
+                  <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
+                  <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
+                </div>
               </div>
 
-              {/* Purchased Badges / Etiketler (Displayed directly under the username) */}
+              {/* Purchased Badges / Etiketler (Displayed SEPARATELY under the username box) */}
               {authorBadges.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <div className="flex items-center gap-1.5 flex-wrap pt-0.5 z-10">
                   {authorBadges.map((badgeText, idx) => {
                     const badgeItem = currentShopItems.find(
                       i => i.category === 'badge' && (i.badgeText === badgeText || i.name === badgeText)
@@ -777,7 +780,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                     return (
                       <span
                         key={idx}
-                        className={`text-[9px] sm:text-[10px] px-2 py-0.5 rounded-md font-black tracking-tight shadow-sm border border-white/10 flex items-center gap-1 whitespace-nowrap leading-tight transition-transform hover:scale-105 ${badgeClass}`}
+                        className={`text-[9px] sm:text-[10px] px-2.5 py-0.5 rounded-md font-black tracking-tight shadow-sm border border-white/10 flex items-center gap-1 whitespace-nowrap leading-tight transition-transform hover:scale-105 ${badgeClass}`}
                       >
                         <span>{badgeText}</span>
                       </span>
