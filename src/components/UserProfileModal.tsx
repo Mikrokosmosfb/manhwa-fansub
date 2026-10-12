@@ -275,7 +275,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: totalReadChaptersCount >= 1,
       progressText: `${Math.min(totalReadChaptersCount, 1)} / 1 Bölüm`,
-      rewardCoins: 3
+      rewardCoins: 0
     },
     {
       id: 'b-2',
@@ -285,7 +285,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: totalReadChaptersCount >= 10,
       progressText: `${Math.min(totalReadChaptersCount, 10)} / 10 Bölüm`,
-      rewardCoins: 5
+      rewardCoins: 0
     },
     {
       id: 'b-3',
@@ -295,7 +295,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: totalReadChaptersCount >= 50,
       progressText: `${Math.min(totalReadChaptersCount, 50)} / 50 Bölüm`,
-      rewardCoins: 10
+      rewardCoins: 0
     },
     {
       id: 'b-4',
@@ -305,7 +305,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: totalReadChaptersCount >= 100,
       progressText: `${Math.min(totalReadChaptersCount, 100)} / 100 Bölüm`,
-      rewardCoins: 15
+      rewardCoins: 0
     },
     {
       id: 'b-5',
@@ -315,7 +315,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'special',
       isUnlocked: totalReadChaptersCount >= 5,
       progressText: totalReadChaptersCount >= 5 ? 'Tamamlandı' : '5 Bölüm Okunmalı',
-      rewardCoins: 4
+      rewardCoins: 0
     },
     {
       id: 'b-6',
@@ -325,7 +325,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: novelReadCount >= 5,
       progressText: `${Math.min(novelReadCount, 5)} / 5 Novel Bölümü`,
-      rewardCoins: 5
+      rewardCoins: 0
     },
     {
       id: 'b-7',
@@ -335,7 +335,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'reading',
       isUnlocked: manhwaReadCount >= 10,
       progressText: `${Math.min(manhwaReadCount, 10)} / 10 Manhwa Bölümü`,
-      rewardCoins: 5
+      rewardCoins: 0
     },
     {
       id: 'b-8',
@@ -345,7 +345,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'community',
       isUnlocked: userCommentsCount >= 1,
       progressText: `${Math.min(userCommentsCount, 1)} / 1 Yorum`,
-      rewardCoins: 2
+      rewardCoins: 0
     },
     {
       id: 'b-9',
@@ -355,7 +355,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'community',
       isUnlocked: userCommentsCount >= 5,
       progressText: `${Math.min(userCommentsCount, 5)} / 5 Yorum`,
-      rewardCoins: 5
+      rewardCoins: 0
     },
     {
       id: 'b-10',
@@ -365,7 +365,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       category: 'collector',
       isUnlocked: bookmarkedSeriesCount >= 5,
       progressText: `${Math.min(bookmarkedSeriesCount, 5)} / 5 Seri`,
-      rewardCoins: 5
+      rewardCoins: 0
     }
   ];
 
@@ -381,10 +381,9 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     setClaimedRewards(newClaimed);
     try {
       localStorage.setItem(`mk_claimed_rewards_${user?.uid}`, JSON.stringify(newClaimed));
-      earnPoints(badge.rewardCoins, `Başarım: ${badge.title}`);
       setStatusMessage({
         type: 'success',
-        text: `Tebrikler! "${badge.title}" başarımı için +${badge.rewardCoins} Cosmo-Puan kazandınız!`
+        text: `Tebrikler! "${badge.title}" başarımını tamamladınız ve rozeti açtınız!`
       });
     } catch {}
   };
@@ -1399,21 +1398,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                     <div className="shrink-0 text-right">
                       {badge.isUnlocked ? (
                         isClaimed ? (
-                          <span className="text-[11px] text-gray-500 font-bold px-2 py-1 bg-slate-900 rounded-lg">
-                            Alındı
+                          <span className="text-[11px] text-gray-500 font-bold px-2.5 py-1 bg-slate-900 rounded-lg border border-white/5">
+                            Rozet Açıldı
                           </span>
                         ) : (
                           <button
                             type="button"
                             onClick={() => handleClaimReward(badge)}
-                            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl transition cursor-pointer"
+                            className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl transition cursor-pointer shadow-md active:scale-95"
                           >
-                            +{badge.rewardCoins} CP Al
+                            Rozeti Al
                           </button>
                         )
                       ) : (
                         <span className="text-[10px] text-gray-500 font-mono">
-                          +{badge.rewardCoins} CP
+                          Kilitli
                         </span>
                       )}
                     </div>
@@ -1635,7 +1634,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
                 <div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex items-start gap-2.5 text-gray-300">
                   <Award size={16} className="text-purple-400 shrink-0 mt-0.5" />
-                  <span><strong>Başarımlar & Ödüller:</strong> Başarımlar sekmesindeki okuma görevlerini tamamlayarak hem unvanınızı güçlendirebilir hem de gardıropta harcamak üzere ücretsiz Cosmo-Puan kazanabilirsiniz.</span>
+                  <span><strong>Başarımlar & Unvanlar:</strong> Başarımlar sekmesindeki okuma görevlerini tamamlayarak profil unvanınızı güçlendirebilir ve özel rozetler kazanabilirsiniz. (Cosmo-Puanlar sadece Mağaza üzerinden satın alınabilir.)</span>
                 </div>
               </div>
             </div>
