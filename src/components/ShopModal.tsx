@@ -95,6 +95,7 @@ export const ShopContent: React.FC = () => {
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
+  const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
   // Per-package Lemon Squeezy URLs
   const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
     const defaultUrls: Record<string, string> = {
