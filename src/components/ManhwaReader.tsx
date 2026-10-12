@@ -1259,41 +1259,37 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
         </>
       )}
 
-      {/* Floating Right-Edge "Comment on Current Scene" Trigger (Only visible when showSceneComments is ON) */}
-      {showSceneComments && !isPrivacyBlurred && chapterImageUrls.length > 0 && (
+      {/* Bottom-Left Floating Stack: Scene Comment Button above Privacy Blur Button (Parallel with right-side ScrollToTopBottom) */}
+      <div className="fixed bottom-20 md:bottom-8 left-3.5 sm:left-6 z-[60] flex flex-col gap-2 pointer-events-none">
+        {showSceneComments && !isPrivacyBlurred && chapterImageUrls.length > 0 && (
+          <button
+            type="button"
+            onClick={handleCommentCurrentViewportScene}
+            className="pointer-events-auto bg-purple-900/90 hover:bg-purple-600 text-amber-300 hover:text-white p-2.5 sm:p-3 rounded-2xl border border-purple-400/50 shadow-2xl backdrop-blur-md transition-all duration-300 transform hover:scale-110 active:scale-95 flex items-center justify-center cursor-pointer"
+            title="Bu Sahneye Yorum Bırak / Yorumları Gör"
+            aria-label="Bu Sahneye Yorum Bırak"
+          >
+            <MessageCircle size={20} />
+          </button>
+        )}
+
         <button
           type="button"
-          onClick={handleCommentCurrentViewportScene}
-          className="fixed right-2.5 sm:right-4 top-1/2 -translate-y-1/2 z-40 bg-purple-950/90 hover:bg-purple-600 text-amber-300 hover:text-white border border-purple-400/50 px-2.5 py-2 sm:px-3 sm:py-2.5 rounded-2xl shadow-[0_6px_24px_rgba(88,28,135,0.55)] backdrop-blur-md flex flex-col items-center gap-1 transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer group"
-          title="Şu an ekranda baktığınız sahneye yorum bırakın veya yapılan yorumları görün"
+          onClick={togglePrivacyBlur}
+          className={`md:hidden pointer-events-auto p-2.5 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
+            isPrivacyBlurred
+              ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
+              : 'bg-purple-950/90 hover:bg-purple-700 text-purple-200 hover:text-white border-purple-500/40'
+          }`}
+          title={
+            isPrivacyBlurred
+              ? 'Gizlilik Bulanıklaştırmasını Kaldır'
+              : 'Ekranı Anında Bulanıklaştır'
+          }
         >
-          <MessageCircle size={18} className="text-amber-300 group-hover:text-white transition" />
-          <span className="text-[9px] sm:text-[10px] font-black tracking-tight leading-none">
-            Sahneye
-          </span>
-          <span className="text-[9px] sm:text-[10px] font-black tracking-tight leading-none text-purple-200 group-hover:text-white">
-            Yorum
-          </span>
+          {isPrivacyBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
         </button>
-      )}
-
-      {/* Mobile-Only Bottom-Left Panic Blur Button (Parallel with right-side ScrollToTopBottom at bottom-20) */}
-      <button
-        type="button"
-        onClick={togglePrivacyBlur}
-        className={`md:hidden fixed bottom-20 left-3.5 z-[60] p-2.5 rounded-2xl flex items-center justify-center shadow-2xl border backdrop-blur-md transition-all duration-300 transform active:scale-95 cursor-pointer ${
-          isPrivacyBlurred
-            ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-300/60 ring-4 ring-rose-500/30'
-            : 'bg-purple-950/90 hover:bg-purple-700 text-purple-200 hover:text-white border-purple-500/40'
-        }`}
-        title={
-          isPrivacyBlurred
-            ? 'Gizlilik Bulanıklaştırmasını Kaldır'
-            : 'Ekranı Anında Bulanıklaştır'
-        }
-      >
-        {isPrivacyBlurred ? <Eye size={20} /> : <EyeOff size={20} />}
-      </button>
+      </div>
 
       {/* Privacy Blur Overlay Banner when Active */}
       {isPrivacyBlurred && (
