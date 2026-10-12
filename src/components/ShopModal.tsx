@@ -97,15 +97,21 @@ export const ShopContent: React.FC = () => {
   const [orderCodeInput, setOrderCodeInput] = useState('');
   // Per-package Lemon Squeezy URLs
   const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
-    try {
-      const saved = localStorage.getItem('ls_package_urls');
-      if (saved) return JSON.parse(saved);
-    } catch (e) {}
-    return {
+    const defaultUrls: Record<string, string> = {
       cp_pro: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
     };
+    try {
+      const saved = localStorage.getItem('ls_package_urls');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+          return { ...defaultUrls, ...parsed };
+        }
+      }
+    } catch (e) {}
+    return defaultUrls;
   });
-  const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls);
+  const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls || {});
 
   // Auto load Lemon Squeezy overlay & subscribe to success event
   useEffect(() => {
@@ -210,7 +216,7 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = packageUrls[pkg.id]?.trim();
+    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim();
 
     if (!targetCheckoutUrl) {
       setStatusMessage({
@@ -576,8 +582,8 @@ export const ShopContent: React.FC = () => {
                     <input
                       type="url"
                       placeholder={`https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/...`}
-                      value={inputPackageUrls[pkg.id] || ''}
-                      onChange={e => setInputPackageUrls({ ...inputPackageUrls, [pkg.id]: e.target.value })}
+                      value={(inputPackageUrls || {})[pkg.id] || ''}
+                      onChange={e => setInputPackageUrls({ ...(inputPackageUrls || {}), [pkg.id]: e.target.value })}
                       className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-[11px] placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
                     />
                   </div>
