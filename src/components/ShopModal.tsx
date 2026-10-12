@@ -591,6 +591,19 @@ export const ShopContent: React.FC = () => {
                 ))}
               </div>
 
+              <div className="bg-amber-950/30 border border-amber-500/30 p-2.5 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-black text-amber-300">🔗 Otomatik Bakiye Yükleme Webhook Adresi:</span>
+                  <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">Aktif & Hazır</span>
+                </div>
+                <p className="text-[10px] text-gray-300">
+                  Lemon Squeezy panelinde <strong>Settings &gt; Webhooks</strong> alanına bu adresi ekleyip <code>order_created</code> olayını seçerseniz, kullanıcılar ödeme yapar yapmaz coinleri anında hesaplarına aktarılır:
+                </p>
+                <code className="block bg-black/60 p-1.5 rounded text-[11px] text-amber-200 select-all font-mono border border-gray-800">
+                  https://mikrokosmosfansub.com/api/webhooks/lemon-squeezy
+                </code>
+              </div>
+
               <div className="flex justify-end pt-1">
                 <button
                   type="submit"

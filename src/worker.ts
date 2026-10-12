@@ -2416,6 +2416,113 @@ ${seriesXml}
             }
           }
 
+          // ===================== LEMON SQUEEZY WEBHOOK =====================
+          if (path.startsWith('/api/webhooks/lemon-squeezy') || path.startsWith('/api/payments/lemon-webhook')) {
+            if (request.method !== 'POST') {
+              return new Response(JSON.stringify({ status: 'ok', message: 'Lemon Squeezy Webhook listener active' }), { headers });
+            }
+
+            try {
+              const body = await request.json() as any;
+              const eventName = body?.meta?.event_name || body?.event_name || 'order_created';
+              const customData = body?.meta?.custom_data || {};
+              const attributes = body?.data?.attributes || {};
+              const orderId = body?.data?.id || attributes?.order_number || ('ord-' + Date.now());
+              const userEmail = (customData?.user_email || attributes?.user_email || '').toLowerCase().trim();
+              const userId = customData?.user_id;
+
+              // Coins amount determination
+              let coinsToAdd = 0;
+              if (customData?.coins) {
+                coinsToAdd = parseInt(customData.coins, 10) || 0;
+              } else if (customData?.package_id) {
+                if (customData.package_id === 'coins_starter') coinsToAdd = 250;
+                else if (customData.package_id === 'coins_bronze') coinsToAdd = 1150;
+                else if (customData.package_id === 'coins_silver') coinsToAdd = 3600;
+                else if (customData.package_id === 'coins_gold') coinsToAdd = 13000;
+              }
+
+              // Fallback coin calculation from price (e.g. 299 cents -> $2.99 -> 1150 coins)
+              if (!coinsToAdd) {
+                const totalCents = attributes?.total || 0;
+                if (totalCents >= 1900) coinsToAdd = 13000;
+                else if (totalCents >= 600) coinsToAdd = 3600;
+                else if (totalCents >= 250) coinsToAdd = 1150;
+                else if (totalCents >= 90) coinsToAdd = 250;
+                else coinsToAdd = 1150; // default for bronze if paid
+              }
+
+              const activeDb = usersDb || db;
+              if (activeDb && (userEmail || userId) && coinsToAdd > 0) {
+                // Find user
+                let targetUser: any = null;
+                if (userId) {
+                  const res = await activeDb.prepare("SELECT uid, email, name FROM users WHERE uid = ?").bind(userId).first();
+                  if (res) targetUser = res;
+                }
+                if (!targetUser && userEmail) {
+                  const res = await activeDb.prepare("SELECT uid, email, name FROM users WHERE LOWER(email) = ?").bind(userEmail).first();
+                  if (res) targetUser = res;
+                }
+
+                const targetUid = targetUser?.uid || userId || ('u-guest-' + Date.now());
+                const finalEmail = targetUser?.email || userEmail;
+
+                // Credit coins to user_library
+                await activeDb.prepare(`
+                  INSERT INTO user_library (uid, email, cosmo_points)
+                  VALUES (?, ?, ?)
+                  ON CONFLICT(uid) DO UPDATE SET
+                    cosmo_points = COALESCE(user_library.cosmo_points, 0) + excluded.cosmo_points
+                `).bind(targetUid, finalEmail, coinsToAdd).run().catch(() => {});
+
+                // Record in point_grants log for admin visibility
+                try {
+                  await activeDb.prepare(`
+                    INSERT INTO point_grants (id, target_email, amount, mode, note, admin_email, created_at)
+                    VALUES (?, ?, ?, 'add', ?, 'Lemon Squeezy Webhook', ?)
+                  `).bind(
+                    'pg-lemon-' + orderId,
+                    finalEmail,
+                    coinsToAdd,
+                    `Lemon Squeezy Siparişi #${orderId} (${attributes?.total_formatted || '$2.99'})`,
+                    new Date().toISOString()
+                  ).run();
+                } catch(eLog) {}
+
+                // Send notification to user library
+                try {
+                  const libRecord = await activeDb.prepare("SELECT notifications FROM user_library WHERE uid = ?").bind(targetUid).first();
+                  let currentNotifs: any[] = [];
+                  if (libRecord?.notifications) {
+                    try { currentNotifs = JSON.parse(libRecord.notifications); } catch(eN) {}
+                  }
+                  currentNotifs.unshift({
+                    id: 'notif-lemon-' + orderId,
+                    title: '🍋 Cosmo-Puan Yüklendi!',
+                    message: `Lemon Squeezy üzerinden satın aldığınız +${coinsToAdd.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı. İyi okumalar!`,
+                    type: 'system',
+                    createdAt: Date.now(),
+                    isRead: false
+                  });
+                  await activeDb.prepare("UPDATE user_library SET notifications = ? WHERE uid = ?").bind(JSON.stringify(currentNotifs.slice(0, 30)), targetUid).run();
+                } catch(eNotif) {}
+
+                return new Response(JSON.stringify({
+                  success: true,
+                  message: `Successfully credited ${coinsToAdd} coins to ${finalEmail}`,
+                  orderId,
+                  coins: coinsToAdd
+                }), { headers });
+              }
+
+              return new Response(JSON.stringify({ success: true, message: 'Webhook received' }), { headers });
+            } catch (err: any) {
+              console.error('Error handling Lemon Squeezy webhook:', err);
+              return new Response(JSON.stringify({ success: false, error: err?.message }), { status: 400, headers });
+            }
+          }
+
           // GET ALL USERS (For Admin & Status)
           if (path.startsWith('/api/admin/users') || path.startsWith('/api/auth/users')) {
             const activeDb = usersDb || db;
