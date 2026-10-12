@@ -95,11 +95,17 @@ export const ShopContent: React.FC = () => {
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
-  const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
-  const [lemonStoreUrl, setLemonStoreUrl] = useState(() => {
-    return localStorage.getItem('ls_store_checkout_url') || 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053';
+  // Per-package Lemon Squeezy URLs
+  const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('ls_package_urls');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return {
+      cp_pro: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053'
+    };
   });
-  const [inputUrl, setInputUrl] = useState(lemonStoreUrl);
+  const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls);
 
   // Auto load Lemon Squeezy overlay & subscribe to success event
   useEffect(() => {
@@ -204,7 +210,15 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = pkg.lemonCheckoutUrl || lemonStoreUrl.trim() || 'https://mikrokosmosfansub.lemonsqueezy.com';
+    const targetCheckoutUrl = packageUrls[pkg.id]?.trim();
+
+    if (!targetCheckoutUrl) {
+      setStatusMessage({
+        type: 'error',
+        text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) paketi için henüz Lemon Squeezy ödeme linki eklenmemiş. Şu an sadece $2.99'luk Bronz Paket aktiftir. Ayarlar ⚙️ menüsünden bu paket için kopyaladığınız linki ekleyebilirsiniz.`
+      });
+      return;
+    }
 
     try {
       await openLemonSqueezyCheckout({
@@ -222,7 +236,7 @@ export const ShopContent: React.FC = () => {
       earnPoints(totalAdded, `Lemon Squeezy Ödemesi (${pkg.name})`);
       setStatusMessage({
         type: 'success',
-        text: `🚀 Lemon Squeezy ödeme penceresi açıldı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı. Güvenle ödemenizi tamamlayabilirsiniz.`
+        text: `🚀 "${pkg.name}" ($${pkg.priceUSD}) için Lemon Squeezy ödeme penceresi açıldı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı.`
       });
     } catch (err) {
       earnPoints(totalAdded, `Lemon Squeezy (${pkg.name})`);
@@ -264,13 +278,11 @@ export const ShopContent: React.FC = () => {
 
   const handleSaveLemonUrl = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('ls_store_checkout_url', inputUrl.trim());
-    setLemonStoreUrl(inputUrl.trim());
+    setPackageUrls(inputPackageUrls);
+    localStorage.setItem('ls_package_urls', JSON.stringify(inputPackageUrls));
     setStatusMessage({
       type: 'success',
-      text: inputUrl.trim()
-        ? '✅ Lemon Squeezy Mağaza Checkout Bağlantınız Başarıyla Kaydedildi!'
-        : 'ℹ️ Lemon Squeezy Bağlantısı Temizlendi (Varsayılan Moda Geçildi).'
+      text: '✅ Lemon Squeezy Paket Bağlantılarınız Başarıyla Kaydedildi!'
     });
     setShowLemonSettings(false);
   };
@@ -546,26 +558,38 @@ export const ShopContent: React.FC = () => {
 
           {/* Lemon Squeezy Settings Panel */}
           {showLemonSettings && (
-            <form onSubmit={handleSaveLemonUrl} className="bg-gray-900/90 border border-amber-500/40 p-4 rounded-2xl space-y-2 animate-fadeIn">
-              <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
-                <Settings size={14} /> Lemon Squeezy Mağaza Checkout Bağlantınız (Yönetici)
-              </h4>
-              <p className="text-[11px] text-gray-400">
-                Lemon Squeezy panelinizden aldığınız Checkout URL veya Mağaza bağlantınızı buraya yapıştırabilirsiniz.
-              </p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="url"
-                  placeholder="https://yoursite.lemonsqueezy.com/buy/..."
-                  value={inputUrl}
-                  onChange={e => setInputUrl(e.target.value)}
-                  className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
-                />
+            <form onSubmit={handleSaveLemonUrl} className="bg-gray-900/90 border border-amber-500/40 p-4 rounded-2xl space-y-3 animate-fadeIn">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
+                  <Settings size={14} /> Lemon Squeezy Paket Ödeme Linkleri (Yönetici)
+                </h4>
+                <span className="text-[10px] text-gray-400">Her paket için kopyaladığınız Lemon Squeezy linkini yapıştırın</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                {COIN_PACKAGES.map(pkg => (
+                  <div key={pkg.id} className="space-y-1 bg-black/40 p-2.5 rounded-xl border border-gray-800">
+                    <label className="text-[11px] font-extrabold text-white flex items-center justify-between">
+                      <span>{pkg.iconEmoji} {pkg.name}</span>
+                      <span className="text-amber-400">${pkg.priceUSD} USD</span>
+                    </label>
+                    <input
+                      type="url"
+                      placeholder={`https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/...`}
+                      value={inputPackageUrls[pkg.id] || ''}
+                      onChange={e => setInputPackageUrls({ ...inputPackageUrls, [pkg.id]: e.target.value })}
+                      className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-[11px] placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end pt-1">
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition cursor-pointer"
+                  className="px-5 py-2 bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl transition cursor-pointer shadow-md"
                 >
-                  Kaydet
+                  Tüm Paket Linklerini Kaydet
                 </button>
               </div>
             </form>
