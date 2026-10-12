@@ -518,7 +518,7 @@ export const ShopContent: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-amber-200/90 leading-relaxed max-w-xl">
-                Dünyanın her yerinden (Azerbaycan dahil) <strong className="text-white">Visa, MasterCard, Apple Pay, Google Pay</strong> ile anında ve güvenle Cosmo-Puan satın alabilirsiniz.
+                Dünyanın her yerinden <strong className="text-white">Visa, MasterCard, Apple Pay, Google Pay</strong> ile Amerikan Doları ($ USD) üzerinden anında Cosmo-Puan satın alabilirsiniz.
               </p>
             </div>
 
@@ -529,7 +529,7 @@ export const ShopContent: React.FC = () => {
                 className="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
               >
                 <HelpCircle size={14} className="text-amber-400" />
-                <span>Lemon Squeezy Nedir & Kurulum Rehberi</span>
+                <span>Lemon Squeezy Kurulum Rehberi</span>
                 {showLemonGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
               </button>
 
@@ -551,19 +551,19 @@ export const ShopContent: React.FC = () => {
                 <Settings size={14} /> Lemon Squeezy Mağaza Checkout Bağlantınız (Yönetici)
               </h4>
               <p className="text-[11px] text-gray-400">
-                Lemon Squeezy paneli üzerinden aldığınız Checkout veya Mağaza URL bağlantınızı yapıştırın. Boş bırakırsanız demo simülasyon çalışır.
+                Lemon Squeezy panelinizden aldığınız Checkout URL veya Mağaza bağlantınızı buraya yapıştırabilirsiniz.
               </p>
               <div className="flex items-center gap-2">
                 <input
                   type="url"
-                  placeholder="https://mikrokosmos.lemonsqueezy.com/buy/..."
+                  placeholder="https://yoursite.lemonsqueezy.com/buy/..."
                   value={inputUrl}
                   onChange={e => setInputUrl(e.target.value)}
                   className="flex-1 px-3 py-1.5 bg-gray-950 border border-gray-700 rounded-xl text-white text-xs placeholder:text-gray-600 focus:outline-none focus:border-amber-400"
                 />
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition"
+                  className="px-4 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs rounded-xl transition cursor-pointer"
                 >
                   Kaydet
                 </button>
@@ -576,7 +576,7 @@ export const ShopContent: React.FC = () => {
             <div className="bg-gray-950/95 border border-purple-500/40 p-4 sm:p-5 rounded-2xl space-y-3 text-xs leading-relaxed animate-fadeIn">
               <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                 <h4 className="text-sm font-black text-white flex items-center gap-2">
-                  <Globe size={16} className="text-amber-400" /> Azerbaycanlı Yayıncılar İçin Lemon Squeezy Rehberi
+                  <Globe size={16} className="text-amber-400" /> Lemon Squeezy İle Dolar ($) Ödemesi Alma Rehberi
                 </h4>
                 <button onClick={() => setShowLemonGuide(false)} className="text-gray-400 hover:text-white text-xs font-bold">Kapat ✕</button>
               </div>
@@ -584,37 +584,37 @@ export const ShopContent: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                 <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
                   <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-emerald-400" /> 1. Merchant of Record (MoR) Nedir?
+                    <ShieldCheck size={14} className="text-emerald-400" /> 1. Ücretsiz Hesap Açın
                   </h5>
                   <p className="text-gray-300 text-[11px]">
-                    Lemon Squeezy, müşterilerinizden ödemeyi kendisi tahsil eder. Dünyadaki tüm vergi (KDV/VAT), fatura ve yasal süreçleri üstlenir. Bu sayede şirket açmadan doğrudan global ödeme alabilirsiniz.
+                    <a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold underline">lemonsqueezy.com</a> adresine giderek ücretsiz bir mağaza hesabı oluşturun.
                   </p>
                 </div>
 
                 <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
                   <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <CreditCard size={14} className="text-cyan-400" /> 2. Hangi Ödeme Yöntemleri Desteklenir?
+                    <CreditCard size={14} className="text-cyan-400" /> 2. Ürün / Paket Ekleyin
                   </h5>
                   <p className="text-gray-300 text-[11px]">
-                    Visa, MasterCard, American Express, Apple Pay, Google Pay ve PayPal. Türkiye, Avrupa, Amerika ve Azerbaycan dahil tüm dünyadan ödeme kabul edilir.
+                    "Products" kısmından Cosmo-Puan paketlerinizi ($0.99, $2.99 vb. fiyatlarla) Dolar cinsinden tanımlayın.
                   </p>
                 </div>
 
                 <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
                   <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <CheckCircle2 size={14} className="text-purple-400" /> 3. Paranızı Azerbaycan'a Nasıl Çekersiniz?
+                    <CheckCircle2 size={14} className="text-purple-400" /> 3. Checkout Linkini Alın
                   </h5>
                   <p className="text-gray-300 text-[11px]">
-                    Lemon Squeezy panelinde "Payouts" bölümüne Azerbaycan Banka hesabınızı (IBAN / SWIFT) veya Wise USD banka bilgilerinizi ekleyebilirsiniz. Ödemeler haftalık/aylık hesabınıza aktarılır.
+                    Ürününüzün "Share / Copy Checkout Link" bağlantısını kopyalayın.
                   </p>
                 </div>
 
                 <div className="bg-gray-900/80 p-3 rounded-xl border border-gray-800 space-y-1">
                   <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                    <ArrowRight size={14} className="text-amber-400" /> 4. Nasıl Kayıt Olunur?
+                    <ArrowRight size={14} className="text-amber-400" /> 4. Sitedeki Ayarlara Yapıştırın
                   </h5>
                   <p className="text-gray-300 text-[11px]">
-                    <a href="https://www.lemonsqueezy.com" target="_blank" rel="noopener noreferrer" className="text-amber-400 font-bold underline">lemonsqueezy.com</a> adresine gidip ücretsiz mağaza açın. "Products" kısmına Cosmo-Puan paketlerinizi ekleyip bağlantıyı sitemize yapıştırın.
+                    Sitede "Çark / Ayarlar" simgesine tıklayarak kopyaladığınız Lemon Squeezy bağlantısını kaydedin.
                   </p>
                 </div>
               </div>
