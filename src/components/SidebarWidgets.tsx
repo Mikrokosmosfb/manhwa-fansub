@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Dices, Tags, MessageSquare, Sparkles, BookOpen, Star, ChevronRight, Users, Layers, Award } from 'lucide-react';
 import { Series } from '../types';
+import { TeamBadges } from './TeamBadge';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';
 
@@ -231,7 +232,7 @@ export const QuickCategoriesWidget: React.FC = () => {
 };
 
 export const RecentCommentsWidget: React.FC = () => {
-  const { seriesList, comments, setView } = useApp();
+  const { seriesList, comments, setView, getUserTeamRoles } = useApp();
 
   // Get the latest 4 real comments from site state sorted newest-first
   const recentComments = [...(comments || [])]
@@ -297,7 +298,7 @@ export const RecentCommentsWidget: React.FC = () => {
                 className="p-2.5 rounded-2xl bg-gray-950/70 hover:bg-purple-950/40 border border-gray-800/80 hover:border-purple-500/30 cursor-pointer transition space-y-1.5 group"
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                     <img
                       src={getOptimizedImageUrl(c.userAvatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Reader', { width: 36, height: 36, quality: 65 })}
                       alt={c.userName}
@@ -310,6 +311,7 @@ export const RecentCommentsWidget: React.FC = () => {
                     <span className="text-xs font-bold text-purple-300 group-hover:text-purple-200 truncate">
                       {c.userName}
                     </span>
+                    <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
                   </div>
                   <span className="text-[10px] text-gray-500 flex-shrink-0 ml-2">{c.date}</span>
                 </div>

@@ -5,6 +5,7 @@ import { ReadingProgress } from '../types';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { THEME_STYLES, SHOP_ITEMS } from '../data/shopData';
 import { UserAvatar } from './UserAvatar';
+import { TeamBadges } from './TeamBadge';
 import { normalizeShopInventory } from '../utils/shopExpiration';
 import { 
   Award, 
@@ -55,7 +56,7 @@ const formatJoinDate = (dateStr?: string) => {
 };
 
 export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
-  const { themeStyles, shopItems, setView, openShop, seriesList, user, kosmosPins } = useApp();
+  const { themeStyles, shopItems, setView, openShop, seriesList, user, kosmosPins, getUserTeamRoles } = useApp();
   
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -381,9 +382,12 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
             />
           </div>
 
-          <h1 className={`mt-5 text-3xl sm:text-4xl font-black tracking-tight ${activeThemeStyle?.nameClass || 'text-white'}`}>
-            {profile.name}
-          </h1>
+          <div className="mt-5 flex items-center justify-center gap-2.5 flex-wrap">
+            <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${activeThemeStyle?.nameClass || 'text-white'}`}>
+              {profile.name}
+            </h1>
+            <TeamBadges roles={getUserTeamRoles(profile)} size="sm" />
+          </div>
 
           {/* 💬 OKUR MOTTOSU */}
           {(profile.bio || profile.bioQuote || profile.motto) && (

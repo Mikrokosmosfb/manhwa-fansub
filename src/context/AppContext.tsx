@@ -19,7 +19,8 @@ import {
   AdSettings,
   DEFAULT_AD_SETTINGS,
   PointGrantLog,
-  KnownUserRecord
+  KnownUserRecord,
+  TeamMemberRecord
 } from '../types';
 import { INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
@@ -320,6 +321,12 @@ interface AppContextType {
   registerKnownUser: (userRecord: Partial<KnownUserRecord>) => void;
   deletedUsers: { uid?: string; email?: string; name?: string }[];
   markUserAsDeleted: (uid?: string, email?: string, name?: string) => Promise<void>;
+
+  // Staff & Team Role Management (Çevirmen, Editör, Kurucu, Yönetici, vb.)
+  teamRoles: Record<string, TeamMemberRecord>;
+  assignTeamRole: (email: string, roles: string[], name?: string, uid?: string) => Promise<{ success: boolean; message: string }>;
+  removeTeamRole: (email: string) => Promise<{ success: boolean; message: string }>;
+  getUserTeamRoles: (userOrIdentifier: { email?: string; uid?: string; name?: string; userId?: string; userName?: string; teamRole?: string | null; teamRoles?: string[] } | null | undefined) => string[];
 
   // Site Branding (Logo, Favicon & Brand)
   siteBranding: SiteBrandingSettings;
@@ -1468,6 +1475,198 @@ const deleteShopItemAndStyle = (itemId: string) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ uid, email: cleanEmail, name: cleanName })
     }).catch(() => {});
+  };
+
+  // ===================== STAFF & TEAM ROLE REGISTRY =====================
+  const INITIAL_TEAM_ROLES: Record<string, TeamMemberRecord> = {
+    'aseleliyeva77@gmail.com': {
+      email: 'aseleliyeva77@gmail.com',
+      name: 'Aselis',
+      roles: ['Kurucu', 'Yönetici'],
+      updatedAt: new Date().toISOString()
+    },
+    'mikrokosmosfansub@gmail.com': {
+      email: 'mikrokosmosfansub@gmail.com',
+      name: 'Mikrokosmos Fansub',
+      roles: ['Kurucu', 'Admin'],
+      updatedAt: new Date().toISOString()
+    }
+  };
+
+  const [teamRoles, setTeamRoles] = useState<Record<string, TeamMemberRecord>>(() => {
+    const saved = localStorage.getItem('mk_team_roles_v1');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return { ...INITIAL_TEAM_ROLES, ...parsed };
+        }
+      } catch (e) {}
+    }
+    return INITIAL_TEAM_ROLES;
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mk_team_roles_v1', JSON.stringify(teamRoles));
+    } catch (e) {}
+  }, [teamRoles]);
+
+  // Fetch live team roles from backend D1
+  useEffect(() => {
+    safeFetchJson<{ success: boolean; teamRoles: Record<string, TeamMemberRecord> }>('/api/team-roles')
+      .then(data => {
+        if (data && data.success && data.teamRoles && typeof data.teamRoles === 'object') {
+          setTeamRoles(prev => ({
+            ...INITIAL_TEAM_ROLES,
+            ...prev,
+            ...data.teamRoles
+          }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const assignTeamRole = async (email: string, roles: string[], name?: string, uid?: string): Promise<{ success: boolean; message: string }> => {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail) {
+      return { success: false, message: 'Geçerli bir e-posta adresi gereklidir.' };
+    }
+
+    const rolesArray = Array.isArray(roles) ? roles.filter(r => Boolean(r && r.trim())) : (roles ? [roles] : []);
+    
+    // Find name or uid from knownUsers if not provided
+    const existingKu = knownUsers.find(k => k.email?.toLowerCase().trim() === cleanEmail);
+    const resolvedName = name || existingKu?.name || cleanEmail.split('@')[0];
+    const resolvedUid = uid || existingKu?.uid || '';
+
+    const newRecord: TeamMemberRecord = {
+      email: cleanEmail,
+      uid: resolvedUid,
+      name: resolvedName,
+      roles: rolesArray,
+      updatedAt: new Date().toISOString()
+    };
+
+    setTeamRoles(prev => ({
+      ...prev,
+      [cleanEmail]: newRecord
+    }));
+
+    // If current logged-in user matches, update user state as well
+    if (user && user.email?.toLowerCase().trim() === cleanEmail) {
+      setUser(prev => prev ? { ...prev, teamRoles: rolesArray, teamRole: rolesArray[0] || null } : null);
+    }
+
+    // Update in knownUsers as well
+    setKnownUsers(prev => prev.map(k => {
+      if (k.email?.toLowerCase().trim() === cleanEmail) {
+        return { ...k, teamRoles: rolesArray, teamRole: rolesArray[0] || null };
+      }
+      return k;
+    }));
+
+    // Post to backend
+    await safeFetchJson('/api/admin/team-roles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: cleanEmail,
+        uid: resolvedUid,
+        name: resolvedName,
+        roles: rolesArray
+      })
+    }).catch(() => {});
+
+    return { success: true, message: `"${resolvedName}" kullanıcısına ekip rolleri başarıyla atandı.` };
+  };
+
+  const removeTeamRole = async (email: string): Promise<{ success: boolean; message: string }> => {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (!cleanEmail) return { success: false, message: 'Geçersiz e-posta' };
+
+    setTeamRoles(prev => {
+      const next = { ...prev };
+      delete next[cleanEmail];
+      return next;
+    });
+
+    if (user && user.email?.toLowerCase().trim() === cleanEmail) {
+      setUser(prev => prev ? { ...prev, teamRoles: [], teamRole: null } : null);
+    }
+
+    setKnownUsers(prev => prev.map(k => {
+      if (k.email?.toLowerCase().trim() === cleanEmail) {
+        return { ...k, teamRoles: [], teamRole: null };
+      }
+      return k;
+    }));
+
+    await safeFetchJson(`/api/admin/team-roles?email=${encodeURIComponent(cleanEmail)}`, {
+      method: 'DELETE'
+    }).catch(() => {});
+
+    return { success: true, message: 'Kullanıcının ekip rolleri kaldırıldı.' };
+  };
+
+  const getUserTeamRoles = (userOrIdentifier: { email?: string; uid?: string; name?: string; userId?: string; userName?: string; teamRole?: string | null; teamRoles?: string[] } | null | undefined): string[] => {
+    if (!userOrIdentifier) return [];
+
+    // 1. Direct roles on object
+    if (userOrIdentifier.teamRoles && Array.isArray(userOrIdentifier.teamRoles) && userOrIdentifier.teamRoles.length > 0) {
+      return userOrIdentifier.teamRoles;
+    }
+    if (userOrIdentifier.teamRole) {
+      return [userOrIdentifier.teamRole];
+    }
+
+    const cleanEmail = userOrIdentifier.email?.toLowerCase().trim();
+    const cleanUid = (userOrIdentifier.uid || userOrIdentifier.userId)?.trim();
+    const cleanName = (userOrIdentifier.name || userOrIdentifier.userName)?.toLowerCase().trim();
+
+    // 2. Check by email in teamRoles
+    if (cleanEmail && teamRoles[cleanEmail] && Array.isArray(teamRoles[cleanEmail].roles) && teamRoles[cleanEmail].roles.length > 0) {
+      return teamRoles[cleanEmail].roles;
+    }
+
+    // 3. Check by UID or Name in teamRoles registry
+    const foundEntry = Object.values(teamRoles).find(tr => {
+      if (cleanUid && tr.uid && tr.uid === cleanUid) return true;
+      if (cleanName && tr.name && tr.name.toLowerCase().trim() === cleanName) return true;
+      return false;
+    });
+    if (foundEntry && Array.isArray(foundEntry.roles) && foundEntry.roles.length > 0) {
+      return foundEntry.roles;
+    }
+
+    // 4. Resolve via knownUsers (if identifier is just userId or userName)
+    const matchedKnownUser = knownUsers.find(k => {
+      if (cleanUid && k.uid === cleanUid) return true;
+      if (cleanName && k.name && k.name.toLowerCase().trim() === cleanName) return true;
+      if (cleanEmail && k.email && k.email.toLowerCase().trim() === cleanEmail) return true;
+      return false;
+    });
+
+    if (matchedKnownUser) {
+      if (matchedKnownUser.teamRoles && matchedKnownUser.teamRoles.length > 0) {
+        return matchedKnownUser.teamRoles;
+      }
+      if (matchedKnownUser.teamRole) {
+        return [matchedKnownUser.teamRole];
+      }
+      const kuEmail = matchedKnownUser.email?.toLowerCase().trim();
+      if (kuEmail && teamRoles[kuEmail] && Array.isArray(teamRoles[kuEmail].roles) && teamRoles[kuEmail].roles.length > 0) {
+        return teamRoles[kuEmail].roles;
+      }
+      if (kuEmail === 'aseleliyeva77@gmail.com') return ['Kurucu', 'Yönetici'];
+      if (kuEmail === 'mikrokosmosfansub@gmail.com') return ['Kurucu', 'Admin'];
+    }
+
+    // 5. Default roles for super admins by email or recognizable creator names
+    if (cleanEmail === 'aseleliyeva77@gmail.com' || cleanName === 'aselis') return ['Kurucu', 'Yönetici'];
+    if (cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanName === 'mikrokosmos fansub' || cleanName === 'mikrokosmos') return ['Kurucu', 'Admin'];
+
+    return [];
   };
 
   const grantCosmoPoints = async (
@@ -3806,6 +4005,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
         registerKnownUser,
         deletedUsers,
         markUserAsDeleted,
+        teamRoles,
+        assignTeamRole,
+        removeTeamRole,
+        getUserTeamRoles,
         followedSeriesIds,
         isFollowingSeries,
         toggleFollowSeries,

@@ -8,6 +8,7 @@ import { SeriesCard } from './SeriesCard';
 import { THEME_STYLES, ThemeStyle } from '../data/shopData';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
+import { TeamBadges } from './TeamBadge';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
 import {
 
@@ -100,7 +101,8 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     earnPoints,
     followedSeriesIds,
     seriesList,
-    kosmosPins
+    kosmosPins,
+    getUserTeamRoles
   } = useApp();
 
   const bookmarkedSeriesIds = Object.keys(bookmarks || {});
@@ -610,13 +612,16 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           </div>
 
           <div className="mt-5 space-y-1.5 w-full">
-            <h2
-              className={`text-2xl sm:text-3xl font-black tracking-tight ${
-                activeThemeStyle ? activeThemeStyle.nameClass : 'text-white'
-              }`}
-            >
-              {user.name}
-            </h2>
+            <div className="flex items-center justify-center gap-2.5 flex-wrap">
+              <h2
+                className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                  activeThemeStyle ? activeThemeStyle.nameClass : 'text-white'
+                }`}
+              >
+                {user.name}
+              </h2>
+              <TeamBadges roles={getUserTeamRoles(user)} size="sm" />
+            </div>
             
             <p className="text-xs sm:text-sm text-gray-400 font-medium flex items-center justify-center gap-2">
               <span className="text-purple-300 font-bold">{getLevelTitle(userLevel)}</span>

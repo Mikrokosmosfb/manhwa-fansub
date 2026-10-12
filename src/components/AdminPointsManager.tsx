@@ -28,6 +28,7 @@ import {
   Sparkle
 } from 'lucide-react';
 import { KnownUserRecord, PointGrantLog } from '../types';
+import { TeamBadges } from './TeamBadge';
 
 export const AdminPointsManager: React.FC = () => {
   const {
@@ -36,7 +37,8 @@ export const AdminPointsManager: React.FC = () => {
     pointGrantLogs,
     grantCosmoPoints,
     deletePointGrantLog,
-    showToast
+    showToast,
+    getUserTeamRoles
   } = useApp();
 
   const [targetEmail, setTargetEmail] = useState('');
@@ -553,8 +555,9 @@ export const AdminPointsManager: React.FC = () => {
                         className="w-8 h-8 rounded-xl object-cover border border-purple-500/30 shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <p className="text-xs font-bold text-white truncate">{u.name}</p>
+                          <TeamBadges roles={getUserTeamRoles(u)} size="xs" />
                           {u.role === 'admin' && (
                             <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 rounded border border-amber-500/30 font-bold shrink-0">
                               Admin

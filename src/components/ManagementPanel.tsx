@@ -50,6 +50,7 @@ import { AdminBrandingManager } from './AdminBrandingManager';
 import { AdminAdManager } from './AdminAdManager';
 import { AdminEmojiManager } from './AdminEmojiManager';
 import { AdminPointsManager } from './AdminPointsManager';
+import { AdminTeamManager } from './AdminTeamManager';
 import { WallpapersView } from './WallpapersView';
 
 export type ManagementNavTab =
@@ -58,6 +59,7 @@ export type ManagementNavTab =
   | 'add-chapter'
   | 'wallpapers-management'
   | 'points-management'
+  | 'team-management'
   | 'branding-settings'
   | 'ad-management'
   | 'emoji-management'
@@ -304,6 +306,14 @@ export const ManagementPanel: React.FC = () => {
           icon: Coins,
           badge: 'CP Dağıt',
           badgeColor: 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+        },
+        {
+          id: 'team-management' as ManagementNavTab,
+          label: 'Ekip & Rol Etiketleri',
+          desc: 'Çevirmen, Editör, Kurucu, Yönetici vb. ata',
+          icon: ShieldCheck,
+          badge: 'Ekip Rolleri',
+          badgeColor: 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
         }
       ]
     },
@@ -707,6 +717,11 @@ export const ManagementPanel: React.FC = () => {
             {/* MANUAL COSMO-POINTS GRANTING TAB */}
             {activeNav === 'points-management' && (
               <AdminPointsManager />
+            )}
+
+            {/* EKİP & ROL ETİKETLERİ TAB */}
+            {activeNav === 'team-management' && (
+              <AdminTeamManager />
             )}
 
             {/* Core Admin Engine for Series, Chapters, Blogger, Cloudflare D1 and Shop */}

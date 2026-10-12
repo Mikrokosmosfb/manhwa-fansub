@@ -827,6 +827,15 @@ ${seriesXml}
                   );
                 `),
                 db.prepare(`
+                  CREATE TABLE IF NOT EXISTS team_roles (
+                    email TEXT PRIMARY KEY,
+                    uid TEXT,
+                    name TEXT,
+                    roles_json TEXT NOT NULL,
+                    updated_at TEXT
+                  );
+                `),
+                db.prepare(`
                   CREATE TABLE IF NOT EXISTS user_library (
                     uid TEXT PRIMARY KEY,
                     name TEXT,
@@ -935,6 +944,15 @@ ${seriesXml}
                   );
                 `),
                 usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS team_roles (
+                    email TEXT PRIMARY KEY,
+                    uid TEXT,
+                    name TEXT,
+                    roles_json TEXT NOT NULL,
+                    updated_at TEXT
+                  );
+                `),
+                usersDb.prepare(`
                   CREATE TABLE IF NOT EXISTS email_verifications (
                     email TEXT PRIMARY KEY,
                     code TEXT NOT NULL,
@@ -1035,9 +1053,7 @@ ${seriesXml}
       }
       await d1SchemaInitPromise;
 
-
       try {
-        
         if (path.startsWith('/api/public-profile') && request.method === 'GET') {
           const url = new URL(request.url);
           const uid = url.searchParams.get('uid');
@@ -2435,11 +2451,91 @@ ${seriesXml}
                   return new Response(JSON.stringify({ success: true, users: usersList }), { headers });
                 } catch (err) {}
               }
+          // TEAM ROLES API (Assign, Update & Retrieve Staff Badges)
+          if (path.startsWith('/api/team-roles') || path.startsWith('/api/admin/team-roles')) {
+            const activeDb = usersDb || db;
+            if (request.method === 'GET') {
+              if (activeDb) {
+                try {
+                  await activeDb.prepare(`
+                    CREATE TABLE IF NOT EXISTS team_roles (
+                      email TEXT PRIMARY KEY,
+                      uid TEXT,
+                      name TEXT,
+                      roles_json TEXT NOT NULL,
+                      updated_at TEXT
+                    );
+                  `).run().catch(() => {});
+                  const { results } = await activeDb.prepare("SELECT email, uid, name, roles_json, updated_at FROM team_roles").all();
+                  const map: Record<string, any> = {};
+                  (results || []).forEach((r: any) => {
+                    const cleanEmail = (r.email || '').toLowerCase().trim();
+                    let roles: string[] = [];
+                    try {
+                      roles = JSON.parse(r.roles_json);
+                    } catch (e) {
+                      if (r.roles_json) roles = [r.roles_json];
+                    }
+                    map[cleanEmail] = {
+                      email: cleanEmail,
+                      uid: r.uid,
+                      name: r.name,
+                      roles: Array.isArray(roles) ? roles : [],
+                      updatedAt: r.updated_at
+                    };
+                  });
+                  return new Response(JSON.stringify({ success: true, teamRoles: map }), { headers });
+                } catch (e) {}
+              }
+              return new Response(JSON.stringify({ success: true, teamRoles: {} }), { headers });
             }
-            return new Response(JSON.stringify({ success: true, users: [] }), { headers });
+
+            if (request.method === 'POST') {
+              const body = await request.json() as any;
+              const { email, uid, name, roles } = body;
+              const cleanEmail = (email || '').toLowerCase().trim();
+              if (!cleanEmail) {
+                return new Response(JSON.stringify({ success: false, message: 'Geçerli bir e-posta adresi gerekli.' }), { status: 400, headers });
+              }
+              if (activeDb) {
+                try {
+                  await activeDb.prepare(`
+                    CREATE TABLE IF NOT EXISTS team_roles (
+                      email TEXT PRIMARY KEY,
+                      uid TEXT,
+                      name TEXT,
+                      roles_json TEXT NOT NULL,
+                      updated_at TEXT
+                    );
+                  `).run().catch(() => {});
+                  const rolesArray = Array.isArray(roles) ? roles : (roles ? [roles] : []);
+                  await activeDb.prepare(`
+                    INSERT OR REPLACE INTO team_roles (email, uid, name, roles_json, updated_at)
+                    VALUES (?, ?, ?, ?, ?)
+                  `).bind(cleanEmail, uid || '', name || '', JSON.stringify(rolesArray), new Date().toISOString()).run();
+                  return new Response(JSON.stringify({ success: true, message: 'Ekip rolü başarıyla kaydedildi.' }), { headers });
+                } catch (e: any) {
+                  return new Response(JSON.stringify({ success: false, message: e?.message }), { status: 500, headers });
+                }
+              }
+              return new Response(JSON.stringify({ success: false, message: 'Veritabanı hazır değil.' }), { status: 500, headers });
+            }
+
+            if (request.method === 'DELETE') {
+              const url = new URL(request.url);
+              const email = url.searchParams.get('email');
+              const cleanEmail = (email || '').toLowerCase().trim();
+              if (activeDb && cleanEmail) {
+                try {
+                  await activeDb.prepare("DELETE FROM team_roles WHERE email = ?").bind(cleanEmail).run();
+                  return new Response(JSON.stringify({ success: true, message: 'Ekip rolü başarıyla silindi.' }), { headers });
+                } catch (e: any) {
+                  return new Response(JSON.stringify({ success: false, message: e?.message }), { status: 500, headers });
+                }
+              }
+              return new Response(JSON.stringify({ success: false }), { headers });
+            }
           }
-  
-          
 
         // AUTHENTICATION API
         if (path.startsWith('/api/auth')) {

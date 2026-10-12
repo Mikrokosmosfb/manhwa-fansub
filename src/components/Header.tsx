@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { UserAvatar } from './UserAvatar';
+import { TeamBadges } from './TeamBadge';
 import {
   Search,
   Bookmark,
@@ -52,7 +53,8 @@ export const Header: React.FC = () => {
     showNsfw,
     toggleNsfw,
     unreadNotificationsCount,
-    siteBranding
+    siteBranding,
+    getUserTeamRoles
   } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -324,7 +326,10 @@ export const Header: React.FC = () => {
                           size="sm"
                         />
                         <div className="overflow-hidden">
-                          <p className="text-xs font-extrabold text-white truncate">{user.name}</p>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-extrabold text-white truncate">{user.name}</p>
+                            <TeamBadges roles={getUserTeamRoles(user)} size="xs" />
+                          </div>
                           <p className="text-[10px] text-purple-300 truncate">{user.email}</p>
                         </div>
                       </div>

@@ -30,6 +30,17 @@ export interface User {
   claimedCheckinDays?: number[]; // [1, 2, 3, 4, 5, 6, 7]
   lastDailySpin?: string; // Date string "YYYY-MM-DD"
   showNsfw?: boolean; // Adult (+18) content filter preference
+  teamRole?: string | null; // Staff / team role e.g. 'Çevirmen', 'Editör', 'Kurucu', 'Yönetici'
+  teamRoles?: string[]; // Multiple staff team roles
+}
+
+export interface TeamMemberRecord {
+  email: string;
+  uid?: string;
+  name?: string;
+  roles: string[];
+  role?: string;
+  updatedAt?: string;
 }
 
 export interface PointGrantLog {
@@ -52,6 +63,8 @@ export interface KnownUserRecord {
   avatar: string;
   coins: number;
   role?: string;
+  teamRole?: string | null;
+  teamRoles?: string[];
   lastActive?: string;
   equippedBadge?: string | null;
   equippedBadges?: string[];
@@ -204,6 +217,8 @@ export interface Comment {
   equippedBadge?: string | null; // Equipped VIP title badge e.g. 'S-Rank Avcı'
   equippedBadges?: string[]; // Up to 5 equipped VIP title badges
   equippedFrame?: string | null; // Equipped avatar frame e.g. 'frame_golden_crown'
+  teamRole?: string | null; // Staff / team role e.g. 'Çevirmen', 'Editör', 'Kurucu', 'Yönetici'
+  teamRoles?: string[]; // Multiple staff team roles
 }
 
 export interface Announcement {

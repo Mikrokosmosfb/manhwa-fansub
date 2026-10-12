@@ -27,6 +27,7 @@ import {
   Quote
 } from 'lucide-react';
 import { Comment, isAuthorizedAdmin } from '../types';
+import { TeamBadges } from './TeamBadge';
 
 const formatDim = (v?: string | number | null) => { if (!v && v !== 0) return undefined; const trim = String(v).trim(); return (trim && !isNaN(Number(trim))) ? `${trim}px` : trim; };
 
@@ -71,6 +72,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     buyShopItem,
     showToast,
     openPublicProfile,
+    getUserTeamRoles,
     themeStyles: appThemeStyles,
     shopItems: appShopItems
   } = useApp();
@@ -528,6 +530,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       return;
     }
 
+    const userTeamRoles = getUserTeamRoles(user);
     addComment({
       seriesId,
       chapterId,
@@ -537,7 +540,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       text: commentText.trim(),
       imageUrl: imageUrl.trim() || undefined,
       parentId: null,
-      isSpoiler
+      isSpoiler,
+      teamRoles: userTeamRoles,
+      teamRole: userTeamRoles[0] || null
     });
 
     setCommentText('');
@@ -557,6 +562,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
 
     const parentComment = comments.find(cm => cm.id === replyTo.id);
     const effectiveChapterId = parentComment?.chapterId || chapterId;
+    const userTeamRoles = getUserTeamRoles(user);
 
     addComment({
       seriesId,
@@ -567,7 +573,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       text: replyText.trim(),
       imageUrl: replyImageUrl.trim() || undefined,
       parentId: replyTo.id,
-      isSpoiler: replyIsSpoiler
+      isSpoiler: replyIsSpoiler,
+      teamRoles: userTeamRoles,
+      teamRole: userTeamRoles[0] || null
     });
 
     setReplyText('');
@@ -700,6 +708,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
                 <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
                     themeStyle ? themeStyle.nameClass : 'text-gray-100'
                   }`} onClick={() => c.userId && openPublicProfile(c.userId)}>{c.userName}</span>
+                <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
                 <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
               </div>
             </div>

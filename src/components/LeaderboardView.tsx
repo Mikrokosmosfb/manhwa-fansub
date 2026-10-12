@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Trophy, Award, MessageSquare, Heart, Sparkles, Search, Crown, Flame, UserCheck, ChevronRight, Zap, ShieldCheck, UserX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { UserAvatar } from './UserAvatar';
+import { TeamBadges } from './TeamBadge';
 import { isAuthorizedAdmin } from '../types';
 
 interface RankedUser {
@@ -19,7 +20,7 @@ interface RankedUser {
 }
 
 export const LeaderboardView: React.FC = () => {
-  const { comments, knownUsers, user, openPublicProfile, setView, deletedUsers, markUserAsDeleted } = useApp();
+  const { comments, knownUsers, user, openPublicProfile, setView, deletedUsers, markUserAsDeleted, getUserTeamRoles } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
 
   // Helper function to check if a user record belongs to a deleted account
@@ -297,9 +298,12 @@ export const LeaderboardView: React.FC = () => {
                   </span>
                 )}
               </div>
-              <h3 className="text-base font-extrabold text-white truncate mt-1">
-                {user.name}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap mt-1">
+                <h3 className="text-base font-extrabold text-white truncate">
+                  {user.name}
+                </h3>
+                <TeamBadges roles={getUserTeamRoles(user)} size="xs" />
+              </div>
               <div className="flex items-center gap-4 mt-1 text-xs text-purple-200 font-medium">
                 <span className="flex items-center gap-1 text-amber-300 font-bold">
                   <MessageSquare className="w-3.5 h-3.5" />
@@ -357,9 +361,12 @@ export const LeaderboardView: React.FC = () => {
               />
             </div>
 
-            <h3 className="text-lg font-black text-white group-hover:text-slate-300 transition-colors truncate max-w-full">
-              {top2.name}
-            </h3>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center mt-1">
+              <h3 className="text-lg font-black text-white group-hover:text-slate-300 transition-colors truncate max-w-full">
+                {top2.name}
+              </h3>
+              <TeamBadges roles={getUserTeamRoles(top2)} size="xs" />
+            </div>
 
             {top2.equippedBadge && (
               <span className="text-[10px] font-bold text-slate-300 bg-slate-400/15 px-2.5 py-0.5 rounded-full border border-slate-400/30 mt-1">
@@ -411,9 +418,12 @@ export const LeaderboardView: React.FC = () => {
               />
             </div>
 
-            <h3 className="text-xl sm:text-2xl font-black text-amber-300 group-hover:text-amber-200 transition-colors truncate max-w-full drop-shadow-md">
-              {top1.name}
-            </h3>
+            <div className="flex items-center gap-2 flex-wrap justify-center mt-1">
+              <h3 className="text-xl sm:text-2xl font-black text-amber-300 group-hover:text-amber-200 transition-colors truncate max-w-full drop-shadow-md">
+                {top1.name}
+              </h3>
+              <TeamBadges roles={getUserTeamRoles(top1)} size="xs" />
+            </div>
 
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-[11px] font-extrabold text-amber-950 bg-amber-400 px-3 py-0.5 rounded-full shadow">
@@ -465,9 +475,12 @@ export const LeaderboardView: React.FC = () => {
               />
             </div>
 
-            <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors truncate max-w-full">
-              {top3.name}
-            </h3>
+            <div className="flex items-center gap-1.5 flex-wrap justify-center mt-1">
+              <h3 className="text-lg font-black text-white group-hover:text-amber-300 transition-colors truncate max-w-full">
+                {top3.name}
+              </h3>
+              <TeamBadges roles={getUserTeamRoles(top3)} size="xs" />
+            </div>
 
             {top3.equippedBadge && (
               <span className="text-[10px] font-bold text-amber-400 bg-amber-900/30 px-2.5 py-0.5 rounded-full border border-amber-700/40 mt-1">
@@ -578,6 +591,7 @@ export const LeaderboardView: React.FC = () => {
                         <h4 className={`text-xs sm:text-sm font-extrabold truncate ${isCurrentUser ? 'text-amber-300' : 'text-gray-100 group-hover:text-purple-300'}`}>
                           {item.name}
                         </h4>
+                        <TeamBadges roles={getUserTeamRoles(item)} size="xs" />
                         {isCurrentUser && (
                           <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-purple-500 text-white">
                             Siz
