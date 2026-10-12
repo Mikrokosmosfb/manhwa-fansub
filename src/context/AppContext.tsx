@@ -3549,26 +3549,36 @@ const deleteShopItemAndStyle = (itemId: string) => {
     );
   };
 
-  const addSeriesRequest = (data: {
-    title: string;
-    type: SeriesRequest['type'];
-    synopsis: string;
-    requestedBy?: string;
-  }) => {
+  const addSeriesRequest = (data: Partial<SeriesRequest> & { title: string }) => {
     const currentUserId = user?.uid || 'anonymous-user';
     const newReq: SeriesRequest = {
       id: 'req-' + Date.now(),
       title: data.title,
-      type: data.type,
-      synopsis: data.synopsis,
-      votes: 1,
-      votedUserIds: [currentUserId],
-      status: 'İncelemede',
+      type: data.type || 'Manhwa',
+      synopsis: data.synopsis || data.title,
+      votes: data.votes ?? 1,
+      votedUserIds: data.votedUserIds || [currentUserId],
+      status: data.status || 'Beklemede',
       requestedBy: data.requestedBy || user?.name || 'Okuyucu',
-      createdAt: 'Az önce',
-      coverImage: 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&auto=format&fit=crop&q=80'
+      createdAt: new Date().toLocaleDateString('tr-TR'),
+      coverImage: data.coverImage || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=400&auto=format&fit=crop&q=80',
+      originalStatus: data.originalStatus || '',
+      tags: data.tags || [],
+      note: data.note || '',
+      readLink: data.readLink || '',
+      rejectionReason: data.rejectionReason || ''
     };
     setSeriesRequests(prev => [newReq, ...prev]);
+  };
+
+  const updateSeriesRequest = (id: string, updates: Partial<SeriesRequest>) => {
+    setSeriesRequests(prev =>
+      prev.map(req => (req.id === id ? { ...req, ...updates } : req))
+    );
+  };
+
+  const deleteSeriesRequest = (id: string) => {
+    setSeriesRequests(prev => prev.filter(req => req.id !== id));
   };
 
   const prepareUserCoins = (u: User): User => {
@@ -3957,8 +3967,11 @@ const deleteShopItemAndStyle = (itemId: string) => {
         deleteComment,
         reportComment,
         seriesRequests,
+        setSeriesRequests,
         voteSeriesRequest,
         addSeriesRequest,
+        updateSeriesRequest,
+        deleteSeriesRequest,
         user,
         isAuthModalOpen,
         publicProfileUserId,

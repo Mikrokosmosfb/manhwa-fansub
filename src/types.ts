@@ -232,14 +232,19 @@ export interface Announcement {
 export interface SeriesRequest {
   id: string;
   title: string;
-  type: SeriesType;
+  type: SeriesType | string;
   synopsis: string;
   votes: number;
   votedUserIds: string[];
-  status: 'İncelemede' | 'Çevriliyor' | 'Takvime Eklendi' | 'Reddedildi';
+  status: 'Beklemede' | 'İncelemede' | 'Kabul Edildi' | 'Yapımda' | 'Yakında' | 'Yayında!' | 'Reddedildi' | string;
   requestedBy: string;
   createdAt: string;
   coverImage?: string;
+  originalStatus?: string; // e.g. "Tamamlandı (80 Bölüm)"
+  tags?: string[]; // e.g. ['BL', '+18']
+  note?: string; // Note or admin comment
+  readLink?: string; // Read link for published series
+  rejectionReason?: string; // Reason if rejected
 }
 
 export interface ScheduleItem {
