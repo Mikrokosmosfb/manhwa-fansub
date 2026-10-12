@@ -10,6 +10,7 @@ import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
 import { TeamBadges } from './TeamBadge';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
+import { forceUpdateAndClearCache } from '../utils/pwaUpdater';
 import {
 
   Award,
@@ -153,6 +154,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   const [openProfileFrames, setOpenProfileFrames] = useState(true);
   const [showLevelInfoModal, setShowLevelInfoModal] = useState(false);
   const [showDailyModal, setShowDailyModal] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -1315,6 +1317,41 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                   )}
                 </div>
               )}
+            </div>
+
+            {/* SECTION 4: APP VERSION & INSTANT CACHE REFRESH */}
+            <div className="space-y-3 pt-4 border-t border-purple-900/30">
+              <div className="bg-gradient-to-r from-purple-950/60 via-slate-900/80 to-indigo-950/60 border border-purple-500/30 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-900/50 border border-purple-400/40 flex items-center justify-center text-purple-300 shrink-0 shadow-md">
+                    <RefreshCw size={20} className={isClearingCache ? "animate-spin text-amber-300" : "text-purple-300"} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-xs font-bold text-white">Uygulama Sürümü & Hızlı Güncelleme</h4>
+                      <span className="text-[10px] bg-purple-500/20 text-purple-300 font-bold px-2 py-0.5 rounded-full border border-purple-500/30">
+                        PWA Canlı
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5">
+                      Uygulama arka planda 25 saniyede bir otomatik güncellenir. En yeni özellikleri hemen görmek için önbelleği sıfırlayıp anında yenileyebilirsiniz.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isClearingCache}
+                  onClick={async () => {
+                    setIsClearingCache(true);
+                    await forceUpdateAndClearCache();
+                  }}
+                  className="px-4 py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:opacity-50 text-white font-bold text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center gap-2 shrink-0 cursor-pointer w-full sm:w-auto justify-center"
+                >
+                  <RefreshCw size={14} className={isClearingCache ? "animate-spin" : ""} />
+                  <span>{isClearingCache ? "Yenileniyor..." : "Şimdi Yenile & Önbelleği Temizle"}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}

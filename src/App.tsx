@@ -21,6 +21,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { ScrollToTopBottom } from './components/ScrollToTopBottom';
 import { Footer } from './components/Footer';
 import { SeoManager } from './components/SeoManager';
+import { PWAUpdateToast } from './components/PWAUpdateToast';
 import { AdScriptRunner, AdBannerBlock } from './components/AdScriptRunner';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
 import { AppSplashScreen } from './components/AppSplashScreen';
@@ -547,6 +548,7 @@ const AppLayout: React.FC = () => {
         <ShopModal />
       </Suspense>
       
+      <PWAUpdateToast />
       <ToastNotification />
     </div>
   );

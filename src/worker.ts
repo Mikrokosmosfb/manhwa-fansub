@@ -3667,15 +3667,25 @@ ${seriesXml}
         assetRes = await env.ASSETS.fetch(new Request(new URL('/index.html', request.url), request));
       }
       
-      // PageSpeed Optimization: Add high-efficiency cache headers
+      // Cache-Control Strategy for PWA & Fast Updates
       const resHeaders = new Headers(assetRes.headers);
-      const isStaticAsset = path.startsWith('/assets/') || 
-        /\.(js|css|woff2|woff|ttf|png|webp|svg|jpg|jpeg|gif|ico|webmanifest)$/i.test(path);
+      const isServiceWorker = path === '/sw.js' || path === '/registerSW.js' || path.includes('workbox-') || path.endsWith('sw.js');
+      const isHtml = path === '/' || path.endsWith('.html') || !path.includes('.');
+      const isStaticAsset = (path.startsWith('/assets/') || 
+        /\.(js|css|woff2|woff|ttf|png|webp|svg|jpg|jpeg|gif|ico|webmanifest)$/i.test(path)) && !isServiceWorker;
       
-      if (isStaticAsset) {
+      if (isServiceWorker) {
+        // Critical: Service Worker scripts must NEVER be cached by browser or CDN
+        resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+        resHeaders.set('Pragma', 'no-cache');
+        resHeaders.set('Expires', '0');
+      } else if (isHtml) {
+        // HTML entrypoint must check for latest build hashes
+        resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
+        resHeaders.set('Pragma', 'no-cache');
+      } else if (isStaticAsset) {
+        // Hashed assets in /assets/ can be cached long-term
         resHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
-      } else if (path === '/' || path.endsWith('.html') || !path.includes('.')) {
-        resHeaders.set('Cache-Control', 'public, max-age=3600, must-revalidate');
       }
       
       return new Response(assetRes.body, {

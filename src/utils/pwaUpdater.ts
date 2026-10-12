@@ -1,0 +1,124 @@
+import { registerSW } from 'virtual:pwa-register';
+
+type UpdateCallback = (hasUpdate: boolean) => void;
+const updateListeners = new Set<UpdateCallback>();
+
+let updateSWFn: ((reloadPage?: boolean) => Promise<void>) | null = null;
+let isUpdateAvailable = false;
+let isInitialized = false;
+
+export function subscribePWAUpdate(callback: UpdateCallback): () => void {
+  updateListeners.add(callback);
+  callback(isUpdateAvailable);
+  return () => {
+    updateListeners.delete(callback);
+  };
+}
+
+function notifyUpdateListeners(status: boolean) {
+  isUpdateAvailable = status;
+  updateListeners.forEach(fn => {
+    try {
+      fn(status);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+}
+
+/**
+ * Initializes PWA Service Worker with aggressive update detection
+ * and auto-reload on worker activation.
+ */
+export function initPWARegistration() {
+  if (isInitialized || typeof window === 'undefined') return;
+  isInitialized = true;
+
+  updateSWFn = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      console.log('[PWA] Yeni sürüm mevcut, güncelleniyor...');
+      notifyUpdateListeners(true);
+      // Auto update immediately
+      if (updateSWFn) {
+        updateSWFn(true).catch(err => {
+          console.warn('[PWA] Otomatik yenileme uyarısı:', err);
+        });
+      }
+    },
+    onOfflineReady() {
+      console.log('[PWA] Çevrimdışı kullanım hazır.');
+    },
+    onRegisteredSW(swScriptUrl, registration) {
+      if (registration) {
+        console.log('[PWA] Service Worker devrede:', swScriptUrl);
+
+        // 1. İlk açılışta hemen kontrol et
+        registration.update().catch(() => {});
+
+        // 2. Her 25 saniyede bir periyodik kontrol
+        setInterval(() => {
+          registration.update().catch(() => {});
+        }, 25 * 1000);
+
+        // 3. Kullanıcı uygulamaya her geri döndüğünde (sekme değişimi / ekran açılması)
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            registration.update().catch(() => {});
+          }
+        });
+
+        // 4. Pencere odağı veya internet bağlantısı geri geldiğinde
+        window.addEventListener('focus', () => {
+          registration.update().catch(() => {});
+        });
+        window.addEventListener('online', () => {
+          registration.update().catch(() => {});
+        });
+      }
+    },
+    onRegisterError(error) {
+      console.error('[PWA] Service Worker kayıt hatası:', error);
+    }
+  });
+
+  // Yeni Service Worker kontrolü devraldığında sayfayı yenileyerek yeni sürümü anında göster
+  if ('serviceWorker' in navigator) {
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true;
+        console.log('[PWA] Yeni servis çalışanı aktifleşti, sayfa güncelleniyor...');
+        window.location.reload();
+      }
+    });
+  }
+}
+
+/**
+ * Clears all Service Worker caches and triggers a hard reload to get the latest version immediately.
+ */
+export async function forceUpdateAndClearCache(): Promise<void> {
+  console.log('[PWA] Önbellek ve Service Worker temizliği başlatılıyor...');
+  try {
+    // 1. Cache Storage temizle
+    if ('caches' in window) {
+      const cacheKeys = await caches.keys();
+      await Promise.all(cacheKeys.map(key => caches.delete(key)));
+      console.log('[PWA] Tüm önbellekler silindi:', cacheKeys);
+    }
+
+    // 2. Service Worker'ları güncelle veya kaydını sil
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(
+        registrations.map(reg => reg.update().catch(() => reg.unregister()))
+      );
+    }
+  } catch (error) {
+    console.error('[PWA] Önbellek temizleme hatası:', error);
+  } finally {
+    // 3. En taze sürümü çekmek için sayfayı yenile
+    window.location.reload();
+  }
+}
