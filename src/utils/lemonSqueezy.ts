@@ -1,4 +1,5 @@
 // Lemon Squeezy Integration Helper for Mikrokosmos Fansub
+import confetti from 'canvas-confetti';
 
 export interface LemonSqueezyCheckoutOptions {
   checkoutUrl: string;
@@ -24,7 +25,72 @@ declare global {
 
 let isLemonScriptLoaded = false;
 let isLemonSetupDone = false;
-let successCallbackMap = new Set<(event: any) => void>();
+const successCallbackMap = new Set<(event: any) => void>();
+
+/**
+ * Fires multi-burst colorful confetti when a payment is successful
+ */
+export function triggerPurchaseConfetti() {
+  try {
+    // Initial blast
+    confetti({
+      particleCount: 120,
+      spread: 80,
+      origin: { y: 0.6 },
+      colors: ['#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#3b82f6', '#fbbf24']
+    });
+
+    // Left cannon
+    setTimeout(() => {
+      confetti({
+        particleCount: 60,
+        angle: 60,
+        spread: 60,
+        origin: { x: 0, y: 0.7 },
+        colors: ['#fbbf24', '#f59e0b', '#10b981']
+      });
+    }, 200);
+
+    // Right cannon
+    setTimeout(() => {
+      confetti({
+        particleCount: 60,
+        angle: 120,
+        spread: 60,
+        origin: { x: 1, y: 0.7 },
+        colors: ['#8b5cf6', '#ec4899', '#3b82f6']
+      });
+    }, 400);
+
+    // Star shower
+    setTimeout(() => {
+      confetti({
+        particleCount: 40,
+        spread: 100,
+        origin: { y: 0.4 },
+        shapes: ['star', 'circle'],
+        colors: ['#f59e0b', '#fbbf24', '#ffffff']
+      });
+    }, 650);
+  } catch (e) {
+    console.warn('Confetti error:', e);
+  }
+}
+
+/**
+ * Dispatches verified payment success to all listeners and triggers confetti
+ */
+function notifyPaymentSuccess(eventData: any) {
+  console.log('🎉 Lemon Squeezy Payment Confirmed!', eventData);
+  triggerPurchaseConfetti();
+  successCallbackMap.forEach((cb) => {
+    try {
+      cb(eventData);
+    } catch (err) {
+      console.error('Error in LemonSqueezy success callback:', err);
+    }
+  });
+}
 
 /**
  * Loads Lemon Squeezy overlay script (lemon.js) if not already loaded
@@ -47,6 +113,27 @@ export function loadLemonSqueezyScript(): Promise<boolean> {
       }
       resolve(true);
       return;
+    }
+
+    // Check if script is already present in document
+    const existingScript = document.querySelector('script[src*="lemon.js"]');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => {
+        isLemonScriptLoaded = true;
+        if (window.createLemonSqueezy) {
+          try {
+            window.createLemonSqueezy();
+            initLemonEventListener();
+          } catch (e) {}
+        }
+        resolve(true);
+      });
+      if (window.LemonSqueezy) {
+        isLemonScriptLoaded = true;
+        initLemonEventListener();
+        resolve(true);
+        return;
+      }
     }
 
     const script = document.createElement('script');
@@ -76,25 +163,44 @@ export function loadLemonSqueezyScript(): Promise<boolean> {
  * Global Lemon Squeezy Event Listener
  */
 function initLemonEventListener() {
-  if (isLemonSetupDone || !window.LemonSqueezy?.Setup) return;
-  try {
-    window.LemonSqueezy.Setup({
-      eventHandler: (event: any) => {
-        console.log('🍋 Lemon Squeezy Event:', event);
-        if (event && (event.event === 'Checkout.Success' || event.event === 'Order.Created')) {
-          successCallbackMap.forEach((cb) => {
-            try {
-              cb(event);
-            } catch (err) {
-              console.error('Error in LemonSqueezy success callback:', err);
-            }
-          });
+  if (isLemonSetupDone) return;
+
+  // 1. Official LemonSqueezy.Setup event handler
+  if (window.LemonSqueezy?.Setup) {
+    try {
+      window.LemonSqueezy.Setup({
+        eventHandler: (event: any) => {
+          console.log('🍋 Lemon Squeezy SDK Event:', event);
+          if (event && (event.event === 'Checkout.Success' || event.event === 'Order.Created')) {
+            notifyPaymentSuccess(event);
+          }
         }
-      }
+      });
+      isLemonSetupDone = true;
+    } catch (err) {
+      console.warn('Error setting up Lemon Squeezy SDK event listener:', err);
+    }
+  }
+
+  // 2. Fallback PostMessage listener from iframe overlay
+  if (typeof window !== 'undefined') {
+    window.addEventListener('message', (event) => {
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch(e) {}
+        }
+        if (
+          data &&
+          (data.event === 'Checkout.Success' ||
+           data.eventName === 'Checkout.Success' ||
+           data.action === 'checkout:success' ||
+           (typeof data.event === 'string' && data.event.toLowerCase().includes('success')))
+        ) {
+          notifyPaymentSuccess(data);
+        }
+      } catch (err) {}
     });
-    isLemonSetupDone = true;
-  } catch (err) {
-    console.warn('Error setting up Lemon Squeezy event listener:', err);
   }
 }
 
@@ -102,6 +208,11 @@ function initLemonEventListener() {
  * Subscribe to Lemon Squeezy payment success events
  */
 export function onLemonPaymentSuccess(callback: (eventData: any) => void) {
+  // Ensure listeners are initialized
+  loadLemonSqueezyScript().then(() => {
+    initLemonEventListener();
+  });
+
   successCallbackMap.add(callback);
   return () => {
     successCallbackMap.delete(callback);
@@ -119,10 +230,20 @@ export async function openLemonSqueezyCheckout(options: LemonSqueezyCheckoutOpti
   try {
     urlObj = new URL(checkoutUrl);
   } catch (e) {
-    // Fallback if invalid URL relative string
     window.open(checkoutUrl, '_blank');
     return true;
   }
+
+  // Store pending purchase locally so if overlay closes we know exactly which package was ordered
+  try {
+    sessionStorage.setItem('mk_lemon_pending_package', JSON.stringify({
+      packageId: packageId || 'coins_bronze',
+      userEmail,
+      userId,
+      customData,
+      timestamp: Date.now()
+    }));
+  } catch (e) {}
 
   // Append user email and custom parameters
   if (userEmail) {
@@ -142,9 +263,11 @@ export async function openLemonSqueezyCheckout(options: LemonSqueezyCheckoutOpti
 
   const finalUrl = urlObj.toString();
 
-  // Try overlay first if script loaded
+  // Ensure overlay script is ready
   await loadLemonSqueezyScript();
+  initLemonEventListener();
 
+  // Try Lemon.js Overlay first
   if (window.LemonSqueezy?.Url?.Open) {
     try {
       window.LemonSqueezy.Url.Open(finalUrl);
@@ -154,7 +277,7 @@ export async function openLemonSqueezyCheckout(options: LemonSqueezyCheckoutOpti
     }
   }
 
-  // Fallback to new tab/window
+  // Fallback to new window/tab
   window.open(finalUrl, '_blank');
   return true;
 }

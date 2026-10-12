@@ -96,6 +96,13 @@ export const ShopContent: React.FC = () => {
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
   const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
+  const [celebrationPurchase, setCelebrationPurchase] = useState<{
+    pkgName: string;
+    coinsEarned: number;
+    priceUSD: number;
+    orderId?: string | number;
+  } | null>(null);
+
   // Per-package Lemon Squeezy URLs
   const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
     const defaultUrls: Record<string, string> = {
@@ -114,14 +121,38 @@ export const ShopContent: React.FC = () => {
   });
   const [inputPackageUrls, setInputPackageUrls] = useState<Record<string, string>>(packageUrls || {});
 
-  // Auto load Lemon Squeezy overlay & subscribe to success event
+  // Auto load Lemon Squeezy overlay & subscribe to real-time success event
   useEffect(() => {
     loadLemonSqueezyScript();
     const unsubscribe = onLemonPaymentSuccess((eventData) => {
-      console.log('🍋 Lemon Squeezy Payment Confirmed:', eventData);
-      const pkg = COIN_PACKAGES.find(p => p.id === eventData?.custom?.package_id) || COIN_PACKAGES[1];
+      console.log('🍋 Lemon Squeezy Payment Confirmed in Shop:', eventData);
+
+      let targetPkgId = eventData?.custom?.package_id || eventData?.custom_data?.package_id;
+      if (!targetPkgId) {
+        try {
+          const saved = sessionStorage.getItem('mk_lemon_pending_package');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            targetPkgId = parsed?.packageId;
+          }
+        } catch (e) {}
+      }
+
+      // Default to Bronze (cp_pro) if none matched, which is $2.99 (1000 + 150 = 1150 CP)
+      const pkg = COIN_PACKAGES.find(p => p.id === targetPkgId) || COIN_PACKAGES.find(p => p.id === 'cp_pro') || COIN_PACKAGES[1];
       const added = pkg.coins + pkg.bonusCoins;
-      earnPoints(added, `Lemon Squeezy Overlay (${pkg.name})`);
+
+      // Award coins immediately to balance
+      earnPoints(added, `Lemon Squeezy Ödemesi (${pkg.name})`);
+
+      // Trigger Celebration Modal
+      setCelebrationPurchase({
+        pkgName: pkg.name,
+        coinsEarned: added,
+        priceUSD: pkg.priceUSD,
+        orderId: eventData?.data?.id || eventData?.order?.id || eventData?.order_id
+      });
+
       setStatusMessage({
         type: 'success',
         text: `🎉 TEBRİKLER! Lemon Squeezy ödemeniz onaylandı. +${added.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza başarıyla tanımlandı!`
@@ -228,28 +259,26 @@ export const ShopContent: React.FC = () => {
     }
 
     try {
+      setStatusMessage({
+        type: 'info',
+        text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için Lemon Squeezy güvenli ödeme ekranı açılıyor... Ödemeyi tamamladığınızda puanlarınız anında tanımlanacaktır.`
+      });
+
       await openLemonSqueezyCheckout({
         checkoutUrl: targetCheckoutUrl,
         userEmail: user.email,
-        userId: user.id || user.email,
+        userId: user.uid || user.email,
         packageId: pkg.id,
         customData: {
           package_name: pkg.name,
           coins: String(totalAdded)
         }
       });
-
-      // Award coins to balance
-      earnPoints(totalAdded, `Lemon Squeezy Ödemesi (${pkg.name})`);
-      setStatusMessage({
-        type: 'success',
-        text: `🚀 "${pkg.name}" ($${pkg.priceUSD}) için Lemon Squeezy ödeme penceresi açıldı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı.`
-      });
     } catch (err) {
-      earnPoints(totalAdded, `Lemon Squeezy (${pkg.name})`);
+      window.open(targetCheckoutUrl, '_blank');
       setStatusMessage({
-        type: 'success',
-        text: `🎉 Lemon Squeezy $${pkg.priceUSD} tutarındaki ödemeniz onaylandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan hesabınıza tanımlandı.`
+        type: 'info',
+        text: `💳 Lemon Squeezy ödeme sayfası açıldı. Ödemeniz tamamlandığında puanlarınız anında hesabınıza eklenecektir.`
       });
     }
   };
@@ -1205,6 +1234,62 @@ export const ShopContent: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* CELEBRATION MODAL ON PAYMENT SUCCESS */}
+      {celebrationPurchase && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-md bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/90 border-2 border-amber-400 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp">
+            <button
+              type="button"
+              onClick={() => setCelebrationPurchase(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 hover:bg-gray-800 rounded-full border border-gray-700 transition"
+              title="Kapat"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="w-20 h-20 mx-auto rounded-3xl bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-amber-400 shadow-xl shadow-amber-950 mb-4 animate-bounce">
+              <Sparkles size={40} className="text-amber-300" />
+            </div>
+
+            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-full">
+              Lemon Squeezy Ödemesi Onaylandı
+            </span>
+
+            <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 mt-3">
+              🎉 TEBRİKLER!
+            </h3>
+            <p className="text-xs text-gray-300 mt-1">
+              Ödemeniz başarıyla tamamlandı ve bakiyeniz anında güncellendi.
+            </p>
+
+            <div className="my-5 p-4 bg-amber-950/40 border border-amber-500/40 rounded-2xl space-y-1">
+              <span className="text-[11px] text-amber-300/80 uppercase font-bold block">
+                Hesabınıza Yüklenen Miktar
+              </span>
+              <div className="text-3xl font-black text-amber-300 flex items-center justify-center gap-2">
+                <Coins size={30} className="text-amber-400" />
+                <span>+{celebrationPurchase.coinsEarned.toLocaleString('tr-TR')} CP</span>
+              </div>
+              <p className="text-xs text-amber-200/90 font-bold mt-1">
+                {celebrationPurchase.pkgName} (${celebrationPurchase.priceUSD} USD)
+              </p>
+            </div>
+
+            <p className="text-xs text-emerald-400 font-semibold mb-6 flex items-center justify-center gap-1.5">
+              <CheckCircle2 size={16} /> Cosmo-Puanlar anında hesabınıza tanımlandı!
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setCelebrationPurchase(null)}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-sm rounded-2xl shadow-lg shadow-amber-500/30 transition transform hover:scale-[1.02] active:scale-95 cursor-pointer"
+            >
+              Harika, Kullanmaya Başla! ✨
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
