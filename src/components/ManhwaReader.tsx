@@ -680,8 +680,8 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             </button>
           </div>
 
-          {/* Reader Mode Selector Switcher (Webtoon vs Manga) */}
-          <div className="h-9 sm:h-10 flex items-center bg-slate-100 dark:bg-gray-950 p-1 rounded-xl border border-purple-200 dark:border-purple-500/30 shrink-0">
+          {/* Reader Mode Selector Switcher (Webtoon vs Manga) - Mobilde yeri daraltmaması için gizlendi (Çark / Ayarlar içine taşındı), Masaüstünde görünür */}
+          <div className="hidden md:flex h-9 sm:h-10 items-center bg-slate-100 dark:bg-gray-950 p-1 rounded-xl border border-purple-200 dark:border-purple-500/30 shrink-0">
             <button
               type="button"
               onClick={() => toggleReaderMode('webtoon')}
@@ -970,41 +970,46 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
             {/* Row 1: Reading Mode & Background Theme */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               {/* Reading Mode */}
-              <div>
-                <label className="text-[10px] sm:text-[11px] uppercase font-bold text-purple-300 block mb-1">
-                  Okuma Modu
-                </label>
+              <div className="bg-purple-950/30 p-2 sm:p-2.5 rounded-xl border border-purple-500/20">
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="text-[10px] sm:text-[11px] uppercase font-bold text-purple-300 flex items-center gap-1">
+                    <span>Okuma Modu</span>
+                  </label>
+                  <span className="text-[10px] text-purple-400 font-semibold">
+                    {readerMode === 'webtoon' ? 'Dikey Akış' : 'Sayfa Çevirme'}
+                  </span>
+                </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   <button
                     type="button"
                     onClick={() => toggleReaderMode('webtoon')}
-                    className={`py-1.5 px-2 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 border transition cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 border transition cursor-pointer ${
                       readerMode === 'webtoon'
-                        ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
-                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50'
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md ring-1 ring-purple-400/40'
+                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50 hover:bg-gray-900'
                     }`}
                   >
-                    <Rows size={13} />
+                    <Rows size={14} className="shrink-0" />
                     <span>Webtoon</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => toggleReaderMode('manga')}
-                    className={`py-1.5 px-2 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1 border transition cursor-pointer ${
+                    className={`py-2 px-2 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 border transition cursor-pointer ${
                       readerMode === 'manga'
-                        ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
-                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50'
+                        ? 'bg-purple-600 text-white border-purple-400 shadow-md ring-1 ring-purple-400/40'
+                        : 'bg-gray-950 text-gray-300 border-purple-500/25 hover:border-purple-500/50 hover:bg-gray-900'
                     }`}
                   >
-                    <Columns size={13} />
+                    <Columns size={14} className="shrink-0" />
                     <span>Manga</span>
                   </button>
                 </div>
               </div>
 
               {/* Background Theme */}
-              <div>
-                <label className="text-[10px] sm:text-[11px] uppercase font-bold text-purple-300 block mb-1">
+              <div className="bg-purple-950/30 p-2 sm:p-2.5 rounded-xl border border-purple-500/20">
+                <label className="text-[10px] sm:text-[11px] uppercase font-bold text-purple-300 block mb-1.5">
                   Arka Plan Rengi
                 </label>
                 <div className="grid grid-cols-4 gap-1">
@@ -1018,7 +1023,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                       key={theme.id}
                       type="button"
                       onClick={() => updateManhwaSettings({ bgTheme: theme.id as ManhwaSettings['bgTheme'] })}
-                      className={`py-1.5 px-1 rounded-xl font-bold text-[10px] sm:text-[11px] border transition cursor-pointer ${theme.bg} ${
+                      className={`py-2 px-1 rounded-xl font-bold text-[10px] sm:text-[11px] border transition cursor-pointer ${theme.bg} ${
                         manhwaSettings.bgTheme === theme.id
                           ? 'border-purple-400 text-white ring-1 ring-purple-500/50'
                           : 'border-gray-700 text-gray-400 hover:text-white'
