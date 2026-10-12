@@ -204,7 +204,7 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = lemonStoreUrl.trim() || pkg.lemonCheckoutUrl || 'https://mikrokosmos.lemonsqueezy.com';
+    const targetCheckoutUrl = pkg.lemonCheckoutUrl || lemonStoreUrl.trim() || 'https://mikrokosmosfansub.lemonsqueezy.com';
 
     try {
       await openLemonSqueezyCheckout({
