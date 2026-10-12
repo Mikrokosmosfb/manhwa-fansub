@@ -157,10 +157,11 @@ export const RequestBoardView: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(() => requestsList.length === 0);
   const [adminPass, setAdminPass] = useState<string>(() => localStorage.getItem("mikro_admin_pass") || "");
 
-  // Filters
+  // Filters & Sorting
   const [currentCategoryFilter, setCurrentCategoryFilter] = useState<string>('all');
   const [currentStatusFilter, setCurrentStatusFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'votes'>('newest');
 
   // Modals
   const [isNewModalOpen, setIsNewModalOpen] = useState<boolean>(false);
@@ -479,9 +480,9 @@ export const RequestBoardView: React.FC = () => {
     return { class: 'bg-amber-950/60 text-amber-400 border-amber-500/40', dataStatus: 'beklemede', text: 'Beklemede', icon: <Clock size={12} /> };
   };
 
-  // Filtered requests calculation
+  // Filtered and Sorted requests calculation
   const filteredRequests = useMemo(() => {
-    return requestsList.filter(req => {
+    let result = requestsList.filter(req => {
       const q = searchQuery.toLowerCase().trim();
       const matchQuery = !q ||
         (req.title && req.title.toLowerCase().includes(q)) ||
@@ -496,7 +497,27 @@ export const RequestBoardView: React.FC = () => {
 
       return matchQuery && matchCategory && matchStatus;
     });
-  }, [requestsList, searchQuery, currentCategoryFilter, currentStatusFilter]);
+
+    if (sortBy === 'newest') {
+      result.sort((a, b) => {
+        const rowA = a.row !== undefined ? a.row : 0;
+        const rowB = b.row !== undefined ? b.row : 0;
+        if (rowA !== rowB) return rowB - rowA;
+        return String(b.id || '').localeCompare(String(a.id || ''));
+      });
+    } else if (sortBy === 'oldest') {
+      result.sort((a, b) => {
+        const rowA = a.row !== undefined ? a.row : 0;
+        const rowB = b.row !== undefined ? b.row : 0;
+        if (rowA !== rowB) return rowA - rowB;
+        return String(a.id || '').localeCompare(String(b.id || ''));
+      });
+    } else if (sortBy === 'votes') {
+      result.sort((a, b) => (b.votes || b.oy || 0) - (a.votes || a.oy || 0));
+    }
+
+    return result;
+  }, [requestsList, searchQuery, currentCategoryFilter, currentStatusFilter, sortBy]);
 
   // #1 Top Trend Showcase
   const topTrendRequest = useMemo(() => {
@@ -764,6 +785,52 @@ export const RequestBoardView: React.FC = () => {
               {chip.label}
             </button>
           ))}
+        </div>
+
+        {/* SIRALAMA SEKMELERİ (VARSAYILAN: YENİDEN ESKİYE) */}
+        <div className="flex items-center justify-between gap-2 flex-wrap bg-gray-900/90 border border-purple-500/20 p-2.5 rounded-2xl">
+          <span className="text-xs font-extrabold text-purple-300 flex items-center gap-1.5 pl-1">
+            <Sparkles size={14} className="text-fuchsia-400" />
+            <span>Sıralama Modu:</span>
+          </span>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSortBy('newest')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
+                sortBy === 'newest'
+                  ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-fuchsia-400 shadow-md scale-105'
+                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
+              }`}
+            >
+              ✨ Yeniden Eskiye (Varsayılan)
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSortBy('oldest')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
+                sortBy === 'oldest'
+                  ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white border-fuchsia-400 shadow-md scale-105'
+                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
+              }`}
+            >
+              ⏳ Eskiden Yeniye
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSortBy('votes')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black transition border cursor-pointer ${
+                sortBy === 'votes'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black border-amber-300 shadow-md scale-105'
+                  : 'bg-gray-950/80 text-gray-400 border-purple-500/20 hover:text-white'
+              }`}
+            >
+              🔥 En Çok Oy Alan
+            </button>
+          </div>
         </div>
       </div>
 
