@@ -33,11 +33,11 @@ export function getOptimizedImageUrl(
   url: string | undefined | null,
   optionsOrWidth: ImageOptimizationOptions | number = 300,
   fallbackQuality: number = 75
-): string {
-  if (!url || typeof url !== 'string') return '';
+): string | undefined {
+  if (!url || typeof url !== 'string') return undefined;
 
   let trimmed = url.trim();
-  if (!trimmed) return '';
+  if (!trimmed) return undefined;
 
   // Return data URIs, SVGs, or blob URLs as-is
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.includes('.svg')) {
