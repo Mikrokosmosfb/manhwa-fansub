@@ -18,9 +18,19 @@ export const RequestBoardView: React.FC = () => {
 
     win.normalizeText = function(str: any) {
       if (!str) return "";
-      return String(str).replace(/İ/g, "i").replace(/I/g, "ı").replace(/Ş/g, "ş")
-        .replace(/Ğ/g, "ğ").replace(/Ü/g, "ü").replace(/Ö/g, "ö").replace(/Ç/g, "ç")
-        .toLowerCase().trim();
+      return String(str)
+        .replace(/İ/g, "i")
+        .replace(/I/g, "i")
+        .replace(/ı/g, "i")
+        .replace(/Ş/g, "s").replace(/ş/g, "s")
+        .replace(/Ğ/g, "g").replace(/ğ/g, "g")
+        .replace(/Ü/g, "u").replace(/ü/g, "u")
+        .replace(/Ö/g, "o").replace(/ö/g, "o")
+        .replace(/Ç/g, "c").replace(/ç/g, "c")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
     };
 
     win.getUserToken = function() {
