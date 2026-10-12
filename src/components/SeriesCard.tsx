@@ -12,6 +12,7 @@ interface SeriesCardProps {
   layout?: 'grid' | 'horizontal';
   showExtraTags?: boolean;
   maxChapters?: number;
+  priority?: boolean;
 }
 
 export const SeriesCard: React.FC<SeriesCardProps> = ({
@@ -19,6 +20,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   layout = 'grid',
   showExtraTags = false,
   maxChapters = 1,
+  priority = false,
 }) => {
   const { setView, bookmarks } = useApp();
   const isBookmarked = !!bookmarks[series.id];
@@ -69,7 +71,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
             width="96"
             height="144"
             decoding="async"
-            loading="lazy"
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : 'auto'}
             referrerPolicy="no-referrer"
             onError={(e) => handleImageError(e, series.coverImage, series.title)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -147,7 +150,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
           width="180"
           height="240"
           decoding="async"
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
           referrerPolicy="no-referrer"
           onError={(e) => handleImageError(e, series.coverImage, series.title)}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

@@ -321,9 +321,9 @@ const MainContent: React.FC = () => {
                   Henüz roman eklenmedi.
                 </div>
               ) : (
-                novelSeries.map(s => (
+                novelSeries.map((s, idx) => (
                   <div key={s.id} className="flex-shrink-0 w-32 sm:w-44 snap-start">
-                    <SeriesCard series={s} maxChapters={2} />
+                    <SeriesCard series={s} maxChapters={2} priority={idx < 4} />
                   </div>
                 ))
               )}

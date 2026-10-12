@@ -37,14 +37,8 @@ export function initPWARegistration() {
   updateSWFn = registerSW({
     immediate: true,
     onNeedRefresh() {
-      console.log('[PWA] Yeni sürüm mevcut, güncelleniyor...');
+      console.log('[PWA] Yeni sürüm mevcut.');
       notifyUpdateListeners(true);
-      // Auto update immediately
-      if (updateSWFn) {
-        updateSWFn(true).catch(err => {
-          console.warn('[PWA] Otomatik yenileme uyarısı:', err);
-        });
-      }
     },
     onOfflineReady() {
       console.log('[PWA] Çevrimdışı kullanım hazır.');
@@ -53,27 +47,16 @@ export function initPWARegistration() {
       if (registration) {
         console.log('[PWA] Service Worker devrede:', swScriptUrl);
 
-        // 1. İlk açılışta hemen kontrol et
-        registration.update().catch(() => {});
-
-        // 2. Her 25 saniyede bir periyodik kontrol
+        // Periyodik kontrol (15 dakikada bir)
         setInterval(() => {
           registration.update().catch(() => {});
-        }, 25 * 1000);
+        }, 15 * 60 * 1000);
 
-        // 3. Kullanıcı uygulamaya her geri döndüğünde (sekme değişimi / ekran açılması)
+        // Kullanıcı uzun süre sonra sekmeye geri döndüğünde kontrol et
         document.addEventListener('visibilitychange', () => {
           if (document.visibilityState === 'visible') {
             registration.update().catch(() => {});
           }
-        });
-
-        // 4. Pencere odağı veya internet bağlantısı geri geldiğinde
-        window.addEventListener('focus', () => {
-          registration.update().catch(() => {});
-        });
-        window.addEventListener('online', () => {
-          registration.update().catch(() => {});
         });
       }
     },
@@ -81,18 +64,6 @@ export function initPWARegistration() {
       console.error('[PWA] Service Worker kayıt hatası:', error);
     }
   });
-
-  // Yeni Service Worker kontrolü devraldığında sayfayı yenileyerek yeni sürümü anında göster
-  if ('serviceWorker' in navigator) {
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (!refreshing) {
-        refreshing = true;
-        console.log('[PWA] Yeni servis çalışanı aktifleşti, sayfa güncelleniyor...');
-        window.location.reload();
-      }
-    });
-  }
 }
 
 /**

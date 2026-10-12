@@ -79,7 +79,8 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
             referrerPolicy="no-referrer"
             onError={(e) => handleImageError(e, series.coverImage, series.title)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            loading="lazy"
+            loading={typeof index === 'number' && index < 6 ? 'eager' : 'lazy'}
+            fetchPriority={typeof index === 'number' && index < 6 ? 'high' : 'auto'}
           />
 
           {/* Top Right Badges (Yeni / Sıcak / 18+) */}

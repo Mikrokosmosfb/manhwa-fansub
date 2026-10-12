@@ -71,7 +71,7 @@ export const WeeklyPopularSlider: React.FC = () => {
             ref={scrollRef}
             className="w-full flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth snap-x py-1"
           >
-            {popularSeries.map(s => {
+            {popularSeries.map((s, idx) => {
             const is18 = isSeries18Plus(s);
             const flag = getFlag(s);
             const genreBadge = getGenreBadge(s);
@@ -97,7 +97,8 @@ export const WeeklyPopularSlider: React.FC = () => {
                     referrerPolicy="no-referrer"
                     onError={(e) => handleImageError(e, s.coverImage, s.title)}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    loading="lazy"
+                    loading={idx < 4 ? 'eager' : 'lazy'}
+                    fetchPriority={idx < 4 ? 'high' : 'auto'}
                   />
 
                   {/* Top-Right Flag Badge */}

@@ -58,7 +58,7 @@ export default defineConfig(() => {
               options: {
                 cacheName: 'google-fonts-cache',
                 expiration: {
-                  maxEntries: 10,
+                  maxEntries: 20,
                   maxAgeSeconds: 60 * 60 * 24 * 365,
                 },
                 cacheableResponse: {
@@ -67,13 +67,49 @@ export default defineConfig(() => {
               },
             },
             {
-              urlPattern: /^https:\/\/images\.unsplash\.com\/.*/i,
-              handler: 'StaleWhileRevalidate',
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
               options: {
-                cacheName: 'unsplash-images',
+                cacheName: 'gstatic-fonts-cache',
                 expiration: {
-                  maxEntries: 50,
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              // External Manga/Novel image CDNs and hosts (Blogger, Google, Imgur, Discord, Unsplash, etc.)
+              urlPattern: /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:unsplash\.com|googleusercontent\.com|blogspot\.com|imgur\.com|discordapp\.(?:com|net)|discord\.net|cloudinary\.com|dicebear\.com|google\.com|postimg\.(?:cc|org)|postimages\.org|hizliresim\.com)\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'remote-images-cache',
+                expiration: {
+                  maxEntries: 1500,
+                  maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+                  purgeOnQuotaError: true,
+                },
+                cacheableResponse: {
+                  // status 0 is essential for opaque CDN responses from external hosts
+                  statuses: [0, 200],
+                },
+              },
+            },
+            {
+              // Any general image asset extensions (local or remote)
+              urlPattern: /\.(?:png|jpg|jpeg|svg|webp|gif|avif|ico)(?:\?.*)?$/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'static-images-cache',
+                expiration: {
+                  maxEntries: 800,
                   maxAgeSeconds: 60 * 60 * 24 * 30,
+                  purgeOnQuotaError: true,
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
                 },
               },
             },
