@@ -53,12 +53,15 @@ export const AdminTeamManager: React.FC = () => {
     setIsLoadingCloudflareUsers(true);
     try {
       const res = await fetch('/api/admin/users');
+      if (!res.ok) return;
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return;
       const data = await res.json();
       if (data && data.success && Array.isArray(data.users)) {
         setFetchedCloudflareUsers(data.users);
       }
     } catch (e) {
-      console.error('Failed to fetch Cloudflare users:', e);
+      console.warn('Could not fetch Cloudflare users:', e);
     } finally {
       setIsLoadingCloudflareUsers(false);
     }
