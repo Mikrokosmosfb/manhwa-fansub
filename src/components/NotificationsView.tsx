@@ -93,7 +93,7 @@ export const NotificationsView: React.FC = () => {
 
   const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  const validUserNotifications = currentNotifications.filter(n => {
+  const validUserNotifications = (notifications || []).filter(n => {
     // Don't show notifications created before user registered (except welcome message)
     if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
       const notifTime = new Date(n.createdAt).getTime();
@@ -198,7 +198,7 @@ export const NotificationsView: React.FC = () => {
           {/* Quick Stats */}
           <div className="flex items-center gap-2 text-center text-xs font-bold">
             <div className="bg-gray-950/80 border border-purple-500/30 px-3.5 py-2 rounded-2xl">
-              <span className="block text-lg font-extrabold text-white">{currentNotifications.length}</span>
+              <span className="block text-lg font-extrabold text-white">{(notifications || []).length}</span>
               <span className="text-[10px] text-purple-300">Toplam</span>
             </div>
             <div className="bg-gray-950/80 border border-purple-500/30 px-3.5 py-2 rounded-2xl">
@@ -276,7 +276,7 @@ export const NotificationsView: React.FC = () => {
               }`}
             >
               <Layers size={14} />
-              <span>Tüm Bildirimler ({currentNotifications.length})</span>
+              <span>Tüm Bildirimler ({(notifications || []).length})</span>
             </button>
             <button
               onClick={() => setActiveTab('followed')}

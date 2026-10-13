@@ -61,7 +61,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
 
   const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  const validUserNotifications = currentNotifications.filter(n => {
+  const validUserNotifications = (notifications || []).filter(n => {
     // Don't show notifications created before user registered (except welcome message)
     if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
       const notifTime = new Date(n.createdAt).getTime();
@@ -177,7 +177,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                 : 'text-gray-400 hover:text-white hover:bg-purple-950/60'
             }`}
           >
-            Tümü ({currentNotifications.length})
+            Tümü ({(notifications || []).length})
           </button>
           <button
             onClick={() => setActiveTab('followed')}
@@ -225,7 +225,7 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
           )}
         </div>
 
-        {currentNotifications.length > 0 && (
+        {(notifications || []).length > 0 && (
           <button
             onClick={() => {
               if (confirm('Tüm bildirimler silinsin mi?')) {
