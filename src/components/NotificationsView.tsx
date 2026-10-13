@@ -91,25 +91,31 @@ export const NotificationsView: React.FC = () => {
     return date.toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   };
 
-  const currentNotifications = user ? notifications : [];
+  const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  const filteredNotifications = currentNotifications.filter(n => {
-    if (n.type === 'chapter' && n.seriesId && !isSeriesFollowed(n.seriesId)) {
-      return false;
+  const validUserNotifications = currentNotifications.filter(n => {
+    // Don't show notifications created before user registered (except welcome message)
+    if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
+      const notifTime = new Date(n.createdAt).getTime();
+      if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
     }
+    // Chapter notifications only visible if series is actively followed
+    if (n.type === 'chapter') {
+      if (!n.seriesId || !isSeriesFollowed(n.seriesId)) return false;
+    }
+    return true;
+  });
+
+  const filteredNotifications = validUserNotifications.filter(n => {
     // Tab filter
     if (activeTab === 'unread') {
-      if (n.isRead) return false;
-      if (n.type === 'chapter' && n.seriesId) {
-        return isSeriesFollowed(n.seriesId);
-      }
-      return true;
+      return !n.isRead;
     }
     if (activeTab === 'followed') {
       return n.type === 'chapter' && isSeriesFollowed(n.seriesId);
     }
-    if (activeTab === 'chapters' && n.type !== 'chapter') return false;
-    if (activeTab === 'system' && n.type === 'chapter') return false;
+    if (activeTab === 'chapters') return n.type === 'chapter';
+    if (activeTab === 'system') return n.type !== 'chapter';
 
     // Search query filter
     if (searchQuery.trim()) {
@@ -123,9 +129,9 @@ export const NotificationsView: React.FC = () => {
     return true;
   });
 
-  const totalFollowedNotifications = currentNotifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
+  const totalFollowedNotifications = validUserNotifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
   const totalChapterNotifications = totalFollowedNotifications;
-  const totalSystemNotifications = currentNotifications.filter(n => n.type !== 'chapter').length;
+  const totalSystemNotifications = validUserNotifications.filter(n => n.type !== 'chapter').length;
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-6 space-y-6">

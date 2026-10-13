@@ -2868,15 +2868,21 @@ ${seriesXml}
                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(uid, cleanEmail, hashedPassword, cleanName, avatar, 'email', isAdmin ? 'admin' : 'user', createdAt, createdAt).run();
 
-                // Initialize user library record
+                // Initialize user library record for new user
                 try {
-                  const { results: globalNotifs } = await userDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 20").all();
-                  const initialNotifs = globalNotifs ? JSON.stringify(globalNotifs.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type || 'announcement', link: n.link, createdAt: new Date(n.created_at).getTime(), isRead: false }))) : '[]';
+                  const welcomeNotif = [{
+                    id: 'welcome-' + Date.now(),
+                    title: 'Mikrokosmos Fansub\'a Hoş Geldiniz! ✨',
+                    message: 'Aramıza hoş geldiniz! Takip ettiğiniz serilerin yeni bölümleri yayınlandığında buradan bildirim alacaksınız.',
+                    type: 'system',
+                    createdAt: new Date().toISOString(),
+                    isRead: false
+                  }];
 
                   await userDb.prepare(`
                     INSERT INTO user_library (uid, name, email, cosmo_points, followed_series, bookmarks, reading_history, notifications, shop_items, reading_lists)
                     VALUES (?, ?, ?, ?, '[]', '{}', '{}', ?, '[]', '[]')
-                  `).bind(uid, cleanName, cleanEmail, startingCoins, initialNotifs).run();
+                  `).bind(uid, cleanName, cleanEmail, startingCoins, JSON.stringify(welcomeNotif)).run();
                 } catch(eLib) {}
 
                 // Clean up OTP
@@ -3333,13 +3339,19 @@ ${seriesXml}
                   `).bind(uid, cleanEmail, 'GOOGLE_AUTH', finalName, userAvatar, 'google', isAdmin ? 'admin' : 'user', createdAt, createdAt).run();
 
                   try {
-                    const { results: globalNotifs } = await userDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 20").all();
-                    const initialNotifs = globalNotifs ? JSON.stringify(globalNotifs.map((n: any) => ({ id: n.id, title: n.title, message: n.message, type: n.type || 'announcement', link: n.link, createdAt: new Date(n.created_at).getTime(), isRead: false }))) : '[]';
+                    const welcomeNotif = [{
+                      id: 'welcome-' + Date.now(),
+                      title: 'Mikrokosmos Fansub\'a Hoş Geldiniz! ✨',
+                      message: 'Google ile üyeliğiniz tamamlandı! Takip ettiğiniz serilerin yeni bölümleri yayınlandığında buradan bildirim alacaksınız.',
+                      type: 'system',
+                      createdAt: new Date().toISOString(),
+                      isRead: false
+                    }];
 
                     await userDb.prepare(`
                       INSERT INTO user_library (uid, name, email, cosmo_points, followed_series, bookmarks, reading_history, notifications, shop_items, reading_lists)
                       VALUES (?, ?, ?, ?, '[]', '{}', '{}', ?, '[]', '[]')
-                    `).bind(uid, finalName, cleanEmail, coins, initialNotifs).run();
+                    `).bind(uid, finalName, cleanEmail, coins, JSON.stringify(welcomeNotif)).run();
                   } catch(eLib) {}
 
                   return new Response(JSON.stringify({

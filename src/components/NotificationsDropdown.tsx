@@ -59,23 +59,29 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
     return followedSeriesIds.includes(seriesId);
   };
 
-  const currentNotifications = user ? notifications : [];
+  const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
-  const followedNotificationsCount = currentNotifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
+  const validUserNotifications = currentNotifications.filter(n => {
+    // Don't show notifications created before user registered (except welcome message)
+    if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
+      const notifTime = new Date(n.createdAt).getTime();
+      if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
+    }
+    // Chapter notifications only visible if series is actively followed
+    if (n.type === 'chapter') {
+      if (!n.seriesId || !isSeriesFollowed(n.seriesId)) return false;
+    }
+    return true;
+  });
+
+  const followedNotificationsCount = validUserNotifications.filter(n => n.type === 'chapter' && isSeriesFollowed(n.seriesId)).length;
   const chapterNotificationsCount = followedNotificationsCount; // Only show followed chapters
-  const systemNotificationsCount = currentNotifications.filter(n => n.type !== 'chapter').length;
+  const systemNotificationsCount = validUserNotifications.filter(n => n.type !== 'chapter').length;
 
   // Filter notifications according to active tab
-  const filteredNotifications = currentNotifications.filter(n => {
-    if (n.type === 'chapter' && n.seriesId && !isSeriesFollowed(n.seriesId)) {
-      return false;
-    }
+  const filteredNotifications = validUserNotifications.filter(n => {
     if (activeTab === 'unread') {
-      if (n.isRead) return false;
-      if (n.type === 'chapter' && n.seriesId) {
-        return isSeriesFollowed(n.seriesId);
-      }
-      return true;
+      return !n.isRead;
     }
     if (activeTab === 'followed') {
       return n.type === 'chapter' && isSeriesFollowed(n.seriesId);

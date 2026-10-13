@@ -2028,9 +2028,20 @@ const deleteShopItemAndStyle = (itemId: string) => {
               try { if(followedStr) followedIds = JSON.parse(followedStr); } catch(e){}
               try { if(bookmarksStr) bookmarksObj = JSON.parse(bookmarksStr); } catch(e){}
 
+              const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
+
               const newGlobals = data.globalNotifications.filter((n: any) => {
                 if (existingIds.has(n.id) || deletedSet.has(n.id)) return false;
-                if (n.type === 'chapter' && n.seriesId) {
+
+                // Do not receive old notifications created before the user registered
+                if (userCreatedTime > 0 && n.createdAt) {
+                  const notifTime = new Date(n.createdAt).getTime();
+                  if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
+                }
+
+                // Chapter notifications only go to users who actively follow the series
+                if (n.type === 'chapter') {
+                  if (!n.seriesId) return false;
                   const isTracked = followedIds.includes(n.seriesId);
                   if (!isTracked) return false;
                 }
@@ -2727,8 +2738,15 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   const unreadNotificationsCount = !user ? 0 : notifications.filter(n => {
     if (n.isRead) return false;
-    if (n.type === 'chapter' && n.seriesId) {
-      return followedSeriesIds.includes(n.seriesId);
+    const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
+    if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
+      const notifTime = new Date(n.createdAt).getTime();
+      if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
+    }
+    if (n.type === 'chapter') {
+      if (!n.seriesId || !followedSeriesIds.includes(n.seriesId)) {
+        return false;
+      }
     }
     return true;
   }).length;
