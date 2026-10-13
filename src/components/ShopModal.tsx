@@ -371,7 +371,7 @@ export const ShopContent: React.FC = () => {
 
       setStatusMessage({
         type: 'info',
-        text: `💳 DonationAlerts sayfası açıldı! Kullanıcı adınız ("${myUsername}") kopyalandı. $${pkg.priceUSD.toFixed(2)} USD tutarı ile ödemenizi tamamlayabilirsiniz.`
+        text: `💳 DonationAlerts sayfası açıldı! Kullanıcı adınız ("${myUsername}") kopyalandı. $${pkg.priceUSD} USD tutarı ile ödemenizi tamamlayabilirsiniz.`
       });
       return;
     }
@@ -418,7 +418,7 @@ export const ShopContent: React.FC = () => {
       const code = orderCodeInput.trim().toUpperCase();
       
       // Determine package based on code length, keywords or fallback
-      let matchedPkg = COIN_PACKAGES[1]; // default 1,000 + 250 CP ($2.99 USD)
+      let matchedPkg = COIN_PACKAGES[1]; // default 1,000 + 250 CP ($3 USD)
       if (code.includes('VIP') || code.includes('10000') || code.includes('14000') || code.includes('20') || code.includes('700')) {
         matchedPkg = COIN_PACKAGES[3];
       } else if (code.includes('GIGA') || code.includes('SILVER') || code.includes('3000') || code.includes('4000') || code.includes('8') || code.includes('280')) {
@@ -897,7 +897,7 @@ export const ShopContent: React.FC = () => {
 
                 <div className="pt-2 border-t border-gray-800/80 space-y-2">
                   <div className="text-center">
-                    <span className="font-black text-amber-300 text-lg">${pkg.priceUSD.toFixed(2)} USD</span>
+                    <span className="font-black text-amber-300 text-lg">${pkg.priceUSD} USD</span>
                     {pkg.priceTRY && (
                       <span className="text-[11px] text-gray-400 block font-semibold mt-0.5">
                         (~{pkg.priceTRY} ₺ TL / ~{(pkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
@@ -915,14 +915,14 @@ export const ShopContent: React.FC = () => {
 
                     const btnIcon = isDonationAlerts ? '⚡' : isShopier ? '🛍️' : isKofi ? '☕' : isKreosus ? '💜' : isLemon ? '🍋' : '💳';
                     const btnText = isDonationAlerts
-                      ? `DonationAlerts ($${pkg.priceUSD.toFixed(2)} USD)`
+                      ? `DonationAlerts ($${pkg.priceUSD} USD)`
                       : isShopier
                       ? `Shopier (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`
                       : isKofi
-                      ? `Ko-fi ($${pkg.priceUSD.toFixed(2)})`
+                      ? `Ko-fi ($${pkg.priceUSD})`
                       : isKreosus
                       ? `Kreosus (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`
-                      : `Satın Al ($${pkg.priceUSD.toFixed(2)} USD)`;
+                      : `Satın Al ($${pkg.priceUSD} USD)`;
 
                     return (
                       <button
@@ -1482,7 +1482,7 @@ export const ShopContent: React.FC = () => {
               <div className="border-r border-gray-800 pr-2">
                 <span className="text-[10px] font-bold text-gray-400 block uppercase">Ödenecek Tutar</span>
                 <span className="text-xl font-black text-amber-300">
-                  ${donationGuideModalPkg.priceUSD.toFixed(2)} USD
+                  ${donationGuideModalPkg.priceUSD} USD
                 </span>
                 <span className="text-[10px] text-gray-400 block">
                   (~{donationGuideModalPkg.priceTRY} ₺ TL / ~{(donationGuideModalPkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
@@ -1538,15 +1538,23 @@ export const ShopContent: React.FC = () => {
               </button>
             </div>
 
-            {/* Steps */}
-            <div className="space-y-2 text-xs bg-gray-900/60 p-3.5 rounded-2xl border border-gray-800">
+            {/* Steps & Important Currency Warning */}
+            <div className="space-y-2.5 text-xs bg-gray-900/80 p-3.5 rounded-2xl border border-amber-500/30">
               <div className="font-extrabold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
                 <Zap size={13} className="text-amber-400" /> Kolay Ödeme Adımları:
               </div>
-              <ol className="list-decimal list-inside space-y-1 text-gray-300 text-[11px] leading-relaxed">
-                <li>Açılan sekmede DonationAlerts formundaki <strong>"Adınız / Your name"</strong> alanına kullanıcı adınızı yazın.</li>
-                <li>Tutar alanına <strong>${donationGuideModalPkg.priceUSD.toFixed(2)} USD</strong> girin.</li>
-                <li>Kredi veya banka kartınızla güvenli ödemeyi tamamlayın.</li>
+              <div className="bg-amber-950/60 border border-amber-500/40 p-2.5 rounded-xl text-[11px] text-amber-200 space-y-1">
+                <p className="font-black text-amber-300 flex items-center gap-1">
+                  ⚠️ Para Birimi Seçimi ($ USD):
+                </p>
+                <p className="text-gray-200 leading-relaxed">
+                  DonationAlerts sayfasında tutar kutusunun yanındaki açılır menüden para birimini <strong>$ (USD)</strong> seçin ve tutara tam olarak <strong className="text-white text-xs bg-black/40 px-1.5 py-0.5 rounded border border-amber-400">${donationGuideModalPkg.priceUSD}</strong> yazın.
+                </p>
+              </div>
+              <ol className="list-decimal list-inside space-y-1.5 text-gray-300 text-[11px] leading-relaxed">
+                <li>Açılan sayfada <strong>"Adınız"</strong> kutusuna az önce kopyalanan kullanıcı adınızı yapıştırın.</li>
+                <li>Para birimini <strong>$ (USD)</strong> yaparak tutara <strong>{donationGuideModalPkg.priceUSD}</strong> yazın.</li>
+                <li><strong>"GÖNDER"</strong> butonuna basıp kartınızla güvenle ödemenizi tamamlayın.</li>
               </ol>
             </div>
 
@@ -1561,7 +1569,7 @@ export const ShopContent: React.FC = () => {
                 className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <ExternalLink size={15} />
-                <span>DonationAlerts Sayfasını Aç (${donationGuideModalPkg.priceUSD.toFixed(2)} USD)</span>
+                <span>DonationAlerts Sayfasını Aç (${donationGuideModalPkg.priceUSD} USD)</span>
               </button>
               <button
                 type="button"
