@@ -25,6 +25,7 @@ import { PWAUpdateToast } from './components/PWAUpdateToast';
 import { AdScriptRunner, AdBannerBlock } from './components/AdScriptRunner';
 import { BookOpen, Sparkles, TrendingUp, ChevronRight, ChevronLeft, Layers } from 'lucide-react';
 import { AppSplashScreen } from './components/AppSplashScreen';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { sortSeriesByLatestRelease } from './utils/dateUtils';
 import { getOptimizedImageUrl, handleImageError } from './utils/imageUtils';
 
@@ -487,14 +488,29 @@ const AppLayout: React.FC = () => {
     closePublicProfile,
     adSettings
   } = useApp();
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const seen = sessionStorage.getItem('mk_splash_shown');
+        if (seen === '1') return false;
+      }
+    } catch (e) {}
+    return true;
+  });
+
+  const handleSplashFinished = () => {
+    setShowSplash(false);
+    try {
+      sessionStorage.setItem('mk_splash_shown', '1');
+    } catch (e) {}
+  };
 
   return (
     <div className={`min-h-screen flex flex-col font-sans selection:bg-purple-600 selection:text-white overflow-x-clip w-full max-w-full pb-20 md:pb-0 transition-colors duration-200 ${
       theme === 'light' ? 'bg-slate-100 text-slate-900' : 'bg-gray-950 text-gray-100'
     }`}>
       {/* Cosmic Entrance Loading Splash Screen */}
-      {showSplash && <AppSplashScreen onFinished={() => setShowSplash(false)} />}
+      {showSplash && <AppSplashScreen onFinished={handleSplashFinished} />}
 
       <SeoManager />
       <AdScriptRunner />
@@ -556,8 +572,10 @@ const AppLayout: React.FC = () => {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppLayout />
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <AppLayout />
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

@@ -38,7 +38,12 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
 
     const timer6 = setTimeout(() => {
       if (onFinished) onFinished();
-    }, 1800);
+    }, 1400);
+
+    // Absolute fallback safety: never block UI for more than 2s
+    const fallbackTimer = setTimeout(() => {
+      if (onFinished) onFinished();
+    }, 2000);
 
     return () => {
       clearTimeout(timer1);
@@ -47,12 +52,14 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
       clearTimeout(timer4);
       clearTimeout(timer5);
       clearTimeout(timer6);
+      clearTimeout(fallbackTimer);
     };
   }, [onFinished]);
 
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#0d061a] text-white select-none transition-all duration-500 overflow-hidden ${
+      onClick={() => { if (onFinished) onFinished(); }}
+      className={`fixed inset-0 z-[9999] cursor-pointer flex flex-col items-center justify-center bg-[#0d061a] text-white select-none transition-all duration-500 overflow-hidden ${
         isFadingOut ? 'opacity-0 scale-105 pointer-events-none' : 'opacity-100 scale-100'
       }`}
     >
