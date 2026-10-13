@@ -1217,7 +1217,8 @@ export interface CoinPackage {
   coins: number;
   bonusCoins: number;
   priceUSD: number;
-  priceTRY?: number;
+  priceTRY: number;
+  priceAZN: number;
   popular?: boolean;
   bestValue?: boolean;
   lemonCheckoutUrl?: string;
@@ -1233,7 +1234,8 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 250,
     bonusCoins: 50,
     priceUSD: 1,
-    priceTRY: 35,
+    priceTRY: 50,
+    priceAZN: 1.7,
     iconEmoji: '🥉',
     badge: 'Popüler Giriş',
     lemonCheckoutUrl: 'https://www.donationalerts.com/r/rafiga'
@@ -1244,7 +1246,8 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 1000,
     bonusCoins: 250,
     priceUSD: 3,
-    priceTRY: 105,
+    priceTRY: 150,
+    priceAZN: 5.1,
     popular: true,
     iconEmoji: '🥈',
     badge: 'En Çok Tercih Edilen',
@@ -1256,7 +1259,8 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 3000,
     bonusCoins: 1000,
     priceUSD: 8,
-    priceTRY: 280,
+    priceTRY: 400,
+    priceAZN: 13.6,
     iconEmoji: '🥇',
     badge: '+%33 Extra Bonus',
     lemonCheckoutUrl: 'https://www.donationalerts.com/r/rafiga'
@@ -1267,12 +1271,11 @@ export const COIN_PACKAGES: CoinPackage[] = [
     coins: 10000,
     bonusCoins: 4000,
     priceUSD: 20,
-    priceTRY: 700,
+    priceTRY: 990,
+    priceAZN: 34,
     bestValue: true,
     iconEmoji: '👑',
     badge: 'Maksimum Tasarruf',
     lemonCheckoutUrl: 'https://www.donationalerts.com/r/rafiga'
   }
 ];
-
-

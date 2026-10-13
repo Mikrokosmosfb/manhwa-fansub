@@ -98,6 +98,8 @@ export const ShopContent: React.FC = () => {
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
+  const [selectedGuidePkg, setSelectedGuidePkg] = useState<CoinPackage | null>(null);
+  const [copiedUname, setCopiedUname] = useState(false);
   const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
     pkgName: string;
@@ -855,11 +857,11 @@ export const ShopContent: React.FC = () => {
                 <div className="pt-2 border-t border-gray-800/80 space-y-2">
                   <div className="text-center">
                     <span className="font-black text-amber-300 text-lg">${pkg.priceUSD} USD</span>
-                    {pkg.priceTRY && (
-                      <span className="text-[11px] text-gray-400 block font-semibold mt-0.5">
-                        (~{pkg.priceTRY} ₺ TL / ~{(pkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
-                      </span>
-                    )}
+                    <div className="text-[11px] text-gray-300 font-semibold mt-0.5 flex items-center justify-center gap-1.5 flex-wrap">
+                      <span className="text-amber-400 font-bold">{pkg.priceTRY} ₺ TL</span>
+                      <span className="text-gray-500">•</span>
+                      <span className="text-cyan-400 font-bold">{pkg.priceAZN} ₼ AZN</span>
+                    </div>
                   </div>
 
                   {(() => {
@@ -1405,6 +1407,144 @@ export const ShopContent: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* ÖDEME ÖNCESİ AÇIKLAMA REHBERİ MODALI */}
+      {selectedGuidePkg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/95 border-2 border-amber-400/80 rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp space-y-4">
+            <button
+              type="button"
+              onClick={() => setSelectedGuidePkg(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 hover:bg-gray-800 rounded-full border border-gray-700 transition cursor-pointer"
+              title="Kapat"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-2xl shrink-0">
+                {selectedGuidePkg.iconEmoji}
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-full">
+                  Ödeme Açıklaması & Yönlendirme
+                </span>
+                <h3 className="text-lg font-black text-white mt-0.5">
+                  {selectedGuidePkg.name}
+                </h3>
+              </div>
+            </div>
+
+            {/* Fiyatlar Kartı - Dolar, TL, Manat */}
+            <div className="bg-black/60 border border-amber-500/30 rounded-2xl p-3.5 space-y-2">
+              <span className="text-[10px] font-extrabold uppercase text-gray-400 tracking-wider block">
+                Kabul Edilen Ödeme Tutarları:
+              </span>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
+                  <span className="text-[10px] text-gray-400 block font-bold">Dolar ($)</span>
+                  <span className="text-base font-black text-amber-300">${selectedGuidePkg.priceUSD} USD</span>
+                </div>
+                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
+                  <span className="text-[10px] text-gray-400 block font-bold">Türk Lirası (₺)</span>
+                  <span className="text-base font-black text-amber-400">{selectedGuidePkg.priceTRY} ₺ TL</span>
+                </div>
+                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
+                  <span className="text-[10px] text-gray-400 block font-bold">Manat (₼)</span>
+                  <span className="text-base font-black text-cyan-400">{selectedGuidePkg.priceAZN} ₼ AZN</span>
+                </div>
+              </div>
+              <div className="text-center pt-1 text-emerald-400 text-xs font-bold flex items-center justify-center gap-1">
+                <Coins size={14} />
+                <span>Kazanılacak: +{(selectedGuidePkg.coins + selectedGuidePkg.bonusCoins).toLocaleString('tr-TR')} CP</span>
+              </div>
+            </div>
+
+            {/* Kullanıcı Adı */}
+            <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl flex items-center justify-between gap-2">
+              <div className="overflow-hidden">
+                <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız:</span>
+                <span className="text-sm font-black text-white truncate block">
+                  {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
+                  try {
+                    await navigator.clipboard.writeText(uname);
+                    setCopiedUname(true);
+                    setTimeout(() => setCopiedUname(false), 2500);
+                  } catch (e) {}
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                  copiedUname
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
+                }`}
+              >
+                {copiedUname ? (
+                  <>
+                    <Check size={14} />
+                    <span>Kopyalandı!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    <span>Kullanıcı Adını Kopyala</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Nasıl Ödenir Adımları */}
+            <div className="space-y-2 text-xs bg-gray-900/80 p-3.5 rounded-2xl border border-gray-800">
+              <div className="font-extrabold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                <Zap size={13} className="text-amber-400" /> Nasıl Ödeyeceksiniz?
+              </div>
+              <ul className="space-y-1.5 text-gray-300 text-[11px] leading-relaxed">
+                <li className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold">1.</span>
+                  <span>Aşağıdaki butona basarak DonationAlerts ödeme sayfasına gidin.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold">2.</span>
+                  <span><strong>Adınız</strong> kısmına kullanıcı adınızı yazın.</span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold">3.</span>
+                  <span>İstediğiniz para birimini seçip tutarı girin: <strong>${selectedGuidePkg.priceUSD} USD</strong> veya <strong>{selectedGuidePkg.priceTRY} ₺ TL</strong> veya <strong>{selectedGuidePkg.priceAZN} ₼ AZN</strong></span>
+                </li>
+                <li className="flex items-start gap-1.5">
+                  <span className="text-amber-400 font-bold">4.</span>
+                  <span>Banka / Kredi kartınızla ödemenizi tamamlayın.</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Butonlar */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => handleProceedToDonationAlerts(selectedGuidePkg)}
+                className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ExternalLink size={16} />
+                <span>DonationAlerts Sayfasına Git</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedGuidePkg(null)}
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-extrabold text-xs rounded-xl border border-gray-700 transition cursor-pointer"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* CELEBRATION MODAL ON PAYMENT SUCCESS */}
       {celebrationPurchase && (
