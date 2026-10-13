@@ -137,6 +137,8 @@ export const ShopContent: React.FC = () => {
           for (const key of Object.keys(parsed)) {
             if (parsed[key] && !parsed[key].includes('lemonsqueezy.com')) {
               sanitized[key] = parsed[key];
+            } else {
+              sanitized[key] = defaultUrls[key] || 'https://www.donationalerts.com/r/rafiga';
             }
           }
           return sanitized;
@@ -156,7 +158,13 @@ export const ShopContent: React.FC = () => {
       .then(data => {
         if (data?.success && data?.packageUrls && Object.keys(data.packageUrls).length > 0) {
           setPackageUrls(prev => {
-            const merged = { ...getDefaultPackageUrls(), ...prev, ...data.packageUrls };
+            const cleanServerUrls: Record<string, string> = {};
+            for (const k of Object.keys(data.packageUrls || {})) {
+              if (data.packageUrls[k] && !data.packageUrls[k].includes('lemonsqueezy.com')) {
+                cleanServerUrls[k] = data.packageUrls[k];
+              }
+            }
+            const merged = { ...getDefaultPackageUrls(), ...prev, ...cleanServerUrls };
             try {
               localStorage.setItem('ls_package_urls', JSON.stringify(merged));
             } catch (e) {}
@@ -336,14 +344,17 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim() || 'https://www.donationalerts.com/r/rafiga';
-
-    const isShopier = targetCheckoutUrl.includes('shopier.com');
-    const isKofi = targetCheckoutUrl.includes('ko-fi.com');
-    const isKreosus = targetCheckoutUrl.includes('kreosus.com');
-    const isLemon = targetCheckoutUrl.includes('lemonsqueezy.com');
-    const isDonationAlerts = targetCheckoutUrl.includes('donationalerts.com') || (!isShopier && !isKofi && !isKreosus && !isLemon);
-
+    let rawUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim() || "https://www.donationalerts.com/r/rafiga";
+    // Eski/geçersiz Lemon Squeezy linki kalmışsa kesinlikle DonationAlerts linkine zorla
+    if (rawUrl.includes("lemonsqueezy.com")) {
+      rawUrl = "https://www.donationalerts.com/r/rafiga";
+    }
+    const targetCheckoutUrl = rawUrl;
+    const isShopier = targetCheckoutUrl.includes("shopier.com");
+    const isKofi = targetCheckoutUrl.includes("ko-fi.com");
+    const isKreosus = targetCheckoutUrl.includes("kreosus.com");
+    const isLemon = false; // Lemon Squeezy reddedildiği için devre dışı bırakıldı
+    const isDonationAlerts = true;
     if (isDonationAlerts) {
       const myUsername = user.name || (user as any).displayName || (user as any).username || user.email.split('@')[0];
       try {
@@ -614,7 +625,7 @@ export const ShopContent: React.FC = () => {
           >
             <CreditCard size={15} className="stroke-[2.5]" />
             <span>Cosmo-Puan Yükle</span>
-            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-md font-bold">Lemon Squeezy</span>
+            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-md font-bold">DonationAlerts ($ USD)</span>
           </button>
 
           <button
