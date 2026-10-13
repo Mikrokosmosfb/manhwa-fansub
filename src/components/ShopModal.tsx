@@ -99,8 +99,6 @@ export const ShopContent: React.FC = () => {
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
   const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
-  const [donationGuideModalPkg, setDonationGuideModalPkg] = useState<CoinPackage | null>(null);
-  const [copiedUsername, setCopiedUsername] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
     pkgName: string;
     coinsEarned: number;
@@ -355,58 +353,17 @@ export const ShopContent: React.FC = () => {
     const isKreosus = targetCheckoutUrl.includes("kreosus.com");
     const isLemon = false; // Lemon Squeezy reddedildiği için devre dışı bırakıldı
     const isDonationAlerts = true;
-    if (isDonationAlerts) {
-      const myUsername = user.name || (user as any).displayName || (user as any).username || user.email.split('@')[0];
-      try {
-        await navigator.clipboard.writeText(myUsername);
-        setCopiedUsername(true);
-        setTimeout(() => setCopiedUsername(false), 3500);
-      } catch (e) {}
-
-      // Open DonationAlerts in new window/tab
-      window.open(targetCheckoutUrl, '_blank');
-
-      // Open interactive guidance & instant credit modal
-      setDonationGuideModalPkg(pkg);
-
-      setStatusMessage({
-        type: 'info',
-        text: `💳 DonationAlerts sayfası açıldı! Kullanıcı adınız ("${myUsername}") kopyalandı. $${pkg.priceUSD} USD tutarı ile ödemenizi tamamlayabilirsiniz.`
-      });
-      return;
-    }
-
-    if (isLemon) {
-      try {
-        setStatusMessage({
-          type: 'info',
-          text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için güvenli ödeme ekranı açılıyor...`
-        });
-
-        await openLemonSqueezyCheckout({
-          checkoutUrl: targetCheckoutUrl,
-          userEmail: user.email,
-          userId: user.uid || user.email,
-          packageId: pkg.id,
-          customData: {
-            package_name: pkg.name,
-            coins: String(totalAdded)
-          }
-        });
-      } catch (err) {
-        window.open(targetCheckoutUrl, '_blank');
-      }
-      return;
-    }
-
-    // Default: Shopier, Ko-fi, Kreosus
+    // Doğrudan ödeme sayfasını yeni sekmede aç - Araya hiçbir modal / popup koyma
     window.open(targetCheckoutUrl, '_blank');
-    const providerName = isShopier ? 'Shopier' : isKofi ? 'Ko-fi' : isKreosus ? 'Kreosus' : 'DonationAlerts';
+
+    const providerName = isShopier ? 'Shopier' : isKofi ? 'Ko-fi' : isKreosus ? 'Kreosus' : 'Ödeme';
     setStatusMessage({
       type: 'info',
-      text: `💳 "${pkg.name}" için ${providerName} sayfası açıldı. Ödemenizi tamamladıktan sonra sipariş/dekont kodunuzu aşağıdaki alana girerek puanlarınızı aktarabilirsiniz.`
+      text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için ödeme sayfası açıldı. Ödemenizi tamamladıktan sonra sipariş/dekont kodunuzu aşağıdaki alana girerek puanlarınızı aktarabilirsiniz.`
     });
+    return;
   };
+
 
   const handleVerifyOrderCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1448,140 +1405,6 @@ export const ShopContent: React.FC = () => {
           </div>
         );
       })()}
-
-      {/* INTERACTIVE DONATIONALERTS PURCHASE & VERIFY MODAL */}
-      {donationGuideModalPkg && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/95 border-2 border-amber-400 rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp space-y-4">
-            <button
-              type="button"
-              onClick={() => setDonationGuideModalPkg(null)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 hover:bg-gray-800 rounded-full border border-gray-700 transition cursor-pointer"
-              title="Kapat"
-            >
-              <X size={18} />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-2xl shrink-0">
-                {donationGuideModalPkg.iconEmoji}
-              </div>
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-full">
-                  DonationAlerts Güvenli Ödeme
-                </span>
-                <h3 className="text-lg font-black text-white mt-0.5">
-                  {donationGuideModalPkg.name}
-                </h3>
-              </div>
-            </div>
-
-            {/* Package summary info card */}
-            <div className="bg-black/50 border border-amber-500/30 rounded-2xl p-3.5 grid grid-cols-2 gap-3 text-center">
-              <div className="border-r border-gray-800 pr-2">
-                <span className="text-[10px] font-bold text-gray-400 block uppercase">Ödenecek Tutar</span>
-                <span className="text-xl font-black text-amber-300">
-                  ${donationGuideModalPkg.priceUSD} USD
-                </span>
-                <span className="text-[10px] text-gray-400 block">
-                  (~{donationGuideModalPkg.priceTRY} ₺ TL / ~{(donationGuideModalPkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
-                </span>
-              </div>
-              <div className="pl-2">
-                <span className="text-[10px] font-bold text-gray-400 block uppercase">Kazanılacak CP</span>
-                <span className="text-xl font-black text-emerald-400 flex items-center justify-center gap-1">
-                  <Coins size={18} />
-                  +{(donationGuideModalPkg.coins + donationGuideModalPkg.bonusCoins).toLocaleString('tr-TR')} CP
-                </span>
-                <span className="text-[10px] text-emerald-300/80 block">
-                  {donationGuideModalPkg.coins} + {donationGuideModalPkg.bonusCoins} Bonus
-                </span>
-              </div>
-            </div>
-
-            {/* Username Copy Pill */}
-            <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl flex items-center justify-between gap-2">
-              <div className="overflow-hidden">
-                <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız (DonationAlerts'e yapıştırın):</span>
-                <span className="text-sm font-black text-white truncate block">
-                  {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
-                  try {
-                    await navigator.clipboard.writeText(uname);
-                    setCopiedUsername(true);
-                    setTimeout(() => setCopiedUsername(false), 2500);
-                  } catch (e) {}
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
-                  copiedUsername
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
-                }`}
-              >
-                {copiedUsername ? (
-                  <>
-                    <Check size={14} />
-                    <span>Kopyalandı!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} />
-                    <span>Kopyala</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Steps & Important Currency Warning */}
-            <div className="space-y-2.5 text-xs bg-gray-900/80 p-3.5 rounded-2xl border border-amber-500/30">
-              <div className="font-extrabold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                <Zap size={13} className="text-amber-400" /> Kolay Ödeme Adımları:
-              </div>
-              <div className="bg-amber-950/60 border border-amber-500/40 p-2.5 rounded-xl text-[11px] text-amber-200 space-y-1">
-                <p className="font-black text-amber-300 flex items-center gap-1">
-                  ⚠️ Para Birimi Seçimi ($ USD):
-                </p>
-                <p className="text-gray-200 leading-relaxed">
-                  DonationAlerts sayfasında tutar kutusunun yanındaki açılır menüden para birimini <strong>$ (USD)</strong> seçin ve tutara tam olarak <strong className="text-white text-xs bg-black/40 px-1.5 py-0.5 rounded border border-amber-400">${donationGuideModalPkg.priceUSD}</strong> yazın.
-                </p>
-              </div>
-              <ol className="list-decimal list-inside space-y-1.5 text-gray-300 text-[11px] leading-relaxed">
-                <li>Açılan sayfada <strong>"Adınız"</strong> kutusuna az önce kopyalanan kullanıcı adınızı yapıştırın.</li>
-                <li>Para birimini <strong>$ (USD)</strong> yaparak tutara <strong>{donationGuideModalPkg.priceUSD}</strong> yazın.</li>
-                <li><strong>"GÖNDER"</strong> butonuna basıp kartınızla güvenle ödemenizi tamamlayın.</li>
-              </ol>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex flex-col sm:flex-row gap-2 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  const targetUrl = (packageUrls || {})[donationGuideModalPkg.id]?.trim() || 'https://www.donationalerts.com/r/rafiga';
-                  window.open(targetUrl, '_blank');
-                }}
-                className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <ExternalLink size={15} />
-                <span>DonationAlerts Sayfasını Aç (${donationGuideModalPkg.priceUSD} USD)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDonationGuideModalPkg(null)}
-                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-extrabold text-xs rounded-xl border border-gray-700 transition cursor-pointer"
-              >
-                Anladım
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* CELEBRATION MODAL ON PAYMENT SUCCESS */}
       {celebrationPurchase && (
