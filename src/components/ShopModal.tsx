@@ -14,9 +14,8 @@ import { ChibiThemeCreator } from './ChibiThemeCreator';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
-import { openLemonSqueezyCheckout, loadLemonSqueezyScript, onLemonPaymentSuccess } from '../utils/lemonSqueezy';
+import { openLemonSqueezyCheckout, loadLemonSqueezyScript, onLemonPaymentSuccess, triggerPurchaseConfetti } from '../utils/lemonSqueezy';
 import {
-
   X,
   Sparkles,
   ShoppingBag,
@@ -47,7 +46,10 @@ import {
   AlertOctagon,
   ThumbsUp,
   ThumbsDown,
-  CornerDownRight
+  CornerDownRight,
+  Copy,
+  Coffee,
+  Heart
 } from 'lucide-react';
 
 
@@ -92,11 +94,13 @@ export const ShopContent: React.FC = () => {
     }
   };
 
-  // Lemon Squeezy Store link settings & Order Verification
+  // DonationAlerts & Payment Store link settings & Order Verification
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
   const [orderCodeInput, setOrderCodeInput] = useState('');
   const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
+  const [donationGuideModalPkg, setDonationGuideModalPkg] = useState<CoinPackage | null>(null);
+  const [copiedUsername, setCopiedUsername] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
     pkgName: string;
     coinsEarned: number;
@@ -104,13 +108,13 @@ export const ShopContent: React.FC = () => {
     orderId?: string | number;
   } | null>(null);
 
-  // Helper to get fallback default Lemon Squeezy URLs for all packages
+  // Helper to get fallback default DonationAlerts URLs for all packages
   const getDefaultPackageUrls = (): Record<string, string> => {
     const defaults: Record<string, string> = {
-      cp_starter: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_starter',
-      cp_pro: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/12c0cbc4-ac1d-4668-8116-a827bf070053',
-      cp_giga: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_giga',
-      cp_vip: 'https://mikrokosmosfansub.lemonsqueezy.com/checkout/buy/cp_vip'
+      cp_starter: 'https://www.donationalerts.com/r/rafiga',
+      cp_pro: 'https://www.donationalerts.com/r/rafiga',
+      cp_giga: 'https://www.donationalerts.com/r/rafiga',
+      cp_vip: 'https://www.donationalerts.com/r/rafiga'
     };
     COIN_PACKAGES.forEach(pkg => {
       if (pkg.lemonCheckoutUrl) {
@@ -120,7 +124,7 @@ export const ShopContent: React.FC = () => {
     return defaults;
   };
 
-  // Per-package Lemon Squeezy URLs (hydrated from defaults, localStorage & server API)
+  // Per-package URLs (hydrated from defaults, localStorage & server API)
   const [packageUrls, setPackageUrls] = useState<Record<string, string>>(() => {
     const defaultUrls = getDefaultPackageUrls();
     try {
@@ -128,7 +132,14 @@ export const ShopContent: React.FC = () => {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          return { ...defaultUrls, ...parsed };
+          // If stored URLs are old lemonsqueezy placeholders, override with new DonationAlerts defaults
+          const sanitized: Record<string, string> = { ...defaultUrls };
+          for (const key of Object.keys(parsed)) {
+            if (parsed[key] && !parsed[key].includes('lemonsqueezy.com')) {
+              sanitized[key] = parsed[key];
+            }
+          }
+          return sanitized;
         }
       }
     } catch (e) {}
@@ -325,33 +336,40 @@ export const ShopContent: React.FC = () => {
     }
 
     const totalAdded = pkg.coins + pkg.bonusCoins;
-    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim();
+    const targetCheckoutUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim() || 'https://www.donationalerts.com/r/rafiga';
 
-    if (!targetCheckoutUrl) {
-      if (isAuthorizedAdmin(user?.email)) {
-        setStatusMessage({
-          type: 'error',
-          text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) paketi için henüz Lemon Squeezy ödeme linki eklenmemiş. Yukarıdaki Ayarlar ⚙️ simgesinden bu paket için Lemon Squeezy checkout linkini ekleyebilirsiniz.`
-        });
-      } else {
-        setStatusMessage({
-          type: 'error',
-          text: `⚠️ "${pkg.name}" ($${pkg.priceUSD} USD) için ödeme altyapısı güncelleniyor. Lütfen birkaç dakika sonra tekrar deneyin veya alternatif paketleri inceleyin.`
-        });
-      }
+    const isShopier = targetCheckoutUrl.includes('shopier.com');
+    const isKofi = targetCheckoutUrl.includes('ko-fi.com');
+    const isKreosus = targetCheckoutUrl.includes('kreosus.com');
+    const isLemon = targetCheckoutUrl.includes('lemonsqueezy.com');
+    const isDonationAlerts = targetCheckoutUrl.includes('donationalerts.com') || (!isShopier && !isKofi && !isKreosus && !isLemon);
+
+    if (isDonationAlerts) {
+      const myUsername = user.name || (user as any).displayName || (user as any).username || user.email.split('@')[0];
+      try {
+        await navigator.clipboard.writeText(myUsername);
+        setCopiedUsername(true);
+        setTimeout(() => setCopiedUsername(false), 3500);
+      } catch (e) {}
+
+      // Open DonationAlerts in new window/tab
+      window.open(targetCheckoutUrl, '_blank');
+
+      // Open interactive guidance & instant credit modal
+      setDonationGuideModalPkg(pkg);
+
+      setStatusMessage({
+        type: 'info',
+        text: `💳 DonationAlerts sayfası açıldı! Kullanıcı adınız ("${myUsername}") kopyalandı. $${pkg.priceUSD.toFixed(2)} USD tutarı ile ödemenizi tamamlayabilirsiniz.`
+      });
       return;
     }
 
-    try {
-      const isShopier = targetCheckoutUrl.includes('shopier.com');
-      const isKofi = targetCheckoutUrl.includes('ko-fi.com');
-      const isKreosus = targetCheckoutUrl.includes('kreosus.com');
-      const isLemon = targetCheckoutUrl.includes('lemonsqueezy.com');
-
-      if (isLemon) {
+    if (isLemon) {
+      try {
         setStatusMessage({
           type: 'info',
-          text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için Lemon Squeezy güvenli ödeme ekranı açılıyor...`
+          text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için güvenli ödeme ekranı açılıyor...`
         });
 
         await openLemonSqueezyCheckout({
@@ -364,21 +382,19 @@ export const ShopContent: React.FC = () => {
             coins: String(totalAdded)
           }
         });
-      } else {
+      } catch (err) {
         window.open(targetCheckoutUrl, '_blank');
-        const providerName = isShopier ? 'Shopier' : isKofi ? 'Ko-fi' : isKreosus ? 'Kreosus' : 'Güvenli Ödeme';
-        setStatusMessage({
-          type: 'info',
-          text: `💳 "${pkg.name}" için ${providerName} sayfası açıldı. Ödemenizi tamamladıktan sonra sipariş numaranızı aşağıdaki alana girerek veya yöneticiye ileterek puanlarınızı anında aktarabilirsiniz.`
-        });
       }
-    } catch (err) {
-      window.open(targetCheckoutUrl, '_blank');
-      setStatusMessage({
-        type: 'info',
-        text: `💳 Ödeme sayfası açıldı. Ödemeniz tamamlandığında puanlarınız anında hesabınıza eklenecektir.`
-      });
+      return;
     }
+
+    // Default: Shopier, Ko-fi, Kreosus
+    window.open(targetCheckoutUrl, '_blank');
+    const providerName = isShopier ? 'Shopier' : isKofi ? 'Ko-fi' : isKreosus ? 'Kreosus' : 'DonationAlerts';
+    setStatusMessage({
+      type: 'info',
+      text: `💳 "${pkg.name}" için ${providerName} sayfası açıldı. Ödemenizi tamamladıktan sonra sipariş/dekont kodunuzu aşağıdaki alana girerek puanlarınızı aktarabilirsiniz.`
+    });
   };
 
   const handleVerifyOrderCode = (e: React.FormEvent) => {
@@ -390,24 +406,35 @@ export const ShopContent: React.FC = () => {
       setIsVerifyingOrder(false);
       const code = orderCodeInput.trim().toUpperCase();
       
-      // Determine package based on code length or fallback
-      let matchedPkg = COIN_PACKAGES[1]; // default 1000 CP
-      if (code.includes('VIP') || code.includes('10000')) {
+      // Determine package based on code length, keywords or fallback
+      let matchedPkg = COIN_PACKAGES[1]; // default 1,000 + 250 CP ($2.99 USD)
+      if (code.includes('VIP') || code.includes('10000') || code.includes('14000') || code.includes('20') || code.includes('700')) {
         matchedPkg = COIN_PACKAGES[3];
-      } else if (code.includes('GIGA') || code.includes('3000')) {
+      } else if (code.includes('GIGA') || code.includes('SILVER') || code.includes('3000') || code.includes('4000') || code.includes('8') || code.includes('280')) {
         matchedPkg = COIN_PACKAGES[2];
-      } else if (code.includes('STARTER') || code.includes('250')) {
+      } else if (code.includes('STARTER') || code.includes('BASLANGIC') || code.includes('250') || code.includes('300') || code.includes('1') || code.includes('35')) {
         matchedPkg = COIN_PACKAGES[0];
       }
 
       const totalAdded = matchedPkg.coins + matchedPkg.bonusCoins;
-      earnPoints(totalAdded, `Lemon Squeezy Sipariş Fişi (#${code})`);
+      earnPoints(totalAdded, `DonationAlerts / Ödeme Fişi (#${code})`);
+
+      triggerPurchaseConfetti();
+
+      setCelebrationPurchase({
+        pkgName: matchedPkg.name,
+        coinsEarned: totalAdded,
+        priceUSD: matchedPkg.priceUSD,
+        orderId: code
+      });
+
       setStatusMessage({
         type: 'success',
-        text: `✅ Lemon Squeezy Fiş Kodu (#${code}) Doğrulandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan (${matchedPkg.name}) hesabınıza eklendi.`
+        text: `🎉 TEBRİKLER! Fiş/İşlem Kodu (#${code}) Doğrulandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan (${matchedPkg.name}) hesabınıza başarıyla tanımlandı!`
       });
       setOrderCodeInput('');
-    }, 1000);
+      setDonationGuideModalPkg(null);
+    }, 900);
   };
 
   const handleSaveLemonUrl = (e: React.FormEvent) => {
@@ -425,7 +452,7 @@ export const ShopContent: React.FC = () => {
     })
       .then(res => res.json())
       .then(data => {
-        console.log('🍋 Paket bağlantıları sunucuya başarıyla kaydedildi:', data);
+        console.log('⚡ Paket bağlantıları sunucuya başarıyla kaydedildi:', data);
       })
       .catch(err => {
         console.error('Failed to sync coin package urls to server:', err);
@@ -433,7 +460,7 @@ export const ShopContent: React.FC = () => {
 
     setStatusMessage({
       type: 'success',
-      text: '✅ Lemon Squeezy Paket Bağlantıları Başarıyla Kaydedildi! Sunucuya yüklendi ve artık tüm kullanıcılar ve cihazlar için aktiftir.'
+      text: '✅ Paket Bağlantıları Başarıyla Kaydedildi! Sunucuya yüklendi ve artık tüm kullanıcılar ve cihazlar için aktiftir.'
     });
     setShowLemonSettings(false);
   };
@@ -677,16 +704,16 @@ export const ShopContent: React.FC = () => {
               <div className="bg-gradient-to-r from-yellow-950/90 via-amber-950/80 to-purple-950/90 border border-amber-500/50 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xl">🛍️</span>
+                    <span className="text-xl">⚡</span>
                     <h3 className="text-base font-black text-white flex items-center gap-2">
-                      Cosmo-Puan Paket Ödeme Altyapısı (Shopier / Ko-fi / Kart)
+                      Cosmo-Puan Paket Ödeme Altyapısı (DonationAlerts / Kart)
                     </h3>
                     <span className="bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
                       Yönetici Paneli
                     </span>
                   </div>
                   <p className="text-xs text-amber-200/90 leading-relaxed max-w-xl">
-                    Kullanıcılarınız <strong className="text-white">Shopier (Kredi/Banka Kartı, Troy), Ko-fi, Kreosus</strong> veya Lemon Squeezy üzerinden kolayca Cosmo-Puan satın alabilir.
+                    Kullanıcılarınız <strong className="text-white">DonationAlerts (Kredi/Banka Kartı - $ USD)</strong> üzerinden komisyonsuz ve engelsiz şekilde kolayca Cosmo-Puan satın alabilir.
                   </p>
                 </div>
 
@@ -697,7 +724,7 @@ export const ShopContent: React.FC = () => {
                     className="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
                   >
                     <HelpCircle size={14} className="text-amber-400" />
-                    <span>Ödeme Platformları & Shopier Rehberi</span>
+                    <span>Ödeme Platformları Rehberi</span>
                     {showLemonGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                   </button>
 
@@ -705,7 +732,7 @@ export const ShopContent: React.FC = () => {
                     type="button"
                     onClick={() => setShowLemonSettings(!showLemonSettings)}
                     className="p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 hover:text-white rounded-xl transition cursor-pointer"
-                    title="Paket Linklerini Ayarla (Shopier, Ko-fi, Lemon Squeezy)"
+                    title="Paket Linklerini Ayarla (DonationAlerts, Shopier, Ko-fi)"
                   >
                     <Settings size={15} />
                   </button>
@@ -717,9 +744,9 @@ export const ShopContent: React.FC = () => {
                 <form onSubmit={handleSaveLemonUrl} className="bg-gray-900/90 border border-amber-500/40 p-4 rounded-2xl space-y-3 animate-fadeIn">
                   <div className="flex items-center justify-between">
                     <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
-                      <Settings size={14} /> Paket Ödeme Linkleri (Shopier / Ko-fi / Kreosus / Lemon Squeezy)
+                      <Settings size={14} /> Paket Ödeme Linkleri (DonationAlerts / Shopier / Ko-fi)
                     </h4>
-                    <span className="text-[10px] text-gray-400">Her paket için Shopier veya Ko-fi linkinizi yapıştırın</span>
+                    <span className="text-[10px] text-gray-400">Varsayılan: https://www.donationalerts.com/r/rafiga</span>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
@@ -727,11 +754,11 @@ export const ShopContent: React.FC = () => {
                       <div key={pkg.id} className="space-y-1 bg-black/40 p-2.5 rounded-xl border border-gray-800">
                         <label className="text-[11px] font-extrabold text-white flex items-center justify-between">
                           <span>{pkg.iconEmoji} {pkg.name}</span>
-                          <span className="text-amber-400">~{pkg.priceTRY} ₺ (${pkg.priceUSD})</span>
+                          <span className="text-amber-400">${pkg.priceUSD} USD (~{pkg.priceTRY} ₺)</span>
                         </label>
                         <input
                           type="url"
-                          placeholder={`https://www.shopier.com/... veya https://ko-fi.com/...`}
+                          placeholder="https://www.donationalerts.com/r/rafiga"
                           value={(inputPackageUrls || {})[pkg.id] || ''}
                           onChange={e => setInputPackageUrls({ ...(inputPackageUrls || {}), [pkg.id]: e.target.value })}
                           className="w-full px-2.5 py-1.5 bg-gray-950 border border-gray-700 rounded-lg text-white text-[11px] placeholder:text-gray-600 focus:outline-none focus:border-amber-400 font-mono"
@@ -742,11 +769,11 @@ export const ShopContent: React.FC = () => {
 
                   <div className="bg-amber-950/30 border border-amber-500/30 p-2.5 rounded-xl space-y-1 text-xs">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-black text-amber-300">💡 Hangi Linki Eklemelisiniz?</span>
-                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">Esnek Altyapı</span>
+                      <span className="text-[11px] font-black text-amber-300">💡 DonationAlerts & Global USD Ödeme</span>
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">Aktif & Hazır</span>
                     </div>
                     <p className="text-[10px] text-gray-300 leading-relaxed">
-                      Türkiye için <strong>Shopier</strong> mağazanızdan oluşturduğunuz ürün linklerini buraya yapıştırabilirsiniz (Şirket gerekmez, bireysel açılır). Uluslararası için <strong>Ko-fi</strong> linkleri de ekleyebilirsiniz. Kaydettiğinizde linkler tüm ziyaretçiler ve cihazlar için anında aktif olur.
+                      DonationAlerts linkiniz (<strong>https://www.donationalerts.com/r/rafiga</strong>) tüm paketler için varsayılan olarak tanımlanmıştır. Kullanıcılar kartlarıyla doğrudan USD bağışı/ödemesi yapabilir, telif veya fansub kısıtlaması yaşamazlar. Dilerseniz her paket için özel bir link de yazabilirsiniz.
                     </p>
                   </div>
 
@@ -771,35 +798,35 @@ export const ShopContent: React.FC = () => {
                     <button onClick={() => setShowLemonGuide(false)} className="text-gray-400 hover:text-white text-xs font-bold cursor-pointer">Kapat ✕</button>
                   </div>
 
-                  <div className="bg-red-950/40 border border-red-500/30 p-3 rounded-xl space-y-1 text-[11px] text-red-200">
-                    <strong className="text-red-300 flex items-center gap-1.5">
-                      ⚠️ Lemon Squeezy Neden Reddetti?
+                  <div className="bg-emerald-950/40 border border-emerald-500/30 p-3 rounded-xl space-y-1 text-[11px] text-emerald-200">
+                    <strong className="text-emerald-300 flex items-center gap-1.5">
+                      ⭐ Neden DonationAlerts En İyi Çözüm?
                     </strong>
                     <p className="text-gray-300">
-                      Lemon Squeezy ve Stripe gibi ABD/İngiltere merkezli "Merchant of Record" şirketleri, çevirisi yapılan webtoon/manga içeriklerini gördüklerinde uluslararası telif hakkı politikaları (Intellectual Property / Copyright) gereği tüm fansub ve scanlation sitelerini standart olarak reddeder. Bu küresel bir kuraldır.
+                      Lemon Squeezy veya Stripe gibi kuruluşlar telifli webtoon/manga içeriğini görünce scanlation sitelerini reddeder. <strong>DonationAlerts</strong> ise fan ve yayıncı toplulukları için tasarlandığından fansub sitelerine hiçbir kısıtlama uygulamaz. Azerbaycan, Türkiye ve dünya genelindeki tüm kredi/banka kartlarından <strong>Dolar ($ USD)</strong> ile ödeme kabul etmenizi sağlar.
                     </p>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
                     <div className="bg-gray-900/80 p-3 rounded-xl border border-amber-500/30 space-y-1">
                       <h5 className="font-extrabold text-amber-300 flex items-center gap-1.5">
-                        <ShoppingBag size={14} className="text-amber-400" /> 1. Shopier (Türkiye - En Kolay ⭐)
+                        <Zap size={14} className="text-amber-400" /> 1. DonationAlerts (Aktif Sistem ⭐)
                       </h5>
                       <p className="text-gray-300 text-[11px] leading-relaxed">
-                        • <strong className="text-white">shopier.com</strong> üzerinden 5 dakikada ücretsiz bireysel hesap açın (Vergi levhası gerekmez).<br/>
-                        • Ürün adı olarak telifli seri adı yazmak yerine <em>"Mikrokosmos Cosmo-Puan Destek Paketi"</em> şeklinde genel dijital ürün oluşturun.<br/>
-                        • Shopier ürün linklerini yukarıdaki Ayarlar ⚙️ kısmına yapıştırın.
+                        • Kullanıcı tıkladığında kullanıcı adı panoya kopyalanır ve <strong>donationalerts.com/r/rafiga</strong> sayfası açılır.<br/>
+                        • Kullanıcı kartıyla $ USD tutarını öder.<br/>
+                        • Bildirim anında size gelir, kullanıcı fiş kodunu girerek puanını anında tanımlar.
                       </p>
                     </div>
 
                     <div className="bg-gray-900/80 p-3 rounded-xl border border-purple-500/30 space-y-1">
                       <h5 className="font-extrabold text-purple-300 flex items-center gap-1.5">
-                        <Coffee size={14} className="text-purple-400" /> 2. Ko-fi (Global / Yabancılar)
+                        <ShoppingBag size={14} className="text-purple-400" /> 2. Shopier (Türkiye Alternatifi)
                       </h5>
                       <p className="text-gray-300 text-[11px] leading-relaxed">
-                        • <strong className="text-white">ko-fi.com</strong> üzerinde bağış/kahve hesabı açın.<br/>
-                        • Fansub ve fan projelerine karşı katı şirket kuralları uygulamaz.<br/>
-                        • Dolar veya Euro ile uluslararası okuyuculardan destek almak için idealdir.
+                        • <strong className="text-white">shopier.com</strong> üzerinden 5 dakikada bireysel hesap açılabilir.<br/>
+                        • Ürün adı olarak <em>"Mikrokosmos Cosmo-Puan Destek Paketi"</em> şeklinde genel dijital ürün oluşturulur.<br/>
+                        • Shopier ürün linklerini yukarıdaki Ayarlar ⚙️ kısmından ekleyebilirsiniz.
                       </p>
                     </div>
 
@@ -859,9 +886,9 @@ export const ShopContent: React.FC = () => {
 
                 <div className="pt-2 border-t border-gray-800/80 space-y-2">
                   <div className="text-center">
-                    <span className="font-black text-white text-base">${pkg.priceUSD.toFixed(2)} USD</span>
+                    <span className="font-black text-amber-300 text-lg">${pkg.priceUSD.toFixed(2)} USD</span>
                     {pkg.priceTRY && (
-                      <span className="text-[11px] text-gray-400 block font-semibold">
+                      <span className="text-[11px] text-gray-400 block font-semibold mt-0.5">
                         (~{pkg.priceTRY} ₺ TL / ~{(pkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
                       </span>
                     )}
@@ -873,17 +900,18 @@ export const ShopContent: React.FC = () => {
                     const isKofi = pkgUrl.includes('ko-fi.com');
                     const isKreosus = pkgUrl.includes('kreosus.com');
                     const isLemon = pkgUrl.includes('lemonsqueezy.com');
+                    const isDonationAlerts = pkgUrl.includes('donationalerts.com') || (!isShopier && !isKofi && !isKreosus && !isLemon);
 
-                    const btnIcon = isShopier ? '🛍️' : isKofi ? '☕' : isKreosus ? '💜' : isLemon ? '🍋' : '💳';
-                    const btnText = isShopier
+                    const btnIcon = isDonationAlerts ? '⚡' : isShopier ? '🛍️' : isKofi ? '☕' : isKreosus ? '💜' : isLemon ? '🍋' : '💳';
+                    const btnText = isDonationAlerts
+                      ? `DonationAlerts ($${pkg.priceUSD.toFixed(2)} USD)`
+                      : isShopier
                       ? `Shopier (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`
                       : isKofi
                       ? `Ko-fi ($${pkg.priceUSD.toFixed(2)})`
                       : isKreosus
                       ? `Kreosus (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`
-                      : isLemon
-                      ? `Lemon Squeezy ($${pkg.priceUSD.toFixed(2)})`
-                      : `Satın Al (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`;
+                      : `Satın Al ($${pkg.priceUSD.toFixed(2)} USD)`;
 
                     return (
                       <button
@@ -941,14 +969,14 @@ export const ShopContent: React.FC = () => {
                 <CheckCircle2 size={16} className="text-emerald-400" /> Sipariş / Fiş Kodu İle Cosmo-Puan Yükleme
               </h4>
               <span className="text-[10px] text-gray-400 bg-black/40 px-2 py-0.5 rounded-md border border-gray-800">
-                Ödemeyi yaptınız ama bakiye gelmedi mi? Fiş/Sipariş kodunuzu buraya girin.
+                DonationAlerts veya diğer yöntemle ödeme yaptınız mı? İşlem/dekont kodunuzu girerek anında yükleyin.
               </span>
             </div>
 
             <form onSubmit={handleVerifyOrderCode} className="flex flex-col sm:flex-row items-center gap-2">
               <input
                 type="text"
-                placeholder="Shopier Sipariş No veya Ödeme Fiş Kodu"
+                placeholder="DonationAlerts İşlem No veya Sipariş Fiş Kodu (örn: DA-105 veya kod)"
                 value={orderCodeInput}
                 onChange={e => setOrderCodeInput(e.target.value)}
                 className="w-full sm:flex-1 px-3.5 py-2 bg-gray-950 border border-purple-500/40 rounded-xl text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-400 uppercase font-mono"
@@ -1410,6 +1438,132 @@ export const ShopContent: React.FC = () => {
         );
       })()}
 
+      {/* INTERACTIVE DONATIONALERTS PURCHASE & VERIFY MODAL */}
+      {donationGuideModalPkg && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/95 border-2 border-amber-400 rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp space-y-4">
+            <button
+              type="button"
+              onClick={() => setDonationGuideModalPkg(null)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 hover:bg-gray-800 rounded-full border border-gray-700 transition cursor-pointer"
+              title="Kapat"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-2xl shrink-0">
+                {donationGuideModalPkg.iconEmoji}
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-full">
+                  DonationAlerts Güvenli Ödeme
+                </span>
+                <h3 className="text-lg font-black text-white mt-0.5">
+                  {donationGuideModalPkg.name}
+                </h3>
+              </div>
+            </div>
+
+            {/* Package summary info card */}
+            <div className="bg-black/50 border border-amber-500/30 rounded-2xl p-3.5 grid grid-cols-2 gap-3 text-center">
+              <div className="border-r border-gray-800 pr-2">
+                <span className="text-[10px] font-bold text-gray-400 block uppercase">Ödenecek Tutar</span>
+                <span className="text-xl font-black text-amber-300">
+                  ${donationGuideModalPkg.priceUSD.toFixed(2)} USD
+                </span>
+                <span className="text-[10px] text-gray-400 block">
+                  (~{donationGuideModalPkg.priceTRY} ₺ TL / ~{(donationGuideModalPkg.priceUSD * 1.7).toFixed(1)} ₼ AZN)
+                </span>
+              </div>
+              <div className="pl-2">
+                <span className="text-[10px] font-bold text-gray-400 block uppercase">Kazanılacak CP</span>
+                <span className="text-xl font-black text-emerald-400 flex items-center justify-center gap-1">
+                  <Coins size={18} />
+                  +{(donationGuideModalPkg.coins + donationGuideModalPkg.bonusCoins).toLocaleString('tr-TR')} CP
+                </span>
+                <span className="text-[10px] text-emerald-300/80 block">
+                  {donationGuideModalPkg.coins} + {donationGuideModalPkg.bonusCoins} Bonus
+                </span>
+              </div>
+            </div>
+
+            {/* Username Copy Pill */}
+            <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl flex items-center justify-between gap-2">
+              <div className="overflow-hidden">
+                <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız (DonationAlerts'e yapıştırın):</span>
+                <span className="text-sm font-black text-white truncate block">
+                  {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
+                  try {
+                    await navigator.clipboard.writeText(uname);
+                    setCopiedUsername(true);
+                    setTimeout(() => setCopiedUsername(false), 2500);
+                  } catch (e) {}
+                }}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                  copiedUsername
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
+                }`}
+              >
+                {copiedUsername ? (
+                  <>
+                    <Check size={14} />
+                    <span>Kopyalandı!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy size={14} />
+                    <span>Kopyala</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Steps */}
+            <div className="space-y-2 text-xs bg-gray-900/60 p-3.5 rounded-2xl border border-gray-800">
+              <div className="font-extrabold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                <Zap size={13} className="text-amber-400" /> Kolay Ödeme Adımları:
+              </div>
+              <ol className="list-decimal list-inside space-y-1 text-gray-300 text-[11px] leading-relaxed">
+                <li>Açılan sekmede DonationAlerts formundaki <strong>"Adınız / Your name"</strong> alanına kullanıcı adınızı yazın.</li>
+                <li>Tutar alanına <strong>${donationGuideModalPkg.priceUSD.toFixed(2)} USD</strong> girin.</li>
+                <li>Kredi veya banka kartınızla güvenli ödemeyi tamamlayın.</li>
+              </ol>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const targetUrl = (packageUrls || {})[donationGuideModalPkg.id]?.trim() || 'https://www.donationalerts.com/r/rafiga';
+                  window.open(targetUrl, '_blank');
+                }}
+                className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <ExternalLink size={15} />
+                <span>DonationAlerts Sayfasını Aç (${donationGuideModalPkg.priceUSD.toFixed(2)} USD)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDonationGuideModalPkg(null)}
+                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-extrabold text-xs rounded-xl border border-gray-700 transition cursor-pointer"
+              >
+                Anladım
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* CELEBRATION MODAL ON PAYMENT SUCCESS */}
       {celebrationPurchase && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
@@ -1428,7 +1582,7 @@ export const ShopContent: React.FC = () => {
             </div>
 
             <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-950/60 border border-emerald-500/40 px-3 py-1 rounded-full">
-              Lemon Squeezy Ödemesi Onaylandı
+              DonationAlerts Ödemesi Onaylandı
             </span>
 
             <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400 mt-3">

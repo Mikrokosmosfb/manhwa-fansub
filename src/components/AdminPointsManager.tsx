@@ -66,10 +66,11 @@ export const AdminPointsManager: React.FC = () => {
   }, [pointGrantLogs]);
 
   // Quick preset amount values
-  const presetAmounts = [50, 100, 250, 500, 1000, 5000, 10000, 999999];
+  const presetAmounts = [50, 100, 250, 300, 500, 1000, 1250, 3000, 4000, 10000, 14000, 999999];
 
   // Quick preset notes
   const presetNotes = [
+    '💳 DonationAlerts Paket Yüklemesi ($ USD)',
     '🎁 Etkinlik / Yarışma Ödülü',
     '✨ Sadakat & Destekçi Teşekkür Hediyesi',
     '💬 Değerli Yorum & Katkı Bonusu',
