@@ -500,8 +500,18 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
       localStorage.setItem(`mk_bio_${user.uid}`, bioQuote.trim());
     } catch {}
 
-    const finalAvatar = customAvatarUrl.trim() || avatar || user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(name.trim())}`;
-    const res = await updateUserProfile(name.trim(), finalAvatar, bioQuote.trim());
+    const trimmedName = name.trim();
+    if (trimmedName.toLowerCase() !== (user?.name || '').trim().toLowerCase()) {
+      const availCheck = await checkUsernameAvailability(trimmedName, user?.uid);
+      if (!availCheck.available) {
+        setIsUpdating(false);
+        setStatusMessage({ type: 'error', text: availCheck.message || `"${trimmedName}" kullanıcı adı başka bir üye tarafından kullanılıyor.` });
+        return;
+      }
+    }
+
+    const finalAvatar = customAvatarUrl.trim() || avatar || user?.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(trimmedName)}`;
+    const res = await updateUserProfile(trimmedName, finalAvatar, bioQuote.trim());
     setIsUpdating(false);
 
     if (res.success) {

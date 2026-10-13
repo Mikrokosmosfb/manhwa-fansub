@@ -2977,6 +2977,50 @@ ${seriesXml}
             return new Response(JSON.stringify({ success: true, message: 'Şifreniz başarıyla güncellendi.' }), { headers });
           }
 
+          // CHECK USERNAME AVAILABILITY
+          if (path.startsWith('/api/auth/check-username') && request.method === 'POST') {
+            const body = await request.json() as any;
+            const { name, excludeUid } = body;
+            if (!name || typeof name !== 'string') {
+              return new Response(JSON.stringify({ available: false, message: 'Geçersiz kullanıcı adı.' }), { headers });
+            }
+            const cleanName = name.trim();
+            if (cleanName.length < 3) {
+              return new Response(JSON.stringify({ available: false, message: 'Kullanıcı adı en az 3 karakter olmalıdır.' }), { headers });
+            }
+            if (cleanName.length > 25) {
+              return new Response(JSON.stringify({ available: false, message: 'Kullanıcı adı en fazla 25 karakter olabilir.' }), { headers });
+            }
+
+            // Reserved admin names
+            const lowerName = cleanName.toLowerCase();
+            if (['admin', 'administrator', 'mikrokosmos', 'mikrokosmosfansub', 'moderator', 'mod', 'kurucu'].includes(lowerName)) {
+              return new Response(JSON.stringify({ available: false, message: 'Bu kullanıcı adı sistem tarafından ayrılmıştır.' }), { headers });
+            }
+
+            if (userDb) {
+              try {
+                let query = "SELECT uid FROM users WHERE LOWER(name) = LOWER(?)";
+                const params: any[] = [cleanName];
+                if (excludeUid) {
+                  query += " AND uid != ?";
+                  params.push(excludeUid);
+                }
+                const { results } = await userDb.prepare(query).bind(...params).all();
+                if (results && results.length > 0) {
+                  return new Response(JSON.stringify({
+                    available: false,
+                    message: `"${cleanName}" kullanıcı adı başka bir üye tarafından kullanılıyor.`
+                  }), { headers });
+                }
+              } catch (e: any) {
+                console.error('Error in check-username:', e);
+              }
+            }
+
+            return new Response(JSON.stringify({ available: true, message: 'Kullanıcı adı kullanılabilir.' }), { headers });
+          }
+
           // UPDATE USER PROFILE
           if (path.startsWith('/api/auth/update-profile') && request.method === 'POST') {
             const body = await request.json() as any;

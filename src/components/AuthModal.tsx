@@ -167,7 +167,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
       return;
     }
 
+    // Benzersiz kullanıcı adı kontrolü (Tekrarlanamaz kullanıcı adı sistemi)
     setIsLoading(true);
+    const userCheck = await checkUsernameAvailability(nameTrimmed);
+    if (!userCheck.available) {
+      setIsLoading(false);
+      setErrorMessage(userCheck.message || `"${nameTrimmed}" kullanıcı adı başka bir üye tarafından kullanılıyor. Lütfen farklı bir isim seçin.`);
+      return;
+    }
     try {
       // Send OTP to email
       const otpRes = await sendOtp(emailTrimmed, 'register', nameTrimmed, registerPassword);

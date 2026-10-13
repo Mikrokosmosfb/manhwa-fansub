@@ -272,6 +272,7 @@ interface AppContextType {
   registerWithEmail: (name: string, email: string, pass: string, code?: string) => Promise<{ success: boolean; message?: string }>;
   loginWithGoogle: (googleEmail: string) => Promise<{ success: boolean; message?: string }>;
   registerWithGoogle: (googleEmail: string, name?: string) => Promise<{ success: boolean; message?: string }>;
+  checkUsernameAvailability: (name: string, excludeUid?: string) => Promise<{ available: boolean; message?: string }>;
   updateUserProfile: (newName: string, newAvatar: string, newBio?: string) => Promise<{ success: boolean; message?: string }>;
   deleteAccount: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
@@ -3883,6 +3884,37 @@ const deleteShopItemAndStyle = (itemId: string) => {
     return { success: true, message: `Google ile üyeliğiniz başarıyla oluşturuldu!` };
   };
 
+  const checkUsernameAvailability = async (name: string, excludeUid?: string): Promise<{ available: boolean; message?: string }> => {
+    const cleanName = name.trim().toLowerCase();
+    if (cleanName.length < 3) {
+      return { available: false, message: 'Kullanıcı adı en az 3 karakter olmalıdır.' };
+    }
+    if (cleanName.length > 25) {
+      return { available: false, message: 'Kullanıcı adı en fazla 25 karakter olabilir.' };
+    }
+
+    // Check locally in knownUsers first
+    const takenInLocal = knownUsers.some(u => 
+      u.name.toLowerCase() === cleanName && (!excludeUid || u.uid !== excludeUid)
+    );
+    if (takenInLocal) {
+      return { available: false, message: `"${name.trim()}" kullanıcı adı başka bir üye tarafından kullanılıyor.` };
+    }
+
+    try {
+      const data = await safeFetchJson<any>('/api/auth/check-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim(), excludeUid })
+      });
+      if (data && typeof data.available === 'boolean') {
+        return { available: data.available, message: data.message };
+      }
+    } catch (e) {}
+
+    return { available: true, message: 'Kullanıcı adı kullanılabilir.' };
+  };
+
   const updateUserProfile = async (newName: string, newAvatar: string, newBio?: string): Promise<{ success: boolean; message?: string }> => {
     if (!user) return { success: false, message: 'Giriş yapılmamış.' };
     try {
@@ -4068,6 +4100,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
         registerWithEmail,
         loginWithGoogle,
         registerWithGoogle,
+        checkUsernameAvailability,
         updateUserProfile,
         deleteAccount,
         logout,
