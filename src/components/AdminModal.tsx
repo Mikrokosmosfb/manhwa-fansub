@@ -1428,7 +1428,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       return;
     }
 
-    const num = parseInt(chapterNumber, 10) || targetSeries.chapters.length + 1;
+    const num = parseFloat(chapterNumber) || (targetSeries.chapters.length > 0 ? Math.max(...targetSeries.chapters.map(c => c.number)) + 1 : 1);
     const cTitle = chapterTitle.trim() || `Bölüm ${num}`;
 
     const extractedImages = extractImageUrls(chapterImages);
