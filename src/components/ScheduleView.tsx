@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { SeriesType, isSeries18Plus } from '../types';
 import { Calendar, Clock, ChevronRight, Star, Filter, Megaphone } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { doesSeriesReleaseOnDay } from '../utils/chapterUtils';
+import { doesSeriesReleaseOnDay, isMonthlyDateSeries } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 const DAYS_OF_WEEK = [
@@ -26,6 +26,13 @@ export const ScheduleView: React.FC = () => {
 
   const [selectedDay, setSelectedDay] = useState<string>(todayName);
   const [filterType, setFilterType] = useState<string>('Hepsi');
+
+  // Compute monthly date-based series (e.g. 9, 19, 29)
+  const monthlyDateSeries = visibleSeriesList.filter(s => isMonthlyDateSeries(s.releaseDay)).filter(s => {
+    if (filterType === 'Hepsi') return true;
+    return s.type === filterType;
+  });
+
 
   // Compute dynamic series for each day (supporting both weekday names and calendar dates like 9, 19, 29)
   const getSeriesForDay = (dayName: string) => {

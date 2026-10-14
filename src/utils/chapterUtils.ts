@@ -660,36 +660,22 @@ export function parseChapterNumber(title: string, fallbackNum: number = 1): numb
  * Checks if a series releases on a given weekday name (e.g. 'Pazartesi'),
  * supporting both regular weekdays ('Pazartesi', etc.) and calendar date patterns (e.g. '9, 19, 29').
  */
+
+/**
+ * Checks if releaseDay represents monthly/specific calendar dates (e.g. '9, 19, 29')
+ * rather than a regular weekday name.
+ */
+export function isMonthlyDateSeries(releaseDay?: string): boolean {
+  if (!releaseDay) return false;
+  return /\d/.test(releaseDay);
+}
+
+/**
+ * Checks if a series releases on a given weekday name (e.g. 'Pazartesi'),
+ * excluding monthly date-based series from weekly tabs.
+ */
 export function doesSeriesReleaseOnDay(series: { releaseDay?: string }, targetDayName: string): boolean {
   if (!series.releaseDay) return false;
-  const rd = series.releaseDay.trim();
-
-  // 1. Exact match with weekday name (case-insensitive)
-  if (rd.toLowerCase() === targetDayName.toLowerCase()) {
-    return true;
-  }
-
-  // 2. Check if releaseDay contains numbers (e.g., "9, 19, 29" or "Ayın 9, 19, 29'u")
-  const numMatches = rd.match(/\d+/g);
-  if (numMatches && numMatches.length > 0) {
-    const dates = numMatches.map(n => parseInt(n, 10)).filter(n => n >= 1 && n <= 31);
-    if (dates.length > 0) {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = now.getMonth(); // 0-indexed
-      const turkishDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-
-      for (const d of dates) {
-        const testDate = new Date(year, month, d);
-        if (testDate.getDate() === d) {
-          const weekdayName = turkishDays[testDate.getDay()];
-          if (weekdayName.toLowerCase() === targetDayName.toLowerCase()) {
-            return true;
-          }
-        }
-      }
-    }
-  }
-
-  return false;
+  if (isMonthlyDateSeries(series.releaseDay)) return false;
+  return series.releaseDay.trim().toLowerCase() === targetDayName.toLowerCase();
 }
