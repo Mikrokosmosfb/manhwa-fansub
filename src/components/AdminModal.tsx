@@ -3,7 +3,7 @@ import React
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata } from '../utils/chapterUtils';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata, parseChapterNumber } from '../utils/chapterUtils';
 import { MangaAlertStack } from './MangaAlertBox';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
@@ -666,8 +666,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             const itemDate = (item.published?.$t || item.published || new Date().toISOString()).slice(0, 10);
             const imgs = extractImageUrls(itemContent);
             const tags = (item.category || []).map((c: any) => c.term || c.label || '').filter(Boolean);
-            const numMatch = itemTitle.match(/(?:bölüm|chapter|ch\.?|#)\s*(\d+)/i) || itemTitle.match(/(\d+)\.?\s*bölüm/i) || itemTitle.match(/\b(\d+)\b/);
-            const chapterNum = numMatch ? parseInt(numMatch[1], 10) : idx + 1;
+            const chapterNum = parseChapterNumber(itemTitle, idx + 1);
 
             parsedPosts.push({
               id: `blogger-json-${Date.now()}-${idx}`,
@@ -715,8 +714,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             .map(c => c.getAttribute('term') || c.getAttribute('label') || c.textContent || '')
             .filter(t => t && !t.includes('schemas.google.com') && !t.includes('kind#post'));
 
-          const numMatch = rawTitle.match(/(?:bölüm|chapter|ch\.?|#)\s*(\d+)/i) || rawTitle.match(/(\d+)\.?\s*bölüm/i) || rawTitle.match(/\b(\d+)\b/);
-          const chapterNum = numMatch ? parseInt(numMatch[1], 10) : idx + 1;
+          const chapterNum = parseChapterNumber(rawTitle, idx + 1);
 
           parsedPosts.push({
             id: `blogger-xml-${Date.now()}-${idx}`,
@@ -2170,7 +2168,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
               <label className="block text-purple-300 font-bold mb-1">Bölüm Numarası</label>
               <input
                 type="number"
-                placeholder="Örn: 1"
+                step="0.1"
+                placeholder="Örn: 30.1"
                 value={chapterNumber}
                 onChange={e => setChapterNumber(e.target.value)}
                 className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-3 focus:outline-none"

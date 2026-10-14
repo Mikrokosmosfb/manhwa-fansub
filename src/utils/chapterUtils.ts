@@ -621,3 +621,36 @@ export function extractBloggerSeriesMetadata(rawHtml?: string | null): BloggerSe
   result.cleanedHtml = cleaned;
   return result;
 }
+
+
+/**
+ * Robustly parses chapter numbers from titles, supporting decimals (e.g. 30.1)
+ * and avoiding confusion with season numbers like "2.Sezon Bölüm 31".
+ */
+export function parseChapterNumber(title: string, fallbackNum: number = 1): number {
+  if (!title) return fallbackNum;
+  const t = title.toLowerCase();
+
+  // 1. Look for explicit "bölüm", "chapter", "ch", "#" followed by a number with optional decimal
+  const explicitMatch = t.match(/(?:bölüm|chapter|ch\.?|#)\s*(\d+(?:\.\d+)?)/i);
+  if (explicitMatch && explicitMatch[1]) {
+    const val = parseFloat(explicitMatch[1]);
+    if (!isNaN(val)) return val;
+  }
+
+  // 2. Look for "X.bölüm" or similar
+  const dotBölümMatch = t.match(/(\d+(?:\.\d+)?)\.?\s*bölüm/i);
+  if (dotBölümMatch && dotBölümMatch[1]) {
+    const val = parseFloat(dotBölümMatch[1]);
+    if (!isNaN(val)) return val;
+  }
+
+  // 3. Find all numbers in the string (prioritize last number if season prefix exists)
+  const allNums = t.match(/\d+(?:\.\d+)?/g);
+  if (allNums && allNums.length > 0) {
+    const lastNum = parseFloat(allNums[allNums.length - 1]);
+    if (!isNaN(lastNum)) return lastNum;
+  }
+
+  return fallbackNum;
+}
