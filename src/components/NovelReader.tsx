@@ -1388,8 +1388,9 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             </span>
             <span className="font-mono">{wordCount.toLocaleString()} Kelime</span>
           </div>
-
-
+          <div className="mt-3">
+            <MangaAlertStack alerts={getChapterAlerts(currentChapter, series.notice, false, series.synopsis, series.title)} />
+          </div>
         </div>
 
         {/* Chapter / Translator Profile Card (Blogger <div class="profile"> & Automatic Novel Credits) */}
