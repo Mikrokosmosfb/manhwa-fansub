@@ -3283,12 +3283,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                                     </span>
                                   )}
                                   <span className="font-bold text-gray-200 truncate">{ch.title}</span>
-                                  {ch.notice && !/^blogger etiketleri\s*:/i.test(ch.notice.trim()) && (
-                                    <span className="text-[10px] bg-amber-950 text-amber-300 px-1.5 py-0.5 rounded truncate flex items-center gap-1">
-                                      <MessageSquare size={10} />
-                                      <span>{ch.notice}</span>
-                                    </span>
-                                  )}
+
                                 </div>
 
                                 <div className="flex items-center gap-1.5 flex-shrink-0">
