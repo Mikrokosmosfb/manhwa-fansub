@@ -508,6 +508,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : defaultFolders;
   });
 
+  // Clean up ghost bookmarks for deleted series that no longer exist in seriesList
+  useEffect(() => {
+    if (!seriesList || seriesList.length === 0) return;
+    const bookmarkKeys = Object.keys(bookmarks);
+    if (bookmarkKeys.length === 0) return;
+
+    let hasOrphans = false;
+    const cleanedBookmarks = { ...bookmarks };
+
+    bookmarkKeys.forEach(key => {
+      const bItem = bookmarks[key];
+      const targetId = bItem?.seriesId || key;
+      const cleanTarget = String(targetId).trim().toLowerCase();
+      const exists = seriesList.some(s => {
+        return (
+          String(s.id).trim().toLowerCase() === cleanTarget ||
+          String(s.slug || '').trim().toLowerCase() === cleanTarget ||
+          String(s.title || '').trim().toLowerCase() === cleanTarget
+        );
+      });
+      if (!exists) {
+        delete cleanedBookmarks[key];
+        hasOrphans = true;
+      }
+    });
+
+    if (hasOrphans) {
+      setBookmarks(cleanedBookmarks);
+      try {
+        localStorage.setItem('mk_bookmarks_v2', JSON.stringify(cleanedBookmarks));
+      } catch (e) {}
+    }
+  }, [seriesList]);
+
   // Bookmarks Map (seriesId -> BookmarkItem)
   const [readingLists, setReadingListsState] = useState<import('../types').ReadingList[]>(() => {
     const saved = localStorage.getItem('mk_reading_lists');

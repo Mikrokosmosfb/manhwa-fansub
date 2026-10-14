@@ -111,15 +111,26 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
     );
   }
 
-  // Library statistics
-  const bookmarkItems = Object.values(bookmarks) as BookmarkItem[];
-  const totalBookmarked = Object.keys(bookmarks).length;
+  // Only consider bookmarks for series that currently exist in seriesList
+  const validBookmarkItems = (Object.entries(bookmarks) as [string, BookmarkItem][])
+    .filter(([key, b]) => {
+      const targetId = b?.seriesId || key;
+      const cleanTarget = String(targetId).trim().toLowerCase();
+      return seriesList.some(s => 
+        String(s.id).trim().toLowerCase() === cleanTarget ||
+        String(s.slug || '').trim().toLowerCase() === cleanTarget ||
+        String(s.title || '').trim().toLowerCase() === cleanTarget
+      );
+    })
+    .map(([_, b]) => b);
+
+  const totalBookmarked = validBookmarkItems.length;
 
   const getFolderCount = (folderName: string) => {
     if (folderName === 'Tüm Seriler' || folderName === 'Tümü' || folderName === 'all') {
       return totalBookmarked;
     }
-    return bookmarkItems.filter(b =>
+    return validBookmarkItems.filter(b =>
       b.folders && Array.isArray(b.folders) && b.folders.some(f => f.trim().toLowerCase() === folderName.trim().toLowerCase())
     ).length;
   };
@@ -388,12 +399,30 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
               Anasayfadan veya seriler sayfasından serileri kütüphanenize ekleyebilirsiniz.
             </p>
           )}
-          <button
-            onClick={() => setView({ type: 'series-list' })}
-            className="mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow"
-          >
-            Serilere Göz At
-          </button>
+          <div className="flex items-center justify-center gap-3 mt-4 flex-wrap">
+            <button
+              onClick={() => setView({ type: 'series-list' })}
+              className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow"
+            >
+              Serilere Göz At
+            </button>
+            {Object.keys(bookmarks).length > totalBookmarked && (
+              <button
+                onClick={() => {
+                  const cleaned: Record<string, BookmarkItem> = {};
+                  validBookmarkItems.forEach(item => {
+                    cleaned[item.seriesId] = item;
+                  });
+                  // AppContext will sync this
+                  localStorage.setItem('mk_bookmarks_v2', JSON.stringify(cleaned));
+                  window.location.reload();
+                }}
+                className="bg-gray-800 hover:bg-rose-950 text-rose-300 font-bold text-xs px-5 py-2.5 rounded-full border border-rose-500/30 transition"
+              >
+                🗑️ Silinmiş Hayalet Serileri Kütüphaneden Temizle
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
