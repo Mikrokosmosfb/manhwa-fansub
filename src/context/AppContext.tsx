@@ -352,6 +352,7 @@ const defaultNovelSettings: NovelSettings = {
   widthMode: 'orta',
   isBold: false,
   scrollSpeed: 1,
+  readingMode: 'scroll',
 };
 
 const defaultFolders: BookmarkFolder[] = [

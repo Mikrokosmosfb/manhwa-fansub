@@ -199,6 +199,7 @@ export interface NovelSettings {
   widthMode: 'dar' | 'orta' | 'genis'; // dar = 600px, orta = 800px, genis = 100%
   isBold: boolean;
   scrollSpeed: number; // 1, 2, 3
+  readingMode?: 'scroll' | 'book'; // Dikey kaydırma veya sayfa sayfa kitap modu
 }
 
 export interface Comment {

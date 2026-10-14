@@ -79,6 +79,10 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentChapterItemRef = useRef<HTMLButtonElement>(null);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [currentBookPage, setCurrentBookPage] = useState(0);
+  useEffect(() => {
+    setCurrentBookPage(0);
+  }, [chapterId]);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Paragraph Comments State (Webnovel / Wattpad style inline comments)
@@ -1143,6 +1147,23 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             {/* Dropdown Options Grid (2x2 on mobile, 4 cols on sm) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
               
+              {/* Reading Mode */}
+              <div>
+                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1 text-[10px] sm:text-[11px]">Okuma Modu</label>
+                <select
+                  value={novelSettings.readingMode || 'scroll'}
+                  onChange={e =>
+                    updateNovelSettings({
+                      readingMode: e.target.value as 'scroll' | 'book'
+                    })
+                  }
+                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-1.5 font-medium"
+                >
+                  <option value="scroll">Dikey Kaydırma</option>
+                  <option value="book">Sayfa Sayfa (Kitap)</option>
+                </select>
+              </div>
+
               {/* Font Family */}
               <div>
                 <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1 text-[10px] sm:text-[11px]">Yazı Tipi</label>
@@ -1348,7 +1369,15 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </button>
       )}
 
-      {/* Novel Reading Container */}
+        const isBookMode = novelSettings.readingMode === 'book';
+  const paragraphsPerPage = 6;
+  const totalBookPages = Math.max(1, Math.ceil(parsedParagraphs.length / paragraphsPerPage));
+  const activeBookPage = Math.min(currentBookPage, totalBookPages - 1);
+  const displayedParagraphs = isBookMode
+    ? parsedParagraphs.slice(activeBookPage * paragraphsPerPage, (activeBookPage + 1) * paragraphsPerPage)
+    : parsedParagraphs;
+
+  {/* Novel Reading Container */}
       <div className={`mx-auto px-4 py-8 ${getWidthClass()}`}>
         
         {/* Title Header */}
@@ -1503,7 +1532,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           }}
         >
           {parsedParagraphs.length > 0 ? (
-            parsedParagraphs.map((para, idx) => {
+            displayedParagraphs.map((para, idx) => {
               if (para.isMediaOnly && para.html) {
                 return (
                   <div
