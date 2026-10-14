@@ -2,6 +2,7 @@ import React
 , { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingProgress } from '../types';
+import { formatUserHandle, toCanonicalUsername } from '../utils/usernameUtils';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { THEME_STYLES, SHOP_ITEMS } from '../data/shopData';
 import { UserAvatar } from './UserAvatar';

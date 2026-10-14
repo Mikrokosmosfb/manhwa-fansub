@@ -4,6 +4,7 @@ import { THEME_STYLES, SHOP_ITEMS, ShopItem, ChibiEmoji } from '../data/shopData
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { UserAvatar } from './UserAvatar';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
+import { formatUserHandle, toCanonicalUsername } from '../utils/usernameUtils';
 import {
   MessageSquare,
   ThumbsUp,

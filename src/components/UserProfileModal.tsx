@@ -2,6 +2,7 @@ import React
 , { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingProgress, isAuthorizedAdmin, DAILY_STARTER_REWARDS } from '../types';
+import { toCanonicalUsername, formatUserHandle, canChangeUsername } from '../utils/usernameUtils';
 import { ProfileReadingLists, ProfileKosmosPins } from './ProfileReadingLists';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { SeriesCard } from './SeriesCard';
