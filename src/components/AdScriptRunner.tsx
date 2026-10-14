@@ -1,45 +1,36 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 
 /**
  * Safely parses HTML containing <script> tags and executes them in the DOM.
- * Standard innerHTML does not execute <script> tags per W3C HTML5 spec.
  */
 export function injectExecutableHtml(container: HTMLElement, rawHtml: string, tagId?: string) {
-  // Clear container
   container.innerHTML = '';
-
   if (!rawHtml || !rawHtml.trim()) return;
 
   const temp = document.createElement('div');
   temp.innerHTML = rawHtml.trim();
-
   const scripts: HTMLScriptElement[] = [];
 
   Array.from(temp.childNodes).forEach(node => {
     if (node.nodeName.toUpperCase() === 'SCRIPT') {
       const originalScript = node as HTMLScriptElement;
       const script = document.createElement('script');
-      
       Array.from(originalScript.attributes).forEach(attr => {
         script.setAttribute(attr.name, attr.value);
       });
-      
       if (originalScript.innerHTML) {
         script.text = originalScript.innerHTML;
       }
-      
       if (tagId) {
         script.setAttribute('data-ad-tag', tagId);
       }
-
       scripts.push(script);
     } else {
       container.appendChild(node.cloneNode(true));
     }
   });
 
-  // Append scripts to execute them
   scripts.forEach(script => {
     container.appendChild(script);
   });
@@ -54,16 +45,15 @@ export const AdScriptRunner: React.FC = () => {
 
   // Inject / update Popunder & PopAds scripts with strict 1-hour frequency cap per user
   useEffect(() => {
-    const existingPopScripts = document.querySelectorAll('script[data-mk-ad="popads"]');
-    existingPopScripts.forEach(el => el.remove());
+    // Clean any prior script tags
+    document.querySelectorAll('script[data-mk-ad="popads"]').forEach(el => el.remove());
 
     if (!adSettings.popadsEnabled || !adSettings.popadsCode || !adSettings.popadsCode.trim()) {
       return;
     }
 
-    // 1 KİŞİYE 1 SAATTE SADECE 1 REKLAM FREKANS KONTROLÜ (Frequency Capping)
     const POPADS_STORAGE_KEY = 'mk_popads_last_shown';
-    const ONE_HOUR_MS = 60 * 60 * 1000; // 1 saat = 3.600.000 ms
+    const ONE_HOUR_MS = 60 * 60 * 1000; // 1 hour
 
     const lastShown = localStorage.getItem(POPADS_STORAGE_KEY);
     const now = Date.now();
@@ -71,67 +61,74 @@ export const AdScriptRunner: React.FC = () => {
     if (lastShown) {
       const elapsed = now - parseInt(lastShown, 10);
       if (elapsed < ONE_HOUR_MS) {
-        // Kullanıcı son 1 saat içinde zaten bir pop reklam gördü, tekrar tetikleme!
+        // Frequency capped: User already saw a pop in the last hour
         return;
       }
     }
 
-    // Kullanıcı sayfaya ilk kez tıkladığında PopAds kodunu devreye al ve 1 saatlik süreyi başlat
-    const triggerPopAd = () => {
-      // 1 saatlik damgayı kaydet
+    // Safely inject the PopAds script on page load
+    try {
+      // Protect document.write from wiping the SPA
+      const originalWrite = document.write.bind(document);
+      const originalWriteln = document.writeln.bind(document);
+
+      document.write = function (markup: string) {
+        try {
+          const div = document.createElement('div');
+          div.innerHTML = markup;
+          document.body.appendChild(div);
+        } catch (e) {}
+      };
+      document.writeln = document.write;
+
+      const rawCode = adSettings.popadsCode.trim();
+      const temp = document.createElement('div');
+      temp.innerHTML = rawCode;
+      const scriptTags = temp.querySelectorAll('script');
+
+      if (scriptTags.length > 0) {
+        scriptTags.forEach(orig => {
+          const script = document.createElement('script');
+          Array.from(orig.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
+          if (orig.innerHTML) script.text = orig.innerHTML;
+          script.setAttribute('data-mk-ad', 'popads');
+          document.body.appendChild(script);
+        });
+      } else {
+        const script = document.createElement('script');
+        script.type = 'text/javascript';
+        script.text = rawCode;
+        script.setAttribute('data-mk-ad', 'popads');
+        document.body.appendChild(script);
+      }
+
+      // Mark timestamp as shown
       try {
         localStorage.setItem(POPADS_STORAGE_KEY, Date.now().toString());
       } catch (e) {}
 
-      // PopAds scriptlerini DOM'a enjekte et
-      try {
-        const temp = document.createElement('div');
-        temp.innerHTML = adSettings.popadsCode.trim();
-        const scriptTags = temp.querySelectorAll('script');
-
-        if (scriptTags.length > 0) {
-          scriptTags.forEach(orig => {
-            const script = document.createElement('script');
-            Array.from(orig.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
-            if (orig.innerHTML) script.text = orig.innerHTML;
-            script.setAttribute('data-mk-ad', 'popads');
-            document.body.appendChild(script);
-          });
-        } else {
-          const script = document.createElement('script');
-          script.type = 'text/javascript';
-          script.text = adSettings.popadsCode.trim();
-          script.setAttribute('data-mk-ad', 'popads');
-          document.body.appendChild(script);
-        }
-      } catch (err) {
-        console.warn('PopAds injection error:', err);
-      }
-
-      // Dinleyiciyi kaldır
-      window.removeEventListener('click', triggerPopAd, true);
-    };
-
-    // Kullanıcının ilk tıklamasında PopAds'i tetikle
-    window.addEventListener('click', triggerPopAd, { once: true, capture: true });
+      // Restore document.write after scripts finish loading
+      setTimeout(() => {
+        document.write = originalWrite;
+        document.writeln = originalWriteln;
+      }, 5000);
+    } catch (err) {
+      console.warn('PopAds injection error:', err);
+    }
 
     return () => {
-      window.removeEventListener('click', triggerPopAd, true);
-      const scripts = document.querySelectorAll('script[data-mk-ad="popads"]');
-      scripts.forEach(el => el.remove());
+      document.querySelectorAll('script[data-mk-ad="popads"]').forEach(el => el.remove());
     };
   }, [adSettings.popadsEnabled, adSettings.popadsCode]);
 
   // Inject / update custom Head scripts
   useEffect(() => {
-    const existingHeadScripts = document.querySelectorAll('[data-mk-ad="head-custom"]');
-    existingHeadScripts.forEach(el => el.remove());
+    document.querySelectorAll('[data-mk-ad="head-custom"]').forEach(el => el.remove());
 
     if (adSettings.customHeadScript && adSettings.customHeadScript.trim()) {
       try {
         const temp = document.createElement('div');
         temp.innerHTML = adSettings.customHeadScript.trim();
-
         Array.from(temp.childNodes).forEach(node => {
           if (node.nodeName.toUpperCase() === 'SCRIPT') {
             const orig = node as HTMLScriptElement;
@@ -152,8 +149,7 @@ export const AdScriptRunner: React.FC = () => {
     }
 
     return () => {
-      const elements = document.querySelectorAll('[data-mk-ad="head-custom"]');
-      elements.forEach(el => el.remove());
+      document.querySelectorAll('[data-mk-ad="head-custom"]').forEach(el => el.remove());
     };
   }, [adSettings.customHeadScript]);
 
@@ -161,36 +157,28 @@ export const AdScriptRunner: React.FC = () => {
 };
 
 /**
- * AdBannerBlock: Reusable component for rendering Top, Bottom or Reader ad banners
+ * AdBannerBlock: Simple modular ad container for in-reader or header/footer banners
  */
 export const AdBannerBlock: React.FC<{
   code?: string;
-  enabled?: boolean;
-  placementName: string;
+  tagId?: string;
   className?: string;
-}> = ({ code, enabled, placementName, className = '' }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
+}> = ({ code, tagId, className = '' }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    if (enabled && code && code.trim()) {
-      injectExecutableHtml(containerRef.current, code, placementName);
-    } else {
-      containerRef.current.innerHTML = '';
+    if (containerRef.current && code && code.trim()) {
+      injectExecutableHtml(containerRef.current, code, tagId);
     }
-  }, [enabled, code, placementName]);
+  }, [code, tagId]);
 
-  if (!enabled || !code || !code.trim()) {
-    return null;
-  }
+  if (!code || !code.trim()) return null;
 
   return (
-    <div className={`w-full flex flex-col items-center justify-center my-3 overflow-hidden ${className}`}>
-      <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1 font-semibold">
-        Reklam
-      </div>
-      <div ref={containerRef} className="w-full flex items-center justify-center min-h-[50px]" />
-    </div>
+    <div
+      ref={containerRef}
+      className={`ad-container flex items-center justify-center overflow-hidden my-4 ${className}`}
+      data-ad-container={tagId || 'banner'}
+    />
   );
 };
