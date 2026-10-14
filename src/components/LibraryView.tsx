@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { BookmarkItem } from '../types';
+import { BookmarkItem, isSeries18Plus } from '../types';
 import {
   Bookmark,
   Search,
@@ -37,7 +37,8 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
     importBackupData,
     isFollowingSeries,
     toggleFollowSeries,
-    openAuthModal
+    openAuthModal,
+    showNsfw
   } = useApp();
 
   const handleNavigateSeries = (seriesId: string) => {
@@ -138,13 +139,35 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
     return item.folders.some(f => f.trim().toLowerCase() === activeFolder.trim().toLowerCase());
   });
 
-  const bookmarkedSeries = seriesList.filter(s =>
-    bookmarkedSeriesIds.some(id => String(id) === String(s.id))
-  );
+  // Match series by ID, slug, or title safely
+  const bookmarkedSeries = seriesList.filter(s => {
+    // 18+ filter check
+    if (!showNsfw && isSeries18Plus(s)) {
+      return false;
+    }
+    return bookmarkedSeriesIds.some(id => {
+      const cleanId = String(id).trim().toLowerCase();
+      const sId = String(s.id).trim().toLowerCase();
+      const sSlug = String(s.slug || '').trim().toLowerCase();
+      const sTitle = String(s.title || '').trim().toLowerCase();
+      return cleanId === sId || (sSlug && cleanId === sSlug) || (sTitle && cleanId === sTitle);
+    });
+  });
 
   const filteredSeries = bookmarkedSeries.filter(s =>
     s.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Check if some bookmarked series are hidden due to 18+ mode
+  const hidden18PlusCount = showNsfw ? 0 : seriesList.filter(s => {
+    if (!isSeries18Plus(s)) return false;
+    return bookmarkedSeriesIds.some(id => {
+      const cleanId = String(id).trim().toLowerCase();
+      const sId = String(s.id).trim().toLowerCase();
+      const sSlug = String(s.slug || '').trim().toLowerCase();
+      return cleanId === sId || (sSlug && cleanId === sSlug);
+    });
+  }).length;
 
   const handleCreateFolder = (e: React.FormEvent) => {
     e.preventDefault();
@@ -351,12 +374,20 @@ export const LibraryView: React.FC<LibraryViewProps> = ({ onCloseModal }) => {
           <Bookmark size={40} className="mx-auto mb-3 text-purple-400/50" />
           <p className="text-base font-semibold">
             {activeFolder === 'Tüm Seriler'
-              ? 'Kütüphanenizde henüz kayıtlı seri bulunmuyor.'
+              ? (hidden18PlusCount > 0 
+                  ? `${hidden18PlusCount} adet kayıtlı seriniz +18 (Yetişkin) içeriği olduğu için şu an gizlenmiştir.`
+                  : 'Kütüphanenizde henüz kayıtlı seri bulunmuyor.')
               : `"${activeFolder}" klasöründe kayıtlı seri bulunmuyor.`}
           </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Anasayfadan veya seriler sayfasından serileri kütüphanenize ekleyebilirsiniz.
-          </p>
+          {hidden18PlusCount > 0 ? (
+            <p className="text-xs text-rose-300 mt-2 bg-rose-950/60 border border-rose-500/30 p-2.5 rounded-xl max-w-md mx-auto">
+              🔞 Kaydettiğiniz serileri görebilmek için üst menüdeki <strong>18+</strong> butonuna tıklayarak yetişkin içerik filtresini açabilirsiniz.
+            </p>
+          ) : (
+            <p className="text-xs text-gray-500 mt-1">
+              Anasayfadan veya seriler sayfasından serileri kütüphanenize ekleyebilirsiniz.
+            </p>
+          )}
           <button
             onClick={() => setView({ type: 'series-list' })}
             className="mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow"
