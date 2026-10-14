@@ -52,12 +52,38 @@ export function injectExecutableHtml(container: HTMLElement, rawHtml: string, ta
 export const AdScriptRunner: React.FC = () => {
   const { adSettings } = useApp();
 
-  // Inject / update Popunder & PopAds scripts
+  // Inject / update Popunder & PopAds scripts with strict 1-hour frequency cap per user
   useEffect(() => {
     const existingPopScripts = document.querySelectorAll('script[data-mk-ad="popads"]');
     existingPopScripts.forEach(el => el.remove());
 
-    if (adSettings.popadsEnabled && adSettings.popadsCode && adSettings.popadsCode.trim()) {
+    if (!adSettings.popadsEnabled || !adSettings.popadsCode || !adSettings.popadsCode.trim()) {
+      return;
+    }
+
+    // 1 KİŞİYE 1 SAATTE SADECE 1 REKLAM FREKANS KONTROLÜ (Frequency Capping)
+    const POPADS_STORAGE_KEY = 'mk_popads_last_shown';
+    const ONE_HOUR_MS = 60 * 60 * 1000; // 1 saat = 3.600.000 ms
+
+    const lastShown = localStorage.getItem(POPADS_STORAGE_KEY);
+    const now = Date.now();
+
+    if (lastShown) {
+      const elapsed = now - parseInt(lastShown, 10);
+      if (elapsed < ONE_HOUR_MS) {
+        // Kullanıcı son 1 saat içinde zaten bir pop reklam gördü, tekrar tetikleme!
+        return;
+      }
+    }
+
+    // Kullanıcı sayfaya ilk kez tıkladığında PopAds kodunu devreye al ve 1 saatlik süreyi başlat
+    const triggerPopAd = () => {
+      // 1 saatlik damgayı kaydet
+      try {
+        localStorage.setItem(POPADS_STORAGE_KEY, Date.now().toString());
+      } catch (e) {}
+
+      // PopAds scriptlerini DOM'a enjekte et
       try {
         const temp = document.createElement('div');
         temp.innerHTML = adSettings.popadsCode.trim();
@@ -72,7 +98,6 @@ export const AdScriptRunner: React.FC = () => {
             document.body.appendChild(script);
           });
         } else {
-          // If pure JS code without <script> tag was entered
           const script = document.createElement('script');
           script.type = 'text/javascript';
           script.text = adSettings.popadsCode.trim();
@@ -82,9 +107,16 @@ export const AdScriptRunner: React.FC = () => {
       } catch (err) {
         console.warn('PopAds injection error:', err);
       }
-    }
+
+      // Dinleyiciyi kaldır
+      window.removeEventListener('click', triggerPopAd, true);
+    };
+
+    // Kullanıcının ilk tıklamasında PopAds'i tetikle
+    window.addEventListener('click', triggerPopAd, { once: true, capture: true });
 
     return () => {
+      window.removeEventListener('click', triggerPopAd, true);
       const scripts = document.querySelectorAll('script[data-mk-ad="popads"]');
       scripts.forEach(el => el.remove());
     };

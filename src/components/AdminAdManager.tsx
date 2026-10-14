@@ -186,7 +186,7 @@ export const AdminAdManager: React.FC = () => {
                   </span>
                 </h3>
                 <p className="text-xs text-gray-400">
-                  Ziyaretçi sayfada herhangi bir yere tıkladığında arka planda yeni sekmede reklam açar.
+                  Ziyaretçi sayfaya tıkladığında arka planda reklam açar. <strong className="text-emerald-400">Otomatik Frekans Koruması Aktif:</strong> Her ziyaretçiye kesin olarak <strong>1 saatte en fazla 1 kez</strong> reklam gösterilir.
                 </p>
               </div>
             </div>
