@@ -273,7 +273,7 @@ interface AppContextType {
   loginWithGoogle: (googleEmail: string) => Promise<{ success: boolean; message?: string }>;
   registerWithGoogle: (googleEmail: string, name?: string) => Promise<{ success: boolean; message?: string }>;
   checkUsernameAvailability: (name: string, excludeUid?: string) => Promise<{ available: boolean; message?: string }>;
-  updateUserProfile: (newName: string, newAvatar: string, newBio?: string) => Promise<{ success: boolean; message?: string }>;
+  updateUserProfile: (newName: string, newAvatar: string, newBio?: string, newUsername?: string) => Promise<{ success: boolean; message?: string }>;
   deleteAccount: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
 
@@ -3658,6 +3658,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
   };
 
   const prepareUserCoins = (u: User): User => {
+    if (!u.username && u.name) {
+      u.username = toCanonicalUsername(u.name);
+    }
     const cleanEmail = u.email?.toLowerCase().trim();
     const isUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com';
     
@@ -3884,28 +3887,35 @@ const deleteShopItemAndStyle = (itemId: string) => {
     return { success: true, message: `Google ile üyeliğiniz başarıyla oluşturuldu!` };
   };
 
-  const checkUsernameAvailability = async (name: string, excludeUid?: string): Promise<{ available: boolean; message?: string }> => {
-    const cleanName = name.trim().toLowerCase();
-    if (cleanName.length < 3) {
-      return { available: false, message: 'Kullanıcı adı en az 3 karakter olmalıdır.' };
+  const checkUsernameAvailability = async (rawName: string, excludeUid?: string): Promise<{ available: boolean; message?: string }> => {
+    const canonical = toCanonicalUsername(rawName);
+    if (!canonical || canonical.length < 3) {
+      return { available: false, message: 'Kullanıcı adı harf veya rakam içermeli ve en az 3 karakter olmalıdır.' };
     }
-    if (cleanName.length > 25) {
+    if (canonical.length > 25) {
       return { available: false, message: 'Kullanıcı adı en fazla 25 karakter olabilir.' };
     }
 
-    // Check locally in knownUsers first
-    const takenInLocal = knownUsers.some(u => 
-      u.name.toLowerCase() === cleanName && (!excludeUid || u.uid !== excludeUid)
-    );
+    // Reserved names
+    if (['admin', 'administrator', 'mikrokosmos', 'mikrokosmosfansub', 'moderator', 'mod', 'kurucu'].includes(canonical)) {
+      return { available: false, message: 'Bu kullanıcı adı sistem tarafından ayrılmıştır.' };
+    }
+
+    // Check locally in knownUsers first with canonical emoji-insensitive matching
+    const takenInLocal = knownUsers.some(u => {
+      if (excludeUid && u.uid === excludeUid) return false;
+      const uCanon = toCanonicalUsername(u.username || u.name);
+      return uCanon === canonical;
+    });
     if (takenInLocal) {
-      return { available: false, message: `"${name.trim()}" kullanıcı adı başka bir üye tarafından kullanılıyor.` };
+      return { available: false, message: `"${rawName.trim()}" (veya emojili/harf benzeri hali) başka bir üye tarafından kullanılıyor.` };
     }
 
     try {
       const data = await safeFetchJson<any>('/api/auth/check-username', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), excludeUid })
+        body: JSON.stringify({ name: rawName.trim(), excludeUid })
       });
       if (data && typeof data.available === 'boolean') {
         return { available: data.available, message: data.message };

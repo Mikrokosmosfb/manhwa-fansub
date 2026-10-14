@@ -382,11 +382,17 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
             />
           </div>
 
-          <div className="mt-5 flex items-center justify-center gap-2.5 flex-wrap">
-            <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${activeThemeStyle?.nameClass || 'text-white'}`}>
-              {profile.name}
-            </h1>
-            <TeamBadges roles={getUserTeamRoles(profile)} size="sm" />
+          <div className="mt-5 flex flex-col items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-2.5 flex-wrap">
+              <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${activeThemeStyle?.nameClass || 'text-white'}`}>
+                {profile.name}
+              </h1>
+              <TeamBadges roles={getUserTeamRoles(profile)} size="sm" />
+            </div>
+            {/* Benzersiz Kullanıcı Adı @kullanici */}
+            <span className="text-xs sm:text-sm text-purple-300 font-mono font-bold bg-purple-950/60 border border-purple-500/30 px-3 py-0.5 rounded-full shadow-sm">
+              {formatUserHandle(profile.username || toCanonicalUsername(profile.name))}
+            </span>
           </div>
 
           {/* 💬 OKUR MOTTOSU */}

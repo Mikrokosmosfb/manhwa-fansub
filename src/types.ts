@@ -10,7 +10,9 @@ export const isAuthorizedAdmin = (email?: string | null): boolean => {
 
 export interface User {
   uid: string;
-  name: string;
+  name: string; // Takma Ad / Görünen İsim (DisplayName)
+  username?: string; // Benzersiz Kullanıcı Adı (@kullanici_adi)
+  usernameLastChangedAt?: number; // Son kullanıcı adı değiştirme zamanı (timestamp ms)
   email: string;
   avatar: string;
   bio?: string; // Personal quote or bio note
@@ -60,6 +62,7 @@ export interface KnownUserRecord {
   uid: string;
   email: string;
   name: string;
+  username?: string;
   avatar: string;
   coins: number;
   role?: string;
@@ -203,7 +206,8 @@ export interface Comment {
   seriesId: string;
   chapterId?: string; // Optional: specific to a chapter
   userId: string;
-  userName: string;
+  userName: string; // Görünen Takma Ad
+  userHandle?: string; // Benzersiz @kullanici_adi
   userAvatar: string;
   text: string;
   imageUrl?: string;

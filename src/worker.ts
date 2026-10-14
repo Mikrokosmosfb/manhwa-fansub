@@ -84,6 +84,16 @@ function isValidEmailFormat(email: string): boolean {
   return emailRegex.test(email.trim());
 }
 
+const EMOJI_REGEX_WORKER = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2702}-\u{27B0}\u{24C2}-\u{1F251}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{FE00}-\u{FE0F}\u{200D}]/gu;
+
+function toCanonicalUsername(raw: string | undefined | null): string {
+  if (!raw) return '';
+  let str = String(raw).trim();
+  if (str.startsWith('@')) str = str.substring(1);
+  str = str.replace(EMOJI_REGEX_WORKER, '');
+  return str.trim().toLowerCase();
+}
+
 async function hashPassword(password: string): Promise<string> {
   const enc = new TextEncoder();
   const salt = "mk_fansub_salt_2026_";
@@ -2992,26 +3002,32 @@ ${seriesXml}
               return new Response(JSON.stringify({ available: false, message: 'Kullanıcı adı en fazla 25 karakter olabilir.' }), { headers });
             }
 
+            const canonical = toCanonicalUsername(cleanName);
+            if (!canonical || canonical.length < 3) {
+              return new Response(JSON.stringify({ available: false, message: 'Kullanıcı adı harf veya rakam içermeli ve en az 3 karakter olmalıdır.' }), { headers });
+            }
+
             // Reserved admin names
-            const lowerName = cleanName.toLowerCase();
-            if (['admin', 'administrator', 'mikrokosmos', 'mikrokosmosfansub', 'moderator', 'mod', 'kurucu'].includes(lowerName)) {
+            if (['admin', 'administrator', 'mikrokosmos', 'mikrokosmosfansub', 'moderator', 'mod', 'kurucu'].includes(canonical)) {
               return new Response(JSON.stringify({ available: false, message: 'Bu kullanıcı adı sistem tarafından ayrılmıştır.' }), { headers });
             }
 
             if (userDb) {
               try {
-                let query = "SELECT uid FROM users WHERE LOWER(name) = LOWER(?)";
-                const params: any[] = [cleanName];
-                if (excludeUid) {
-                  query += " AND uid != ?";
-                  params.push(excludeUid);
-                }
-                const { results } = await userDb.prepare(query).bind(...params).all();
+                // Fetch all usernames or check both exact and canonical equality
+                const { results } = await userDb.prepare("SELECT uid, name FROM users").all();
                 if (results && results.length > 0) {
-                  return new Response(JSON.stringify({
-                    available: false,
-                    message: `"${cleanName}" kullanıcı adı başka bir üye tarafından kullanılıyor.`
-                  }), { headers });
+                  const match = (results as any[]).find(u => {
+                    if (excludeUid && u.uid === excludeUid) return false;
+                    const uCanon = toCanonicalUsername(u.name);
+                    return uCanon === canonical;
+                  });
+                  if (match) {
+                    return new Response(JSON.stringify({
+                      available: false,
+                      message: `"${cleanName}" (veya benzeri bir isim) başka bir üye tarafından kullanılıyor. Lütfen farklı bir kullanıcı adı seçin.`
+                    }), { headers });
+                  }
                 }
               } catch (e: any) {
                 console.error('Error in check-username:', e);

@@ -666,20 +666,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
             {activeTab === 'register' && (
               <form onSubmit={handleStartRegister} className="space-y-3.5">
                 <div>
-                  <label className="block text-xs font-bold text-purple-200 mb-1">
-                    Kullanıcı Adı
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-purple-200">
+                      Kullanıcı Adı (@)
+                    </label>
+                    <span className="text-[10px] text-amber-300 font-semibold bg-amber-950/60 px-2 py-0.2 rounded border border-amber-800">
+                      Benzersiz & Tekrarlanamaz
+                    </span>
+                  </div>
                   <div className="relative">
-                    <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400" />
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400 font-mono font-bold text-sm select-none">
+                      @
+                    </span>
                     <input
                       type="text"
                       value={registerName}
                       onChange={e => setRegisterName(e.target.value)}
-                      placeholder="Profil İsminiz"
-                      className="w-full bg-black/50 border border-purple-500/30 focus:border-purple-400 rounded-xl py-2 pl-10 pr-4 text-sm text-white placeholder-gray-500 outline-none transition"
+                      placeholder="kullanici_adiniz"
+                      className="w-full bg-black/50 border border-purple-500/30 focus:border-purple-400 rounded-xl py-2 pl-9 pr-4 text-sm text-white placeholder-gray-500 outline-none transition font-mono"
                       required
                     />
                   </div>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Emojiler temizlenir; "Anonim" ile "Anonim🥰" aynı isim sayılır. Takma adınızı profilinizden dilediğiniz zaman değiştirebilirsiniz.
+                  </p>
                 </div>
 
                 <div>

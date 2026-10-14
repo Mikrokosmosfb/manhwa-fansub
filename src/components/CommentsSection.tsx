@@ -546,6 +546,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       chapterId,
       userId: user.uid,
       userName: user.name,
+      userHandle: user.username || toCanonicalUsername(user.name),
       userAvatar: user.avatar,
       text: commentText.trim(),
       imageUrl: imageUrl.trim() || undefined,
@@ -579,6 +580,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       chapterId: effectiveChapterId,
       userId: user.uid,
       userName: user.name,
+      userHandle: user.username || toCanonicalUsername(user.name),
       userAvatar: user.avatar,
       text: replyText.trim(),
       imageUrl: replyImageUrl.trim() || undefined,
@@ -765,14 +767,26 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
               <div
                 className={`min-w-0 max-w-fit ${
                   themeStyle?.cardBgImageUrl
-                    ? 'bg-black/75 px-3 py-1 rounded-xl border border-white/10 shadow-sm z-10'
+                    ? 'bg-black/75 px-3 py-1.5 rounded-xl border border-white/10 shadow-sm z-10'
                     : 'pl-0.5'
                 }`}
               >
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
-                      themeStyle ? themeStyle.nameClass : 'text-gray-100'
-                    }`} onClick={() => c.userId && openPublicProfile(c.userId)}>{c.userName}</span>
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    {/* Görünen Takma Ad */}
+                    <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
+                        themeStyle ? themeStyle.nameClass : 'text-gray-100'
+                      }`} onClick={() => c.userId && openPublicProfile(c.userId)}>
+                      {c.userName}
+                    </span>
+                    {/* Altında / Yanında Benzersiz Kullanıcı Adı @kullanici */}
+                    <span
+                      onClick={() => c.userId && openPublicProfile(c.userId)}
+                      className="text-[10px] text-purple-300/80 font-mono hover:text-purple-200 cursor-pointer transition select-none"
+                    >
+                      {formatUserHandle(c.userHandle || (knownUsers.find(k => k.uid === c.userId)?.username) || toCanonicalUsername(c.userName))}
+                    </span>
+                  </div>
                   <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
                   <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
                 </div>

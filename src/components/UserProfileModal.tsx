@@ -125,6 +125,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
 
   // Edit profile state
   const [name, setName] = useState('');
+  const [usernameInput, setUsernameInput] = useState('');
   const [avatar, setAvatar] = useState('');
   const [avatarStyle, setAvatarStyle] = useState<'bottts' | 'adventurer' | 'lorelei' | 'avataaars'>('bottts');
   const [customAvatarUrl, setCustomAvatarUrl] = useState('');
@@ -159,6 +160,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   useEffect(() => {
     if (user) {
       setName(user.name || '');
+      setUsernameInput(user.username || toCanonicalUsername(user.name) || '');
       setAvatar(user.avatar || '');
       try {
         const savedBio = localStorage.getItem(`mk_bio_${user.uid}`);
@@ -624,15 +626,21 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           </div>
 
           <div className="mt-5 space-y-1.5 w-full">
-            <div className="flex items-center justify-center gap-2.5 flex-wrap">
-              <h2
-                className={`text-2xl sm:text-3xl font-black tracking-tight ${
-                  activeThemeStyle ? activeThemeStyle.nameClass : 'text-white'
-                }`}
-              >
-                {user.name}
-              </h2>
-              <TeamBadges roles={getUserTeamRoles(user)} size="sm" />
+            <div className="flex flex-col items-center justify-center gap-1">
+              <div className="flex items-center justify-center gap-2.5 flex-wrap">
+                <h2
+                  className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                    activeThemeStyle ? activeThemeStyle.nameClass : 'text-white'
+                  }`}
+                >
+                  {user.name}
+                </h2>
+                <TeamBadges roles={getUserTeamRoles(user)} size="sm" />
+              </div>
+              {/* Benzersiz Kullanıcı Adı @kullanici */}
+              <span className="text-xs sm:text-sm text-purple-300 font-mono font-bold bg-purple-950/70 border border-purple-500/40 px-3 py-0.5 rounded-full shadow-sm">
+                {formatUserHandle(user.username || toCanonicalUsername(user.name))}
+              </span>
             </div>
             
             <p className="text-xs sm:text-sm text-gray-400 font-medium flex items-center justify-center gap-2">
