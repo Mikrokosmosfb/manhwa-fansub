@@ -39,7 +39,7 @@ import { checkIsChapterNew } from '../utils/dateUtils';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { MangaAlertStack } from './MangaAlertBox';
-import { sortChapters, getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
+import { sortChapters, getSeriesAlertsAndCleanSynopsis, extractBloggerSeriesMetadata } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { extractImageUrls, isIframeUrl } from '../utils/imageParser';
 
@@ -72,6 +72,16 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
+
+  // Dynamically extract Blogger metadata if existing series has raw extra-info or Blogger defaults
+  const dynamicMeta = series?.synopsis ? extractBloggerSeriesMetadata(series.synopsis) : null;
+  const effectiveAuthor = (series?.author && series.author !== 'Blogger') ? series.author : (dynamicMeta?.author || series?.author || 'Blogger');
+  const effectiveArtist = (series?.artist && series.artist !== 'Blogger') ? series.artist : (dynamicMeta?.artist || series?.artist || 'Blogger');
+  const effectiveReleaseYear = series?.releaseYear || dynamicMeta?.releaseYear;
+  const effectiveGenres = (series?.genres && series.genres.length > 0 && series.genres[0] !== 'Aksiyon') 
+    ? series.genres 
+    : (dynamicMeta?.genres && dynamicMeta.genres.length > 0 ? dynamicMeta.genres : (series?.genres || []));
+
 
   const [chapterSearch, setChapterSearch] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -443,7 +453,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     <div className="bg-fuchsia-950/80 border border-fuchsia-500/30 rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-fuchsia-200 shadow-sm">
                       <Palette size={14} className="text-fuchsia-400" />
                       <span className="text-fuchsia-300 font-bold">Çizer:</span>
-                      <span className="font-extrabold text-white">{series.artist}</span>
+                      <span className="font-extrabold text-white">{effectiveArtist}</span>
                     </div>
                   )}
 
@@ -461,7 +471,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     <div className="bg-gray-900 border border-purple-500/20 rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-gray-300 shadow-sm">
                       <Calendar size={14} className="text-purple-400" />
                       <span className="text-gray-400 font-bold">Çıkış Yılı:</span>
-                      <span className="font-extrabold text-gray-200">{series.releaseYear}</span>
+                      <span className="font-extrabold text-gray-200">{effectiveReleaseYear}</span>
                     </div>
                   )}
                 </div>
@@ -491,8 +501,10 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {/* Synopsis */}
                 {(() => {
-                  const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
-                  const synopsisText = cleanSynopsis || 'Bu seri için henüz bir özet girilmemiştir.';
+                  // If synopsis only had Blogger meta, keep original or fallback cleanly
+                  const rawSyn = dynamicMeta?.cleanedHtml?.trim() || series.synopsis;
+                  const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(rawSyn, series.notice);
+                  const synopsisText = cleanSynopsis || (series.synopsis && !series.synopsis.includes('<div') ? series.synopsis : 'Bu seri için henüz bir özet girilmemiştir.');
                   const isLongSynopsis = synopsisText.length > 220 || synopsisText.split('\n').length > 3;
 
                   return (
