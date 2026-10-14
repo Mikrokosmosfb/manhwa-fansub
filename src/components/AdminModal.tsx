@@ -592,20 +592,25 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
         if (item.projectPost) {
           // Parse #extra-info, .y6x11p, .dt fields: Çizer, Yazar, Türler, Çıkış Tarihi
+          // and extract the exact story summary inside <div class="descManga"><div id="synopsis">...</div></div>
           const meta = extractBloggerSeriesMetadata(item.projectPost.contentHtml);
           if (meta.author) detectedAuthor = meta.author;
           if (meta.artist) detectedArtist = meta.artist;
           if (meta.releaseYear) detectedReleaseYear = meta.releaseYear;
           if (meta.genres && meta.genres.length > 0) detectedGenres = meta.genres;
 
-          const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(meta.cleanedHtml);
-          const cleanText = cleanSynopsis
-            .replace(/<img[^>]*>/gi, '')
-            .replace(/<[^>]+>/g, '\n')
-            .replace(/\n+/g, ' ')
-            .trim();
-          if (cleanText.length > 20) {
-            synopsis = cleanText;
+          if (meta.cleanedHtml && meta.cleanedHtml.trim().length > 5) {
+            synopsis = meta.cleanedHtml.trim();
+          } else {
+            const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(item.projectPost.contentHtml);
+            const cleanText = cleanSynopsis
+              .replace(/<img[^>]*>/gi, '')
+              .replace(/<[^>]+>/g, '\n')
+              .replace(/\n+/g, ' ')
+              .trim();
+            if (cleanText.length > 20) {
+              synopsis = cleanText;
+            }
           }
         }
 

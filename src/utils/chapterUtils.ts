@@ -469,8 +469,6 @@ export function getSeriesAlertsAndCleanSynopsis(
       .replace(/&lt;/gi, '<')
       .replace(/&gt;/gi, '>')
       .replace(/Blogger Etiketleri\s*:.*$/gim, '')
-      .replace(/^\s*(Konu|Özet|Hikaye|Tanıtım)\s*:\s*/i, '')
-      .replace(/\n{3,}/g, '\n\n')
       .replace(/^\s*\.\.\.\s*$/, '')
       .trim();
   }
@@ -513,6 +511,25 @@ export function extractBloggerSeriesMetadata(rawHtml?: string | null): BloggerSe
   };
 
   if (!rawHtml) return result;
+
+  // 1. ÖNCELİKLİ ÖZET ÇIKARIMI:
+  // Blogger temasındaki <div class="descManga"><div id="synopsis"><p>özet</p></div></div> bloğunu tam olarak yakala!
+  const synopsisRegex = /(?:<div[^>]*class=["'](?:[^"']*\s)?descManga(?:\s[^"']*)?["'][^>]*>[\s\S]*?)?<div[^>]*id=["']synopsis["'][^>]*>([\s\S]*?)<\/div>/i;
+  const synopsisMatch = synopsisRegex.exec(rawHtml);
+  if (synopsisMatch && synopsisMatch[1]) {
+    let cleanSyn = synopsisMatch[1]
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .trim();
+    if (cleanSyn.length > 5) {
+      result.cleanedHtml = cleanSyn;
+    }
+  }
 
   const rowRegex = /<div[^>]*class=["'](?:[^"']*\s)?y6x11p(?:\s[^"']*)?["'][^>]*>([\s\S]*?)<\/div>/gi;
   let match;
