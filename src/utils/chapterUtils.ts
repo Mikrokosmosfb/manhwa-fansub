@@ -117,7 +117,17 @@ export function cleanNoticeText(text?: string | null): string {
   return cleaned;
 }
 
-export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
+export function extractMangaAlerts(rawInput?: string | null): ParsedMangaAlert[] {
+  if (!rawInput || !rawInput.trim()) return [];
+  let raw = rawInput;
+  if (typeof DOMParser !== 'undefined' && /<[a-z][\s\S]*>/i.test(raw)) {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(raw, 'text/html');
+      doc.querySelectorAll('.profile, .profile-picture, .profile-details').forEach(n => n.remove());
+      raw = doc.body.innerHTML;
+    } catch {}
+  }
   if (!raw || !raw.trim()) return [];
 
   const alerts: ParsedMangaAlert[] = [];
