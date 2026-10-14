@@ -1864,21 +1864,26 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             </div>
 
             <div>
-              <label className="block text-purple-300 font-bold mb-1">Yayın Günü (Takvim İçin)</label>
-              <select
+              <label className="block text-purple-300 font-bold mb-1">Yayın Günü / Tarihleri (Takvim İçin)</label>
+              <input
+                type="text"
+                placeholder="Örn: Pazartesi veya 9, 19, 29"
                 value={releaseDay || ''}
                 onChange={e => setReleaseDay(e.target.value as Series['releaseDay'])}
                 className="w-full bg-gray-950 border border-purple-500/30 text-amber-300 font-bold rounded-xl p-3 focus:outline-none"
-              >
-                <option value="Pazartesi">Pazartesi</option>
-                <option value="Salı">Salı</option>
-                <option value="Çarşamba">Çarşamba</option>
-                <option value="Perşembe">Perşembe</option>
-                <option value="Cuma">Cuma</option>
-                <option value="Cumartesi">Cumartesi</option>
-                <option value="Pazar">Pazar</option>
-                <option value="Düzensiz">Düzensiz</option>
-              </select>
+              />
+              <div className="flex flex-wrap gap-1 mt-1.5">
+                {['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', '9, 19, 29', 'Düzensiz'].map(preset => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setReleaseDay(preset)}
+                    className="text-[10px] bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/30 px-2 py-0.5 rounded-lg transition"
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
@@ -2932,21 +2937,26 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 <div>
-                  <label className="block text-purple-300 font-bold mb-1">Yayın Günü (Takvim)</label>
-                  <select
+                  <label className="block text-purple-300 font-bold mb-1">Yayın Günü / Tarihleri (Takvim)</label>
+                  <input
+                    type="text"
+                    placeholder="Örn: Pazartesi veya 9, 19, 29"
                     value={editingSeries.releaseDay || 'Pazartesi'}
                     onChange={e => setEditingSeries({ ...editingSeries, releaseDay: e.target.value as Series['releaseDay'] })}
                     className="w-full bg-gray-950 border border-purple-500/30 text-amber-300 font-bold rounded-xl p-2.5 focus:outline-none"
-                  >
-                    <option value="Pazartesi">Pazartesi</option>
-                    <option value="Salı">Salı</option>
-                    <option value="Çarşamba">Çarşamba</option>
-                    <option value="Perşembe">Perşembe</option>
-                    <option value="Cuma">Cuma</option>
-                    <option value="Cumartesi">Cumartesi</option>
-                    <option value="Pazar">Pazar</option>
-                    <option value="Düzensiz">Düzensiz</option>
-                  </select>
+                  />
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', '9, 19, 29', 'Düzensiz'].map(preset => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => setEditingSeries({ ...editingSeries, releaseDay: preset })}
+                        className="text-[10px] bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/30 px-2 py-0.5 rounded-lg transition"
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
