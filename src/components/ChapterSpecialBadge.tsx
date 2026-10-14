@@ -13,51 +13,50 @@ export const ChapterSpecialBadge: React.FC<ChapterSpecialBadgeProps> = ({
   className = ''
 }) => {
   if (!tag) return null;
-
   const normalized = tag.trim().toLowerCase();
 
-  // Pick badge styling based on tag type
-  let badgeStyle = 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white border-purple-300/40';
+  // Pick badge styling based on tag type with rich gradients and glows
+  let badgeStyle = 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white border-purple-300/40 shadow-purple-950/50';
   let icon = <Sparkles className="flex-shrink-0" />;
   let displayText = tag;
 
-  if (normalized.includes('sezon final') || normalized.includes('season final')) {
-    badgeStyle = 'bg-gradient-to-r from-amber-500 via-rose-500 to-purple-600 text-white border-amber-300/50 shadow-amber-900/30';
-    icon = <Sparkles className="text-amber-200 fill-amber-200 flex-shrink-0" />;
+  if (normalized.includes('sezon final') || normalized.includes('season final') || normalized.includes('sezon finali')) {
+    badgeStyle = 'bg-gradient-to-r from-amber-500 via-orange-600 to-rose-600 text-white border-amber-300/60 shadow-amber-950/80 shadow-md ring-1 ring-amber-400/50';
+    icon = <Sparkles className="text-amber-200 fill-amber-200 flex-shrink-0 animate-pulse" />;
     displayText = 'SEZON FİNALİ';
   } else if (normalized.includes('final')) {
-    badgeStyle = 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white border-red-300/50 shadow-red-900/50 animate-pulse';
+    badgeStyle = 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white border-red-300/60 shadow-red-950/80 shadow-md ring-1 ring-red-400/50 animate-pulse';
     icon = <Crown className="text-amber-300 fill-amber-300 flex-shrink-0" />;
     displayText = 'FİNAL';
   } else if (normalized.includes('ekstra') || normalized.includes('extra')) {
-    badgeStyle = 'bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 text-white border-cyan-300/40 shadow-cyan-900/30';
+    badgeStyle = 'bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 text-white border-cyan-300/50 shadow-cyan-950/60 shadow-md';
     icon = <Zap className="text-cyan-100 fill-cyan-100 flex-shrink-0" />;
     displayText = 'EKSTRA';
   } else if (normalized.includes('yan bölüm') || normalized.includes('side story') || normalized.includes('yan bolum')) {
-    badgeStyle = 'bg-gradient-to-r from-emerald-500 via-teal-600 to-green-600 text-white border-emerald-300/40 shadow-emerald-900/30';
+    badgeStyle = 'bg-gradient-to-r from-emerald-500 via-teal-600 to-green-600 text-white border-emerald-300/50 shadow-emerald-950/60 shadow-md';
     icon = <Bookmark className="text-emerald-100 fill-emerald-100 flex-shrink-0" />;
     displayText = 'YAN BÖLÜM';
-  } else if (normalized.includes('özel') || normalized.includes('ozel') || normalized.includes('special')) {
-    badgeStyle = 'bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-600 text-white border-fuchsia-300/40 shadow-fuchsia-900/30';
+  } else if (normalized.includes('özel') || normalized.includes('ozel') || normalized.includes('special') || normalized.includes('sezon')) {
+    badgeStyle = 'bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-600 text-white border-fuchsia-300/50 shadow-fuchsia-950/60 shadow-md';
     icon = <Star className="text-fuchsia-100 fill-fuchsia-100 flex-shrink-0" />;
-    displayText = 'ÖZEL';
+    displayText = tag.toUpperCase();
   }
 
-  // Size configurations
-  let sizeClasses = 'text-[9px] px-1.5 py-0.2 rounded-md font-extrabold gap-0.5';
-  let iconSize = 9;
+  // Size configurations (enhanced to be clearly visible and prominent)
+  let sizeClasses = 'text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-black tracking-wider gap-1.5 shadow-sm';
+  let iconSize = 13;
 
   if (size === 'xs') {
-    sizeClasses = 'text-[8px] px-1 py-0.1 rounded font-black gap-0.5';
-    iconSize = 8;
+    sizeClasses = 'text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md font-extrabold tracking-wide gap-1 shadow-sm';
+    iconSize = 11;
   } else if (size === 'md') {
-    sizeClasses = 'text-[10px] sm:text-xs px-2 py-0.5 rounded-lg font-black gap-1';
-    iconSize = 12;
+    sizeClasses = 'text-xs sm:text-sm px-3.5 py-1.5 rounded-xl font-black tracking-wider gap-1.5 shadow-md';
+    iconSize = 15;
   }
 
   return (
     <span
-      className={`inline-flex items-center border shadow-sm tracking-wide uppercase flex-shrink-0 whitespace-nowrap select-none ${badgeStyle} ${sizeClasses} ${className}`}
+      className={`inline-flex items-center border uppercase flex-shrink-0 whitespace-nowrap select-none transition-transform hover:scale-105 ${badgeStyle} ${sizeClasses} ${className}`}
     >
       {React.cloneElement(icon, { size: iconSize })}
       <span>{displayText}</span>
