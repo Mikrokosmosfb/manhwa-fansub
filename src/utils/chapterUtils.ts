@@ -312,6 +312,25 @@ export function getChapterAlerts(
   seriesSynopsis?: string | null,
   seriesTitle?: string | null
 ): ParsedMangaAlert[] {
+  if (!isManhwa) {
+    const novelAlerts: ParsedMangaAlert[] = [];
+    if (chapter && chapter.content && /manga-alert|m-warning|m-info|m-danger/i.test(chapter.content)) {
+      if (typeof DOMParser !== 'undefined') {
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(chapter.content, 'text/html');
+          const alertNodes = Array.from(doc.querySelectorAll('.manga-alert, .m-warning, .m-info, .m-danger'));
+          if (alertNodes.length > 0) {
+            const wrapper = doc.createElement('div');
+            alertNodes.forEach(n => wrapper.appendChild(n.cloneNode(true)));
+            novelAlerts.push(...extractMangaAlerts(wrapper.innerHTML));
+          }
+        } catch {}
+      }
+    }
+    return novelAlerts;
+  }
+
   if (!chapter) return extractMangaAlerts(seriesNotice);
 
   const combined: ParsedMangaAlert[] = [];
