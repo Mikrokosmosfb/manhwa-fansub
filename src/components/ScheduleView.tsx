@@ -256,7 +256,94 @@ export const ScheduleView: React.FC = () => {
         )}
       </div>
 
+
+      {/* Aylık / Tarih Bazlı Yayınlanan Seriler Bölümü (Örn: 9, 19, 29) */}
+      <div className="bg-gray-900/90 border border-purple-500/25 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4 mt-6">
+        <div className="flex items-center justify-between pb-3 border-b border-purple-500/20">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
+              <Calendar size={18} />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-white">Aylık / Tarih Bazlı Yayınlanan Seriler</h2>
+              <p className="text-xs text-gray-400">Belirli takvim tarihlerinde (Örn: Ayın 9, 19, 29'u) gelen özel seriler</p>
+            </div>
+          </div>
+          <span className="text-xs font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-xl">
+            {monthlyDateSeries.length} Seri
+          </span>
+        </div>
+
+        {monthlyDateSeries.length === 0 ? (
+          <div className="bg-gray-950/60 border border-purple-500/15 rounded-2xl p-6 text-center text-gray-400 space-y-2">
+            <Calendar size={28} className="mx-auto text-amber-400 opacity-60" />
+            <p className="font-bold text-sm text-gray-200">Aylık veya tarih bazlı (Örn: 9, 19, 29) planlanmış seri bulunmuyor.</p>
+            <p className="text-xs text-gray-500 max-w-md mx-auto">
+              Yönetim panelinden herhangi bir serinin yayın günü alanına <strong className="text-amber-300">9, 19, 29</strong> gibi tarihler yazarak bu özel takvimde görünmesini sağlayabilirsiniz.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {monthlyDateSeries.map(series => {
+              const latestChapter = series.chapters && series.chapters.length > 0 
+                ? [...series.chapters].sort((a, b) => b.number - a.number)[0] 
+                : null;
+              
+              return (
+                <div
+                  key={series.id}
+                  className="bg-gray-950/90 border border-purple-500/30 rounded-2xl p-4 flex items-center gap-4 hover:border-purple-400/60 transition shadow-md group"
+                >
+                  <div className="relative w-20 h-28 rounded-xl overflow-hidden flex-shrink-0 border border-purple-500/30 shadow">
+                    <img
+                      src={series.coverImage}
+                      onError={(e) => handleImageError(e, series.coverImage, series.title)}
+                      alt={series.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                    />
+                    <DiagonalStatusRibbon status={series.status} />
+                  </div>
+
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={`text-[10px] px-2 py-0.5 rounded-md font-extrabold ${getTypeBadgeClass(series.type)}`}>
+                        {series.type}
+                      </span>
+                      <span className="text-[10px] bg-amber-950 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-md font-extrabold flex items-center gap-1">
+                        <Calendar size={10} />
+                        Ayın {series.releaseDay}'u
+                      </span>
+                    </div>
+
+                    <h3 className="font-extrabold text-sm sm:text-base text-white truncate group-hover:text-purple-300 transition">
+                      {series.title}
+                    </h3>
+
+                    {latestChapter ? (
+                      <span className="inline-block text-[11px] bg-purple-950/80 text-purple-200 border border-purple-500/40 px-2.5 py-0.5 rounded-lg font-bold">
+                        Bölüm {latestChapter.number}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-gray-500">Henüz bölüm yok</span>
+                    )}
+
+                    <div className="pt-1">
+                      <button
+                        onClick={() => setView({ type: 'series-detail', seriesId: series.id })}
+                        className="inline-flex items-center gap-1 text-xs font-bold text-purple-300 hover:text-white bg-purple-900/60 hover:bg-purple-600 px-3 py-1 rounded-xl transition cursor-pointer"
+                      >
+                        <span>Seriye Git</span>
+                        <ChevronRight size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
     </div>
   );
 };
-
