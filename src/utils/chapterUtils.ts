@@ -126,6 +126,8 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
   const pushUnique = (alert: ParsedMangaAlert) => {
     const norm = alert.message.toLowerCase().replace(/\s+/g, ' ').trim();
     if (!norm || norm.length < 3 || /^blogger etiketleri/i.test(norm)) return;
+    // Discard long story paragraphs that exceed normal notice lengths
+    if (alert.message.length > 180) return;
     if (seenMessages.has(norm)) return;
     seenMessages.add(norm);
     alerts.push(alert);
