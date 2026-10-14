@@ -2,7 +2,6 @@ import React
 , { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { ReadingProgress } from '../types';
-import { formatUserHandle, toCanonicalUsername } from '../utils/usernameUtils';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { THEME_STYLES, SHOP_ITEMS } from '../data/shopData';
 import { UserAvatar } from './UserAvatar';
@@ -55,6 +54,32 @@ const formatJoinDate = (dateStr?: string) => {
     return dateStr;
   }
 };
+
+const EMOJI_REGEX_INLINE = /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2702}-\u{27B0}\u{24C2}-\u{1F251}\u{1F900}-\u{1F9FF}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{FE00}-\u{FE0F}\u{200D}]/gu;
+
+function toCanonicalUsername(raw?: string | null): string {
+  if (!raw) return '';
+  let str = String(raw).trim();
+  if (str.startsWith('@')) str = str.substring(1);
+  str = str.replace(EMOJI_REGEX_INLINE, '');
+  return str.trim().toLowerCase();
+}
+
+function formatUserHandle(raw?: string | null): string {
+  if (!raw) return '';
+  const clean = String(raw).trim().replace(/^@+/, '').replace(EMOJI_REGEX_INLINE, '').trim();
+  return clean ? `@${clean}` : '';
+}
+
+function canChangeUsername(lastChangedAt?: number): { allowed: boolean; remainingDays: number } {
+  if (!lastChangedAt) return { allowed: true, remainingDays: 0 };
+  const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+  const elapsed = Date.now() - lastChangedAt;
+  if (elapsed >= ONE_MONTH_MS) return { allowed: true, remainingDays: 0 };
+  const remainingMs = ONE_MONTH_MS - elapsed;
+  const remainingDays = Math.max(1, Math.ceil(remainingMs / (24 * 60 * 60 * 1000)));
+  return { allowed: false, remainingDays };
+}
 
 export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
   const { themeStyles, shopItems, setView, openShop, seriesList, user, kosmosPins, getUserTeamRoles } = useApp();
