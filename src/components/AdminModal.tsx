@@ -2501,12 +2501,13 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
           {/* Chapter Edit Modal / Drawer */}
           {editingChapter && (
-            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-              <form onSubmit={handleSaveChapterEdit} className="bg-gray-900 border-2 border-purple-500 rounded-3xl p-6 shadow-2xl space-y-4 max-w-2xl w-full my-8 animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-purple-800 pb-3">
-                  <h3 className="font-extrabold text-base text-purple-200 flex items-center gap-2">
-                    <Edit2 size={18} className="text-purple-400" />
-                    Bölüm Düzenle: {editingChapter.title}
+            <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+              <div className="relative bg-gray-900 border-2 border-purple-500 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col my-auto animate-fadeIn overflow-hidden">
+                {/* Fixed Header */}
+                <div className="flex items-center justify-between border-b border-purple-800/80 p-4 sm:p-5 bg-gray-950/90 shrink-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-purple-200 flex items-center gap-2 truncate pr-2">
+                    <Edit2 size={18} className="text-purple-400 shrink-0" />
+                    <span className="truncate">Bölüm Düzenle: {editingChapter.title}</span>
                   </h3>
                   <button
                     type="button"
@@ -2514,11 +2515,15 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       setEditingChapter(null);
                       setEditingChapterSeriesId(null);
                     }}
-                    className="text-xs bg-gray-800 text-gray-300 hover:text-white px-3 py-1 rounded-xl border border-gray-700"
+                    className="text-xs bg-gray-800 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl border border-gray-700 shrink-0 transition"
                   >
                     Kapat
                   </button>
                 </div>
+
+                {/* Scrollable Body */}
+                <form id="chapterEditForm" onSubmit={handleSaveChapterEdit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   <div>
@@ -2742,10 +2747,14 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   </label>
                 </div>
 
-                <div className="flex gap-2 pt-2">
+                </form>
+
+                {/* Fixed Footer */}
+                <div className="flex gap-2 p-3 sm:p-4 border-t border-purple-900/60 bg-gray-950/90 shrink-0">
                   <button
                     type="submit"
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow transition text-xs flex items-center justify-center gap-1.5"
+                    form="chapterEditForm"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Save size={16} />
                     Bölüm Değişikliklerini Kaydet
@@ -2756,31 +2765,36 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       setEditingChapter(null);
                       setEditingChapterSeriesId(null);
                     }}
-                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs"
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs cursor-pointer"
                   >
                     İptal
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           )}
 
-          {/* Inline Edit Series Form Modal / Panel */}
+          {/* Edit Series Modal / Dialog */}
           {editingSeries && (
-            <form onSubmit={handleSaveEditSeries} className="bg-purple-950/90 border-2 border-purple-500 rounded-3xl p-6 shadow-2xl space-y-4 animate-fadeIn">
-              <div className="flex items-center justify-between border-b border-purple-800/80 pb-3">
-                <h3 className="font-extrabold text-base text-purple-200 flex items-center gap-2">
-                  <Edit2 size={18} className="text-purple-400" />
-                  "{editingSeries.title}" Serisini Düzenle
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setEditingSeries(null)}
-                  className="text-xs bg-gray-900 text-gray-400 hover:text-white px-3 py-1 rounded-xl border border-gray-700"
-                >
-                  İptal
-                </button>
-              </div>
+            <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
+              <div className="relative bg-gray-900 border-2 border-purple-500 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] sm:max-h-[88vh] flex flex-col my-auto animate-fadeIn overflow-hidden">
+                {/* Sticky Header */}
+                <div className="flex items-center justify-between border-b border-purple-800/80 p-4 sm:p-5 bg-gray-950/90 shrink-0">
+                  <h3 className="font-extrabold text-sm sm:text-base text-purple-200 flex items-center gap-2 truncate pr-2">
+                    <Edit2 size={18} className="text-purple-400 shrink-0" />
+                    <span className="truncate">"{editingSeries.title}" Serisini Düzenle</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSeries(null)}
+                    className="text-xs bg-gray-800 text-gray-300 hover:text-white px-3 py-1.5 rounded-xl border border-gray-700 shrink-0 transition cursor-pointer"
+                  >
+                    Kapat
+                  </button>
+                </div>
+
+                {/* Scrollable Form Body */}
+                <form id="editSeriesForm" onSubmit={handleSaveEditSeries} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
@@ -3097,16 +3111,28 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 />
               </div>
 
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl shadow transition text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Save size={15} />
-                  Değişiklikleri Kaydet
-                </button>
+                </form>
+
+                {/* Sticky Footer */}
+                <div className="flex gap-2 p-3 sm:p-4 border-t border-purple-900/60 bg-gray-950/90 shrink-0">
+                  <button
+                    type="submit"
+                    form="editSeriesForm"
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Save size={16} />
+                    Değişiklikleri Kaydet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingSeries(null)}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs cursor-pointer"
+                  >
+                    İptal
+                  </button>
+                </div>
               </div>
-            </form>
+            </div>
           )}
 
           {seriesList
@@ -4174,10 +4200,10 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
       {/* SHOP ITEM & THEME EDIT MODAL */}
       {showShopEditModal && editingShopItem && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-          <div className="relative bg-gray-900 border-2 border-amber-500/50 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 my-8 max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+        <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto animate-fadeIn">
+          <div className="relative bg-gray-900 border-2 border-amber-500/50 rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl my-auto max-h-[92vh] sm:max-h-[88vh] flex flex-col overflow-hidden">
+            {/* Sticky Modal Header */}
+            <div className="flex items-center justify-between border-b border-gray-800 p-4 sm:p-5 bg-gray-950/90 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black">
                   <Palette size={18} />
@@ -4198,6 +4224,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
               </button>
             </div>
 
+            {/* Scrollable Content Body */}
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1">
             {/* General Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
@@ -5465,19 +5493,21 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
               </div>
             )}
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-gray-800">
+            </div>
+
+            {/* Sticky Modal Actions Footer */}
+            <div className="flex items-center justify-end gap-2 p-3 sm:p-4 border-t border-gray-800 bg-gray-950/90 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowShopEditModal(false)}
-                className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs px-4 py-2.5 rounded-xl transition"
+                className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold text-xs px-4 py-2.5 rounded-xl transition cursor-pointer"
               >
                 İptal
               </button>
               <button
                 type="button"
                 onClick={handleSaveShopEdit}
-                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transition transform hover:scale-105"
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transition transform active:scale-95 cursor-pointer"
               >
                 <Save size={16} />
                 Değişiklikleri Kaydet
