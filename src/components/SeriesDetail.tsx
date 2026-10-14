@@ -501,13 +501,21 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {/* Synopsis */}
                 {(() => {
-                  // Extract clean synopsis: if raw Blogger HTML is stored in synopsis, grab ONLY the text inside #synopsis
+                  // Extract clean synopsis: strictly isolate text inside <div class="descManga"><div id="synopsis">...</div></div>
                   let synopsisText = '';
                   if (dynamicMeta?.cleanedHtml && dynamicMeta.cleanedHtml.trim().length > 0) {
                     synopsisText = dynamicMeta.cleanedHtml.trim();
-                  } else {
-                    const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
-                    synopsisText = cleanSynopsis || (series.synopsis && !series.synopsis.includes('<div') ? series.synopsis : 'Bu seri için henüz bir özet girilmemiştir.');
+                  } else if (series.synopsis) {
+                    const extracted = extractBloggerSeriesMetadata(series.synopsis);
+                    if (extracted.cleanedHtml && extracted.cleanedHtml.trim().length > 0) {
+                      synopsisText = extracted.cleanedHtml.trim();
+                    } else {
+                      const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
+                      synopsisText = cleanSynopsis;
+                    }
+                  }
+                  if (!synopsisText || synopsisText.includes('<topla>') || synopsisText.includes('class="separator"')) {
+                    synopsisText = 'Bu seri için henüz bir özet girilmemiştir.';
                   }
                   const isLongSynopsis = false; // Always show full story summary without cutting off!
 
