@@ -719,7 +719,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
           <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-600/10 rounded-full blur-3xl pointer-events-none" />
 
           {/* Header & Controls */}
-          <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-purple-500/15">
+          <div className="relative flex flex-col gap-4 mb-5 pb-4 border-b border-purple-500/15">
             {/* Left: Title, Count, Reading Progress & Bulk Actions */}
             <div className="flex items-start sm:items-center gap-3.5">
               <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-purple-600/30 to-indigo-600/30 border border-purple-400/40 flex items-center justify-center text-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.2)] flex-shrink-0">
