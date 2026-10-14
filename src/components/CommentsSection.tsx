@@ -1513,11 +1513,11 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
       {/* Comment Report Modal */}
       {reportingComment && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+          className="fixed inset-0 z-[110] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fadeIn"
           onClick={() => !isSubmittingReport && setReportingComment(null)}
         >
           <div
-            className="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4"
+            className="bg-gray-900 border border-red-500/40 rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4 my-auto max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-gray-800 pb-3">

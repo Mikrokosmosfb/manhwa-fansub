@@ -1078,8 +1078,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
       {/* Bookmark Modal Popup */}
       {isBookmarkModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border-2 border-purple-500 rounded-2xl p-6 w-full max-w-md shadow-2xl relative">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn">
+          <div className="bg-gray-900 border-2 border-purple-500 rounded-2xl p-5 sm:p-6 w-full max-w-md shadow-2xl relative my-auto max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setIsBookmarkModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-full hover:bg-gray-800"
@@ -1158,11 +1158,11 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
       {/* Reading List Modal */}
       {isListModalOpen && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-fadeIn"
           onClick={() => setIsListModalOpen(false)}
         >
           <div
-            className="bg-gray-900 border border-purple-500/40 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl"
+            className="bg-gray-900 border border-purple-500/40 rounded-2xl max-w-md w-full overflow-hidden shadow-2xl my-auto max-h-[90vh] flex flex-col"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
