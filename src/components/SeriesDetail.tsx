@@ -501,11 +501,15 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {/* Synopsis */}
                 {(() => {
-                  // If synopsis only had Blogger meta, keep original or fallback cleanly
-                  const rawSyn = dynamicMeta?.cleanedHtml?.trim() || series.synopsis;
-                  const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(rawSyn, series.notice);
-                  const synopsisText = cleanSynopsis || (series.synopsis && !series.synopsis.includes('<div') ? series.synopsis : 'Bu seri için henüz bir özet girilmemiştir.');
-                  const isLongSynopsis = synopsisText.length > 220 || synopsisText.split('\n').length > 3;
+                  // Extract clean synopsis: if raw Blogger HTML is stored in synopsis, grab ONLY the text inside #synopsis
+                  let synopsisText = '';
+                  if (dynamicMeta?.cleanedHtml && dynamicMeta.cleanedHtml.trim().length > 0) {
+                    synopsisText = dynamicMeta.cleanedHtml.trim();
+                  } else {
+                    const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
+                    synopsisText = cleanSynopsis || (series.synopsis && !series.synopsis.includes('<div') ? series.synopsis : 'Bu seri için henüz bir özet girilmemiştir.');
+                  }
+                  const isLongSynopsis = false; // Always show full story summary without cutting off!
 
                   return (
                     <div className="mt-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-950/50 via-gray-950/90 to-indigo-950/50 border border-purple-500/35 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(168,85,247,0.2)] p-4 sm:p-5 transition-all duration-300">
@@ -539,18 +543,12 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                         className={`relative ${!isSynopsisExpanded && isLongSynopsis ? 'cursor-pointer' : ''}`}
                       >
                         <p
-                          className={`text-[13px] sm:text-sm text-gray-200/95 leading-[1.75] whitespace-pre-line text-left break-words font-normal transition-all duration-300 ${
-                            !isSynopsisExpanded && isLongSynopsis
-                              ? 'line-clamp-3 sm:line-clamp-4 overflow-hidden'
-                              : ''
-                          }`}
+                          className="text-[13px] sm:text-sm text-gray-200/95 leading-[1.75] whitespace-pre-line text-left break-words font-normal"
                         >
                           {synopsisText}
                         </p>
 
-                        {!isSynopsisExpanded && isLongSynopsis && (
-                          <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-gray-950/90 via-gray-950/40 to-transparent pointer-events-none" />
-                        )}
+
                       </div>
 
                       {/* Single Expand / Collapse Pill Button */}

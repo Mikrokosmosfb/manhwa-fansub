@@ -513,11 +513,51 @@ export function extractBloggerSeriesMetadata(rawHtml?: string | null): BloggerSe
   if (!rawHtml) return result;
 
   // 1. ÖNCELİKLİ ÖZET ÇIKARIMI:
-  // Blogger temasındaki <div class="descManga"><div id="synopsis"><p>özet</p></div></div> bloğunu tam olarak yakala!
-  const synopsisRegex = /(?:<div[^>]*class=["'](?:[^"']*\s)?descManga(?:\s[^"']*)?["'][^>]*>[\s\S]*?)?<div[^>]*id=["']synopsis["'][^>]*>([\s\S]*?)<\/div>/i;
-  const synopsisMatch = synopsisRegex.exec(rawHtml);
-  if (synopsisMatch && synopsisMatch[1]) {
-    let cleanSyn = synopsisMatch[1]
+  // <div class="descManga"><div id="synopsis"><p>özet</p></div></div>
+  // veya doğrudan <div id="synopsis">...</div> veya <div class="descManga">...</div> bloğunu yakala!
+  let foundSynopsis: string | null = null;
+
+  // Pattern A: id="synopsis" (içindeki p veya metinler)
+  const synByIdMatch = rawHtml.match(/<div[^>]*id=["']synopsis["'][^>]*>([\s\S]*?)<\/div>/i);
+  if (synByIdMatch && synByIdMatch[1]) {
+    foundSynopsis = synByIdMatch[1];
+  } else {
+    // Pattern B: class="descManga"
+    const descMangaMatch = rawHtml.match(/<div[^>]*class=["'][^"']*descManga[^"']*["'][^>]*>([\s\S]*?)<\/div>\s*<\/div>/i) ||
+                           rawHtml.match(/<div[^>]*class=["'][^"']*descManga[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+    if (descMangaMatch && descMangaMatch[1]) {
+      foundSynopsis = descMangaMatch[1];
+    }
+  }
+
+  if (foundSynopsis) {
+    let cleanSyn = foundSynopsis
+      .replace(/<div[^>]*id=["']extra-info["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+      .replace(/<div[^>]*class=["'][^"']*y6x11p[^"']*["'][\s\S]*?<\/div>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n\n')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;|&apos;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .trim();
+
+    if (cleanSyn.length > 2) {
+      result.cleanedHtml = cleanSyn;
+    }
+  } else {
+    // Eğer synopsis divi yoksa, extra-info'yu temizleyip geriye kalan metni al
+    let fallback = rawHtml
+      .replace(/<div[^>]*id=["']extra-info["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+      .replace(/<div[^>]*class=["'][^"']*y6x11p[^"']*["'][\s\S]*?<\/div>/gi, '')
+      .replace(/Tür\s*:[^<>\n\r]+/gi, '')
+      .replace(/Çizer\s*:[^<>\n\r]+/gi, '')
+      .replace(/Yazar\s*:[^<>\n\r]+/gi, '')
+      .replace(/TR Bölüm sayısı\s*:[^<>\n\r]+/gi, '')
+      .replace(/Çıkış Tarihi\s*:[^<>\n\r]+/gi, '')
       .replace(/<br\s*\/?>/gi, '\n')
       .replace(/<\/p>/gi, '\n\n')
       .replace(/<[^>]+>/g, '')
@@ -526,8 +566,8 @@ export function extractBloggerSeriesMetadata(rawHtml?: string | null): BloggerSe
       .replace(/&quot;/gi, '"')
       .replace(/&#39;|&apos;/gi, "'")
       .trim();
-    if (cleanSyn.length > 5) {
-      result.cleanedHtml = cleanSyn;
+    if (fallback.length > 2) {
+      result.cleanedHtml = fallback;
     }
   }
 
