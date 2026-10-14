@@ -501,23 +501,49 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                 {/* Synopsis */}
                 {(() => {
-                  // Extract clean synopsis: strictly isolate text inside <div class="descManga"><div id="synopsis">...</div></div>
+                  // SADECE VE SADECE <div class="descManga"><div id="synopsis"><p>özet</p></div></div> içindeki metni al!
                   let synopsisText = '';
-                  if (dynamicMeta?.cleanedHtml && dynamicMeta.cleanedHtml.trim().length > 0) {
-                    synopsisText = dynamicMeta.cleanedHtml.trim();
-                  } else if (series.synopsis) {
-                    const extracted = extractBloggerSeriesMetadata(series.synopsis);
-                    if (extracted.cleanedHtml && extracted.cleanedHtml.trim().length > 0) {
-                      synopsisText = extracted.cleanedHtml.trim();
-                    } else {
-                      const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
-                      synopsisText = cleanSynopsis;
-                    }
+                  const rawContent = series.synopsis || '';
+
+                  // HTML entity'leri temizle (&lt; -> < vb.)
+                  const decoded = rawContent
+                    .replace(/&lt;/g, '<')
+                    .replace(/&gt;/g, '>')
+                    .replace(/&quot;/g, '"')
+                    .replace(/&#39;|&apos;/g, "'")
+                    .replace(/&amp;/g, '&');
+
+                  // 1. Doğrudan id="synopsis" veya class="descManga" bloğunu ara
+                  const synopsisMatch = decoded.match(/<div[^>]*id=["']synopsis["'][^>]*>([\s\S]*?)<\/div>/i) ||
+                                        decoded.match(/<div[^>]*class=["'][^"']*descManga[^"']*["'][^>]*>([\s\S]*?)<\/div>/i);
+
+                  if (synopsisMatch && synopsisMatch[1]) {
+                    // Sadece o bloğun içindeki metni al, tüm HTML etiketlerini ve çöpleri yok et
+                    synopsisText = synopsisMatch[1]
+                      .replace(/<br\s*\/?>/gi, '\n')
+                      .replace(/<\/p>/gi, '\n\n')
+                      .replace(/<[^>]+>/g, '')
+                      .replace(/&nbsp;/gi, ' ')
+                      .replace(/&amp;/gi, '&')
+                      .replace(/&quot;/gi, '"')
+                      .replace(/&#39;|&apos;/gi, "'")
+                      .replace(/\n{3,}/g, '\n\n')
+                      .trim();
+                  } else {
+                    // Eğer bu bloklar yoksa, serinin normal metnini al ama Blogger çöplerini temizle
+                    const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(series.synopsis, series.notice);
+                    synopsisText = cleanSynopsis
+                      .replace(/<topla>[\s\S]*?<\/topla>/gi, '')
+                      .replace(/<div class="separator"[\s\S]*?<\/div>/gi, '')
+                      .replace(/<input[\s\S]*?>/gi, '')
+                      .replace(/<[^>]+>/g, '')
+                      .trim();
                   }
+
                   if (!synopsisText || synopsisText.includes('<topla>') || synopsisText.includes('class="separator"')) {
                     synopsisText = 'Bu seri için henüz bir özet girilmemiştir.';
                   }
-                  const isLongSynopsis = false; // Always show full story summary without cutting off!
+                  const isLongSynopsis = false;
 
                   return (
                     <div className="mt-4 relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-950/50 via-gray-950/90 to-indigo-950/50 border border-purple-500/35 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(168,85,247,0.2)] p-4 sm:p-5 transition-all duration-300">
