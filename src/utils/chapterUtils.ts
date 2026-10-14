@@ -360,7 +360,7 @@ export function getChapterAlerts(
     addAll(extractMangaAlerts(seriesNotice));
   }
 
-  if (combined.length === 0 && seriesSynopsis) {
+  if (combined.length === 0 && isManhwa && seriesSynopsis) {
     const { alerts: synAlerts } = getSeriesAlertsAndCleanSynopsis(seriesSynopsis, seriesNotice);
     addAll(synAlerts);
   }
