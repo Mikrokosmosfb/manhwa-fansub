@@ -788,39 +788,38 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             </div>
 
             {/* Name, Team Roles and Purchased Badges Container */}
-            <div className="flex flex-col gap-1 min-w-0 flex-1">
-              {/* Name, Team Roles and Date Box */}
-              <div
-                className={`min-w-0 max-w-fit ${
-                  themeStyle?.cardBgImageUrl
-                    ? 'bg-black/75 px-3 py-1.5 rounded-xl border border-white/10 shadow-sm z-10'
-                    : 'pl-0.5'
-                }`}
-              >
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-baseline gap-1.5 flex-wrap">
-                    {/* Görünen Takma Ad */}
-                    <span className={`font-bold text-xs sm:text-sm tracking-wide truncate cursor-pointer hover:underline ${
-                        themeStyle ? themeStyle.nameClass : 'text-gray-100'
-                      }`} onClick={() => c.userId && openPublicProfile(c.userId)}>
-                      {c.userName}
-                    </span>
-                    {/* Altında / Yanında Benzersiz Kullanıcı Adı @kullanici */}
-                    <span
-                      onClick={() => c.userId && openPublicProfile(c.userId)}
-                      className="text-[10px] text-purple-300/80 font-mono hover:text-purple-200 cursor-pointer transition select-none"
-                    >
-                      {formatUserHandle(c.userHandle || (knownUsers.find(k => k.uid === c.userId)?.username) || toCanonicalUsername(c.userName))}
-                    </span>
-                  </div>
-                  <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
-                  <span className="text-[10px] text-gray-400 shrink-0">{formatTimeAgo(c.date)}</span>
-                </div>
+            <div className="flex flex-col gap-1 min-w-0 flex-1 justify-center">
+              {/* Top Row: Takma Ad, Team Badges, and Action/Date */}
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                {/* Görünen Takma Ad */}
+                <span
+                  className={`font-black text-sm sm:text-base tracking-tight truncate cursor-pointer hover:opacity-90 transition drop-shadow-sm ${
+                    themeStyle ? themeStyle.nameClass : 'text-white'
+                  }`}
+                  onClick={() => c.userId && openPublicProfile(c.userId)}
+                >
+                  {c.userName}
+                </span>
+
+                {/* Ekip Rolleri Rozetleri */}
+                <TeamBadges roles={getUserTeamRoles(c)} size="xs" />
               </div>
 
-              {/* Purchased Badges / Etiketler (Displayed SEPARATELY under the username box) */}
+              {/* Sub Row: Benzersiz @kullanici_adi ve Tarih Bilgisi */}
+              <div className="flex items-center gap-2 text-[11px] text-gray-400 font-medium">
+                <span
+                  onClick={() => c.userId && openPublicProfile(c.userId)}
+                  className="text-purple-300 hover:text-purple-200 font-mono text-[11px] font-semibold cursor-pointer transition"
+                >
+                  {formatUserHandle(c.userHandle || (knownUsers.find(k => k.uid === c.userId)?.username) || toCanonicalUsername(c.userName))}
+                </span>
+                <span className="text-gray-600 select-none">•</span>
+                <span className="text-gray-400 text-[11px] font-normal">{formatTimeAgo(c.date)}</span>
+              </div>
+
+              {/* Purchased Badges / VIP Unvanlar */}
               {authorBadges.length > 0 && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-0.5 z-10">
+                <div className="flex items-center gap-1.5 flex-wrap pt-1 z-10">
                   {authorBadges.map((badgeText, idx) => {
                     const badgeItem = currentShopItems.find(
                       i => i.category === 'badge' && (i.badgeText === badgeText || i.name === badgeText)
