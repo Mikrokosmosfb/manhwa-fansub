@@ -3,7 +3,7 @@ import React
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources } from '../utils/chapterUtils';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata } from '../utils/chapterUtils';
 import { MangaAlertStack } from './MangaAlertBox';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
@@ -149,6 +149,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     type: SeriesType;
     coverImage: string;
     synopsis: string;
+    author?: string;
+    artist?: string;
+    releaseYear?: string;
+    genres?: string[];
     projectPost?: BloggerParsedPost;
     chapterPosts: BloggerParsedPost[];
     selected: boolean;
@@ -581,15 +585,27 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         }
 
         let synopsis = `${item.seriesName} serisine ait bölümler. Blogger aktarımı ile otomatik eklenmiştir.`;
+        let detectedAuthor = 'Blogger';
+        let detectedArtist = 'Blogger';
+        let detectedReleaseYear = new Date().getFullYear().toString();
+        let detectedGenres: string[] = [];
+
         if (item.projectPost) {
-          const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(item.projectPost.contentHtml);
+          // Parse #extra-info, .y6x11p, .dt fields: Çizer, Yazar, Türler, Çıkış Tarihi
+          const meta = extractBloggerSeriesMetadata(item.projectPost.contentHtml);
+          if (meta.author) detectedAuthor = meta.author;
+          if (meta.artist) detectedArtist = meta.artist;
+          if (meta.releaseYear) detectedReleaseYear = meta.releaseYear;
+          if (meta.genres && meta.genres.length > 0) detectedGenres = meta.genres;
+
+          const { cleanSynopsis } = getSeriesAlertsAndCleanSynopsis(meta.cleanedHtml);
           const cleanText = cleanSynopsis
             .replace(/<img[^>]*>/gi, '')
             .replace(/<[^>]+>/g, '\n')
             .replace(/\n+/g, ' ')
             .trim();
           if (cleanText.length > 20) {
-            synopsis = cleanText.slice(0, 350) + (cleanText.length > 350 ? '...' : '');
+            synopsis = cleanText;
           }
         }
 
@@ -613,6 +629,10 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           type: item.type,
           coverImage: cover,
           synopsis,
+          author: detectedAuthor,
+          artist: detectedArtist,
+          releaseYear: detectedReleaseYear,
+          genres: detectedGenres.length > 0 ? detectedGenres : undefined,
           projectPost: item.projectPost,
           chapterPosts: sortedChapters,
           selected: true
@@ -808,6 +828,10 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           };
           totalImportedChapters += filteredNewChapters.length;
         } else {
+          const finalGenres = (detSeries.genres && detSeries.genres.length > 0)
+            ? detSeries.genres
+            : (detSeries.type === 'Web Novel' ? ['Web Novel', 'Fantastik', 'Aksiyon'] : ['Aksiyon', 'Fantastik', 'Macera']);
+
           targetSeriesToSave = {
             id: `s-blogger-${Date.now()}-${sIdx}`,
             slug: detSeries.slug,
@@ -817,11 +841,11 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             coverImage: detSeries.coverImage,
             rating: 9.5,
             synopsis: detSeries.synopsis,
-            author: 'Blogger',
-            artist: 'Blogger',
-            releaseYear: new Date().getFullYear().toString(),
+            author: detSeries.author || 'Blogger',
+            artist: detSeries.artist || 'Blogger',
+            releaseYear: detSeries.releaseYear || new Date().getFullYear().toString(),
             translator: 'Mikrokosmos Fansub',
-            genres: detSeries.type === 'Web Novel' ? ['Web Novel', 'Fantastik', 'Aksiyon'] : ['Aksiyon', 'Fantastik', 'Macera'],
+            genres: finalGenres,
             releaseDay: 'Düzensiz',
             isGuncel: false,
             updatedAt: new Date().toISOString().slice(0, 10),

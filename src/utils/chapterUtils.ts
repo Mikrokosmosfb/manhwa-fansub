@@ -444,6 +444,18 @@ export function getSeriesAlertsAndCleanSynopsis(
     }
   }
 
+  // Clean Blogger extra-info, y6x11p, and metadata wrappers before stripping HTML
+  if (cleanSynopsis) {
+    cleanSynopsis = cleanSynopsis
+      .replace(/<div[^>]*id=["']extra-info["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+      .replace(/<div[^>]*class=["'](?:[^"']*\s)?y6x11p(?:\s[^"']*)?["'][\s\S]*?<\/div>/gi, '')
+      .replace(/Tür\s*:[^<>\n\r]+/gi, '')
+      .replace(/Çizer\s*:[^<>\n\r]+/gi, '')
+      .replace(/Yazar\s*:[^<>\n\r]+/gi, '')
+      .replace(/TR Bölüm sayısı\s*:[^<>\n\r]+/gi, '')
+      .replace(/Çıkış Tarihi\s*:[^<>\n\r]+/gi, '');
+  }
+
   // Always strip remaining HTML tags (e.g. <b>Konu:</b>, <br>, <p>, etc.) and decode HTML entities
   if (cleanSynopsis) {
     cleanSynopsis = cleanSynopsis
@@ -474,3 +486,69 @@ export function getSeriesAlertsAndCleanSynopsis(
 
 
 
+
+
+export interface BloggerSeriesMetadata {
+  genres: string[];
+  artist?: string;
+  author?: string;
+  releaseYear?: string;
+  totalChapters?: string;
+  cleanedHtml: string;
+}
+
+/**
+ * Blogger üzerinden aktarılan tanıtım postlarındaki (#extra-info, .y6x11p, .dt)
+ * çizer, yazar, türler, çıkış tarihi gibi özel metadata alanlarını ayıklar ve
+ * açıklama (synopsis) metnini bu HTML çöplerinden arındırır.
+ */
+export function extractBloggerSeriesMetadata(rawHtml?: string | null): BloggerSeriesMetadata {
+  const result: BloggerSeriesMetadata = {
+    genres: [],
+    artist: undefined,
+    author: undefined,
+    releaseYear: undefined,
+    totalChapters: undefined,
+    cleanedHtml: rawHtml || ''
+  };
+
+  if (!rawHtml) return result;
+
+  const rowRegex = /<div[^>]*class=["'](?:[^"']*\s)?y6x11p(?:\s[^"']*)?["'][^>]*>([\s\S]*?)<\/div>/gi;
+  let match;
+  while ((match = rowRegex.exec(rawHtml)) !== null) {
+    const rowHtml = match[1];
+    const dtMatch = /<span[^>]*class=["'](?:[^"']*\s)?dt(?:\s[^"']*)?["'][^>]*>([\s\S]*?)<\/span>/i.exec(rowHtml);
+    const value = dtMatch
+      ? dtMatch[1].replace(/<[^>]+>/g, '').trim().replace(/[.,;]+$/, '').trim()
+      : '';
+    const label = rowHtml
+      .replace(/<span[\s\S]*?<\/span>/gi, '')
+      .replace(/<[^>]+>/g, '')
+      .trim()
+      .toLowerCase();
+
+    if (label.includes('tür') || label.includes('genre')) {
+      if (value) {
+        result.genres = value.split(/[,/]+/).map(g => g.trim()).filter(Boolean);
+      }
+    } else if (label.includes('çizer') || label.includes('artist')) {
+      if (value) result.artist = value;
+    } else if (label.includes('yazar') || label.includes('author')) {
+      if (value) result.author = value;
+    } else if (label.includes('çıkış') || label.includes('tarih') || label.includes('year') || label.includes('yılı')) {
+      if (value) result.releaseYear = value;
+    } else if (label.includes('bölüm')) {
+      if (value) result.totalChapters = value;
+    }
+  }
+
+  // Temizleme: Hem #extra-info bloğunu hem de tek tek y6x11p satırlarını kaldır
+  let cleaned = rawHtml
+    .replace(/<div[^>]*id=["']extra-info["'][\s\S]*?<\/div>\s*<\/div>/gi, '')
+    .replace(/<div[^>]*class=["'](?:[^"']*\s)?y6x11p(?:\s[^"']*)?["'][\s\S]*?<\/div>/gi, '')
+    .trim();
+
+  result.cleanedHtml = cleaned;
+  return result;
+}
