@@ -246,22 +246,8 @@ export function extractMangaAlerts(raw?: string | null): ParsedMangaAlert[] {
         label: rawHeader === 'NOT' ? 'NOT' : rawHeader,
         message: body
       });
-    } else {
-      const cleaned = cleanNoticeText(chunk).replace(/\s+/g, ' ').trim();
-      if (!cleaned) continue;
+  }
 
-      let type: ParsedMangaAlert['type'] = 'note';
-      let label = 'NOT';
-      if (/sansürsüz|cinsel içerik|şiddet|olumsuz örnek/i.test(cleaned)) {
-        type = 'warning';
-        label = 'İÇERİK UYARISI';
-      } else if (/güncel bir seridir|yeni bölümleri|yayınlanabilir/i.test(cleaned)) {
-        type = 'info';
-        label = 'BİLGİLENDİRME';
-      }
-
-      pushUnique({ type, label, message: cleaned });
-    }
   }
 
   return alerts;
