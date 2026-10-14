@@ -3313,6 +3313,7 @@ ${seriesXml}
                   user: {
                     uid: foundUser.uid,
                     name: foundUser.name,
+                    username: foundUser.username || toCanonicalUsername(foundUser.name) || foundUser.email.split('@')[0],
                     email: foundUser.email,
                     avatar: foundUser.avatar,
                     bio: foundUser.bio,
