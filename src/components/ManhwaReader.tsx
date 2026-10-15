@@ -1,3 +1,4 @@
+import { findSeriesByQuery, findChapterInSeries } from '../utils/seriesFinder';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { isChapter18Plus } from '../types';

@@ -1,3 +1,4 @@
+import { findSeriesByQuery } from './utils/seriesFinder';
 import React, { useState, useRef, useMemo, Suspense } from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { Header } from './components/Header';
@@ -97,13 +98,13 @@ const MainContent: React.FC = () => {
   if (view.type === 'series-detail') {
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
-        <SeriesDetail seriesId={view.seriesId} />
+        <SeriesDetail key={`series-detail-${view.seriesId}`} seriesId={view.seriesId} />
       </Suspense>
     );
   }
 
   if (view.type === 'reader') {
-    const targetSeries = seriesList.find(s => s.id === view.seriesId || s.slug === view.seriesId);
+    const targetSeries = findSeriesByQuery(seriesList, view.seriesId);
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         {targetSeries?.type === 'Web Novel' ? (

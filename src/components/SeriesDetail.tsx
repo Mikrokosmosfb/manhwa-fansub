@@ -1,3 +1,4 @@
+import { findSeriesByQuery } from '../utils/seriesFinder';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Chapter, isSeries18Plus, isChapter18Plus } from '../types';
@@ -73,15 +74,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   } = useApp();
 
   const series = useMemo(() => {
-    if (!seriesList || seriesList.length === 0) return undefined;
-    const targetId = String(seriesId || '').trim();
-    const decoded = decodeURIComponent(targetId);
-    return seriesList.find(s => 
-      s.id === targetId || 
-      s.id === decoded || 
-      s.slug === targetId || 
-      s.slug === decoded
-    );
+    return findSeriesByQuery(seriesList, seriesId);
   }, [seriesList, seriesId]);
 
   // Dynamically extract Blogger metadata if existing series has raw extra-info or Blogger defaults
