@@ -1305,6 +1305,8 @@ ${seriesXml}
           }
 
           if (request.method === 'POST') {
+            cachedSeriesResponseJson = null;
+            cachedSeriesExpiresAt = 0;
             const body: any = await request.json();
             const seriesListInput = Array.isArray(body.seriesList)
               ? body.seriesList
@@ -1403,16 +1405,8 @@ ${seriesXml}
                           title = excluded.title,
                           published_date = excluded.published_date,
                           special_tag = excluded.special_tag,
-                          images_json = CASE
-                            WHEN excluded.images_json IS NOT NULL AND excluded.images_json != '[]' AND excluded.images_json != ''
-                            THEN excluded.images_json
-                            ELSE chapters.images_json
-                          END,
-                          content = CASE
-                            WHEN excluded.content IS NOT NULL AND excluded.content != ''
-                            THEN excluded.content
-                            ELSE chapters.content
-                          END,
+                          images_json = excluded.images_json,
+                          content = excluded.content,
                           notice = excluded.notice,
                           created_at = excluded.created_at,
                           is_18_plus = excluded.is_18_plus

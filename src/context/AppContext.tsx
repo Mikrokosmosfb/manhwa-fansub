@@ -3171,27 +3171,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     let mergedSeriesToSave: Series = newSeries;
     setSeriesList(prev => {
-      const existingSeries = prev.find(s => s.id === newSeries.id);
-      if (existingSeries && Array.isArray(existingSeries.chapters)) {
-        const existingChMap = new Map(existingSeries.chapters.map(c => [c.id, c]));
-        mergedSeriesToSave = {
-          ...newSeries,
-          chapters: (newSeries.chapters || []).map(ch => {
-            const oldCh = existingChMap.get(ch.id);
-            if (!oldCh) return ch;
-            return {
-              ...ch,
-              content: ch.content && ch.content.trim() ? ch.content : oldCh.content,
-              images:
-                Array.isArray(ch.images) && ch.images.length > 0
-                  ? ch.images
-                  : oldCh.images
-            };
-          })
-        };
-      }
       const filtered = prev.filter(s => s.id !== newSeries.id);
-      return sortSeriesByLatestRelease([mergedSeriesToSave, ...filtered]);
+      const updatedList = sortSeriesByLatestRelease([newSeries, ...filtered]);
+      try {
+        localStorage.setItem('mk_series_list', JSON.stringify(updatedList));
+      } catch (e) {}
+      return updatedList;
     });
 
     try {
