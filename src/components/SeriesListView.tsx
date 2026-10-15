@@ -324,13 +324,13 @@ export const SeriesListView: React.FC = () => {
       ) : layoutMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {sorted.map(s => (
-            <SeriesCard key={s.id} series={s} showExtraTags={true} />
+            <SeriesCard key={s.id} series={s} showExtraTags={false} />
           ))}
         </div>
       ) : (
         <div className="space-y-4">
           {sorted.map((s, idx) => (
-            <HorizontalReleaseCard key={s.id} series={s} maxChapters={1} showSynopsis={true} showGenres={true} index={idx} />
+            <HorizontalReleaseCard key={s.id} series={s} maxChapters={1} showSynopsis={true} showGenres={false} index={idx} />
           ))}
         </div>
       )}
