@@ -68,10 +68,21 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
     user,
     readingLists,
     setReadingLists,
-    showToast
+    showToast,
+    isLoadingSeries
   } = useApp();
 
-  const series = seriesList.find(s => s.id === seriesId);
+  const series = useMemo(() => {
+    if (!seriesList || seriesList.length === 0) return undefined;
+    const targetId = String(seriesId || '').trim();
+    const decoded = decodeURIComponent(targetId);
+    return seriesList.find(s => 
+      s.id === targetId || 
+      s.id === decoded || 
+      s.slug === targetId || 
+      s.slug === decoded
+    );
+  }, [seriesList, seriesId]);
 
   // Dynamically extract Blogger metadata if existing series has raw extra-info or Blogger defaults
   const dynamicMeta = series?.synopsis ? extractBloggerSeriesMetadata(series.synopsis) : null;
@@ -97,6 +108,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const [newReadingListName, setNewReadingListName] = useState('');
 
   if (!series) {
+    if (isLoadingSeries || !seriesList || seriesList.length === 0) {
+      return (
+        <div className="max-w-7xl mx-auto px-4 py-24 text-center text-gray-300 min-h-[60vh] flex flex-col items-center justify-center">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg shadow-purple-900/50" />
+          <p className="text-sm font-extrabold text-purple-300 animate-pulse">Seri Bilgileri Yükleniyor...</p>
+        </div>
+      );
+    }
     return (
       <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-300">
         <h2 className="text-2xl font-bold mb-4">Seri Bulunamadı</h2>
