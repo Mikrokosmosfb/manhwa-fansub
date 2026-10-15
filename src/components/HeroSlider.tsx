@@ -248,17 +248,7 @@ export const HeroSlider: React.FC = () => {
                 {current.title}
               </h1>
 
-              {/* Genres */}
-              <div className="flex flex-wrap justify-center md:justify-start gap-1.5 sm:gap-2 mb-3 sm:mb-4">
-                {current.genres?.map(g => (
-                  <span 
-                    key={g} 
-                    className="text-[11px] sm:text-xs font-semibold text-neutral-300 bg-neutral-900/90 hover:bg-neutral-800 border border-neutral-700/60 px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-lg transition hover:text-white hover:border-purple-500/50 cursor-pointer"
-                  >
-                    {g}
-                  </span>
-                ))}
-              </div>
+
 
               {/* Synopsis */}
               <p className="text-xs sm:text-sm md:text-base text-neutral-200/90 line-clamp-3 leading-relaxed mb-4 sm:mb-6 font-normal max-w-2xl mx-auto md:mx-0 drop-shadow-sm">
