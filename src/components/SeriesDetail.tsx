@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { Chapter, isSeries18Plus, isChapter18Plus } from '../types';
 import {
