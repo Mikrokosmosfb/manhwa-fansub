@@ -467,11 +467,11 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   )}
 
                   {/* Release Year if available */}
-                  {series.releaseYear && (
+                  {(effectiveReleaseYear || series.releaseYear) && (
                     <div className="bg-gray-900 border border-purple-500/20 rounded-xl px-3 py-1.5 flex items-center gap-1.5 text-gray-300 shadow-sm">
                       <Calendar size={14} className="text-purple-400" />
                       <span className="text-gray-400 font-bold">Çıkış Yılı:</span>
-                      <span className="font-extrabold text-gray-200">{effectiveReleaseYear}</span>
+                      <span className="font-extrabold text-gray-200">{effectiveReleaseYear || series.releaseYear}</span>
                     </div>
                   )}
                 </div>

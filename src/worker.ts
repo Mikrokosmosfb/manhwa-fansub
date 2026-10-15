@@ -785,6 +785,7 @@ ${seriesXml}
                     is_new INTEGER DEFAULT 0,
                     is_guncel INTEGER DEFAULT 0,
                     is_18_plus INTEGER DEFAULT 0,
+                    release_year TEXT,
                     updated_at TEXT
                   );
                 `),
@@ -890,6 +891,9 @@ ${seriesXml}
             );
             initTasks.push(
               db.prepare(`ALTER TABLE series ADD COLUMN custom_badges_json TEXT DEFAULT '[]';`).run().catch(() => {})
+            );
+            initTasks.push(
+              db.prepare(`ALTER TABLE series ADD COLUMN release_year TEXT;`).run().catch(() => {})
             );
           }
 
@@ -1238,6 +1242,7 @@ ${seriesXml}
                 translator: s.translator,
                 releaseDay: s.release_day,
                 releaseTime: s.release_time,
+                releaseYear: s.release_year || s.releaseYear || undefined,
                 isHot: Boolean(s.is_hot),
                 isNew: Boolean(s.is_new),
                 isGuncel: Boolean(s.is_guncel),
@@ -1372,14 +1377,14 @@ ${seriesXml}
                   db.prepare(`
                     INSERT OR REPLACE INTO series (
                       id, slug, title, type, cover_image, banner_image, synopsis, genres_json, custom_badges_json,
-                      rating, status, author, artist, translator, release_day, release_time,
+                      rating, status, author, artist, translator, release_day, release_time, release_year,
                       is_hot, is_new, is_guncel, is_18_plus, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).bind(
                     s.id, s.slug || s.id, s.title, s.type, s.coverImage, s.bannerImage || '',
                     s.synopsis || '', JSON.stringify(s.genres || []), JSON.stringify(s.customBadges || []), s.rating || 5.0,
                     s.status || 'Devam Ediyor', s.author || '', s.artist || '', s.translator || '',
-                    s.releaseDay || 'Pazartesi', s.releaseTime || '', s.isHot ? 1 : 0,
+                    s.releaseDay || 'Pazartesi', s.releaseTime || '', s.releaseYear || '', s.isHot ? 1 : 0,
                     s.isNew ? 1 : 0, s.isGuncel ? 1 : 0, s.is18Plus ? 1 : 0, s.updatedAt || new Date().toISOString()
                   )
                 );
