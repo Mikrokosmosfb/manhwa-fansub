@@ -1,5 +1,4 @@
-import React
-, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
@@ -1111,7 +1110,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
   const PRESET_BADGES = ['Renkli', 'Sansürsüz', 'Popüler', 'Sezon Finali', 'HD', 'Yetişkin', 'Efsane', 'Yeni'];
 
-  const allExistingBadges = useMemo(() => {
+  const allExistingBadges = React.useMemo(() => {
     const set = new Set<string>(PRESET_BADGES);
     (seriesList || []).forEach(s => {
       (s.customBadges || []).forEach(b => {
