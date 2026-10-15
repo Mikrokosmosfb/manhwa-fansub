@@ -61,7 +61,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     loginWithGoogle,
     adSettings,
     comments,
-    setSeriesList
+    setSeriesList,
+    isLoadingSeries
   } = useApp();
 
   const series = seriesList.find(s => s.id === seriesId);
@@ -797,8 +798,16 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   }, [seriesId, chapterId]);
 
   if (!series || !currentChapter) {
+    if (isLoadingSeries) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
+          <p className="text-sm font-bold text-purple-300">Bölüm Yükleniyor...</p>
+        </div>
+      );
+    }
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950">
         <h2 className="text-xl font-bold mb-4">Bölüm Bulunamadı</h2>
         <button
           onClick={() => setView({ type: 'home' })}

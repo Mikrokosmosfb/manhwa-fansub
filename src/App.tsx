@@ -103,13 +103,13 @@ const MainContent: React.FC = () => {
   }
 
   if (view.type === 'reader') {
-    const targetSeries = seriesList.find(s => s.id === view.seriesId);
+    const targetSeries = seriesList.find(s => s.id === view.seriesId || s.slug === view.seriesId);
     return (
       <Suspense fallback={<ViewLoadingFallback />}>
         {targetSeries?.type === 'Web Novel' ? (
-          <NovelReader seriesId={view.seriesId} chapterId={view.chapterId} />
+          <NovelReader key={`novel-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
         ) : (
-          <ManhwaReader seriesId={view.seriesId} chapterId={view.chapterId} />
+          <ManhwaReader key={`manhwa-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
         )}
       </Suspense>
     );
