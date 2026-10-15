@@ -1042,6 +1042,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const [customBadgesInput, setCustomBadgesInput] = useState('');
   const [translator, setTranslator] = useState('Mikrokosmos Fansub');
   const [selectedGenres, setSelectedGenres] = useState<string[]>(['Aksiyon', 'Fantastik']);
+  const [customGenreInput, setCustomGenreInput] = useState('');
+  const [customGenreEditInput, setCustomGenreEditInput] = useState('');
   const [releaseDay, setReleaseDay] = useState<Series['releaseDay']>('Pazartesi');
   const [releaseTime, setReleaseTime] = useState('18:00');
   const [notice, setNotice] = useState('');
@@ -1108,6 +1110,16 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const [editingChapterContentText, setEditingChapterContentText] = useState('');
 
   const PRESET_BADGES = ['Renkli', 'Sansürsüz', 'Popüler', 'Sezon Finali', 'HD', 'Yetişkin', 'Efsane', 'Yeni'];
+
+  const allExistingBadges = useMemo(() => {
+    const set = new Set<string>(PRESET_BADGES);
+    (seriesList || []).forEach(s => {
+      (s.customBadges || []).forEach(b => {
+        if (b && b.trim()) set.add(b.trim());
+      });
+    });
+    return Array.from(set);
+  }, [seriesList]);
 
   const handleAddBadgeToInput = (badge: string, isEditMode: boolean) => {
     if (isEditMode) {
@@ -1341,7 +1353,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     }
 
     const parsedBadges = customBadgesInput
-      .split(',')
+      .split(/[,;\n]+/)
       .map(b => b.trim())
       .filter(Boolean);
 
@@ -1403,7 +1415,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     if (!editingSeries) return;
 
     const parsedBadges = editingBadgesText
-      .split(',')
+      .split(/[,;\n]+/)
       .map(b => b.trim())
       .filter(Boolean);
 
@@ -1959,7 +1971,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             {/* Quick Badge Chips */}
             <div className="flex flex-wrap gap-1.5 mt-2">
               <span className="text-[10px] text-gray-400 self-center">Hızlı Ekle:</span>
-              {PRESET_BADGES.map(badge => (
+              {allExistingBadges.map(badge => (
                 <button
                   key={badge}
                   type="button"
@@ -2080,7 +2092,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           <div>
             <label className="block text-purple-300 font-bold text-xs mb-2">Türler (Kategoriler)</label>
             <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-              {GENRE_LIST.map(g => {
+              {Array.from(new Set([...GENRE_LIST, ...selectedGenres])).map(g => {
                 const isSel = selectedGenres.includes(g);
                 return (
                   <button
@@ -2095,6 +2107,39 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   </button>
                 );
               })}
+            </div>
+            {/* Custom genre inline adder */}
+            <div className="flex items-center gap-2 mt-2">
+              <input
+                type="text"
+                placeholder="Özel tür / etiket yazın..."
+                value={customGenreInput}
+                onChange={e => setCustomGenreInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const trimmed = customGenreInput.trim();
+                    if (trimmed && !selectedGenres.includes(trimmed)) {
+                      setSelectedGenres([...selectedGenres, trimmed]);
+                      setCustomGenreInput('');
+                    }
+                  }
+                }}
+                className="bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl px-3 py-1.5 focus:outline-none flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const trimmed = customGenreInput.trim();
+                  if (trimmed && !selectedGenres.includes(trimmed)) {
+                    setSelectedGenres([...selectedGenres, trimmed]);
+                    setCustomGenreInput('');
+                  }
+                }}
+                className="bg-purple-700 hover:bg-purple-600 text-white text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer"
+              >
+                + Tür Ekle
+              </button>
             </div>
           </div>
 
@@ -3043,7 +3088,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 />
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <span className="text-[10px] text-gray-400 self-center">Hızlı Ekle:</span>
-                  {PRESET_BADGES.map(badge => (
+                  {allExistingBadges.map(badge => (
                     <button
                       key={badge}
                       type="button"

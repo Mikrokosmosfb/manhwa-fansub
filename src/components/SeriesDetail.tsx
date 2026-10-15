@@ -476,28 +476,45 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   )}
                 </div>
 
-                {/* Custom Badges & Genres */}
-                <div className="flex flex-wrap gap-1.5 my-3">
-                  {series.customBadges && series.customBadges.map(badge => (
-                    <button
-                      key={badge}
-                      onClick={() => setView({ type: 'categories', genre: badge })}
-                      className="bg-purple-950/70 hover:bg-purple-900 border border-purple-500/30 text-purple-200 hover:text-white text-xs px-2.5 py-1 rounded-lg transition"
-                    >
-                      {badge}
-                    </button>
-                  ))}
+                {/* Custom Badges & Genres (Tüm Özel Etiketler & Türler) */}
+                {(() => {
+                  const rawBadges = Array.isArray(series.customBadges) ? series.customBadges : [];
+                  const rawGenres = Array.isArray(effectiveGenres) && effectiveGenres.length > 0 ? effectiveGenres : (series.genres || []);
+                  const allTags = Array.from(new Set([...rawBadges, ...rawGenres])).filter(t => Boolean(t) && t.trim().length > 0);
 
-                  {series.genres.map(g => (
-                    <button
-                      key={g}
-                      onClick={() => setView({ type: 'categories', genre: g })}
-                      className="bg-purple-950/70 hover:bg-purple-900 border border-purple-500/30 text-purple-200 hover:text-white text-xs px-2.5 py-1 rounded-lg transition"
-                    >
-                      {g}
-                    </button>
-                  ))}
-                </div>
+                  if (allTags.length === 0) return null;
+
+                  return (
+                    <div className="flex flex-wrap items-center gap-1.5 my-3">
+                      <span className="text-[11px] font-extrabold text-purple-300 uppercase tracking-wider flex items-center gap-1 mr-1">
+                        <Tag size={13} className="text-purple-400" />
+                        Etiketler & Türler:
+                      </span>
+                      {allTags.map(tag => {
+                        const isCustomBadge = rawBadges.includes(tag);
+                        const is18 = tag === '18+' || tag === '+18';
+
+                        return (
+                          <button
+                            key={tag}
+                            onClick={() => setView({ type: 'categories', genre: tag })}
+                            className={`text-xs px-2.5 py-1 rounded-lg font-semibold transition cursor-pointer flex items-center gap-1 shadow-sm ${
+                              is18
+                                ? 'bg-rose-950/80 hover:bg-rose-900 border border-rose-500/50 text-rose-300 hover:text-white'
+                                : isCustomBadge
+                                ? 'bg-gradient-to-r from-purple-950 via-indigo-950 to-purple-900 hover:from-purple-900 hover:to-indigo-800 border border-purple-400/50 text-purple-200 hover:text-white ring-1 ring-purple-500/30'
+                                : 'bg-purple-950/70 hover:bg-purple-900 border border-purple-500/30 text-purple-200 hover:text-white'
+                            }`}
+                            title={`"${tag}" etiketine ait tüm serileri gör`}
+                          >
+                            {isCustomBadge && <Sparkles size={11} className="text-amber-400 shrink-0" />}
+                            <span>{tag}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
 
                 {/* Synopsis */}
                 {(() => {

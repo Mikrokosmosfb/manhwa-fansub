@@ -773,6 +773,7 @@ ${seriesXml}
                     banner_image TEXT,
                     synopsis TEXT,
                     genres_json TEXT,
+                    custom_badges_json TEXT DEFAULT '[]',
                     rating REAL DEFAULT 5.0,
                     status TEXT DEFAULT 'Devam Ediyor',
                     author TEXT,
@@ -886,6 +887,9 @@ ${seriesXml}
             );
             initTasks.push(
               db.prepare(`ALTER TABLE chapters ADD COLUMN is_18_plus INTEGER DEFAULT 0;`).run().catch(() => {})
+            );
+            initTasks.push(
+              db.prepare(`ALTER TABLE series ADD COLUMN custom_badges_json TEXT DEFAULT '[]';`).run().catch(() => {})
             );
           }
 
@@ -1225,6 +1229,7 @@ ${seriesXml}
                 bannerImage: s.banner_image,
                 synopsis: s.synopsis,
                 genres: s.genres_json ? JSON.parse(s.genres_json) : [],
+                customBadges: s.custom_badges_json ? (typeof s.custom_badges_json === 'string' ? JSON.parse(s.custom_badges_json) : s.custom_badges_json) : [],
                 rating: s.rating,
                 status: s.status,
                 author: s.author,
@@ -1363,13 +1368,13 @@ ${seriesXml}
                 statements.push(
                   db.prepare(`
                     INSERT OR REPLACE INTO series (
-                      id, slug, title, type, cover_image, banner_image, synopsis, genres_json,
+                      id, slug, title, type, cover_image, banner_image, synopsis, genres_json, custom_badges_json,
                       rating, status, author, artist, translator, release_day, release_time,
                       is_hot, is_new, is_guncel, is_18_plus, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).bind(
                     s.id, s.slug || s.id, s.title, s.type, s.coverImage, s.bannerImage || '',
-                    s.synopsis || '', JSON.stringify(s.genres || []), s.rating || 5.0,
+                    s.synopsis || '', JSON.stringify(s.genres || []), JSON.stringify(s.customBadges || []), s.rating || 5.0,
                     s.status || 'Devam Ediyor', s.author || '', s.artist || '', s.translator || '',
                     s.releaseDay || 'Pazartesi', s.releaseTime || '', s.isHot ? 1 : 0,
                     s.isNew ? 1 : 0, s.isGuncel ? 1 : 0, s.is18Plus ? 1 : 0, s.updatedAt || new Date().toISOString()
@@ -1420,6 +1425,7 @@ ${seriesXml}
                   await db.batch(chunk);
                 } catch (batchErr: any) {
                   await db.prepare(`ALTER TABLE chapters ADD COLUMN is_18_plus INTEGER DEFAULT 0;`).run().catch(() => {});
+                  await db.prepare(`ALTER TABLE series ADD COLUMN custom_badges_json TEXT DEFAULT '[]';`).run().catch(() => {});
                   await db.batch(chunk);
                 }
               }

@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS series (
     banner_image TEXT,
     synopsis TEXT,
     genres_json TEXT DEFAULT '[]',
+    custom_badges_json TEXT DEFAULT '[]',
     rating REAL DEFAULT 5.0,
     status TEXT DEFAULT 'Devam Ediyor',
     author TEXT,

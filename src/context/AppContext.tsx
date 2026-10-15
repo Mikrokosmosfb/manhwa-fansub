@@ -2003,19 +2003,27 @@ const deleteShopItemAndStyle = (itemId: string) => {
         if (data && data.success && Array.isArray(data.data)) {
           const ch18Map = getChapter18PlusMap();
           let mapUpdated = false;
-          const mergedSeries = data.data.map((s: Series) => ({
-            ...s,
-            chapters: (s.chapters || []).map((ch: Chapter) => {
-              if (ch.is18Plus && !(ch.id in ch18Map)) {
-                ch18Map[ch.id] = true;
-                mapUpdated = true;
-              }
-              return {
-                ...ch,
-                is18Plus: ch.id in ch18Map ? ch18Map[ch.id] : Boolean(ch.is18Plus)
-              };
-            })
-          }));
+          const mergedSeries = data.data.map((s: Series) => {
+            const existingLocal = (seriesList || []).find(l => l.id === s.id);
+            const serverBadges = Array.isArray(s.customBadges) ? s.customBadges : [];
+            const localBadges = Array.isArray(existingLocal?.customBadges) ? existingLocal.customBadges : [];
+            const combinedBadges = Array.from(new Set([...serverBadges, ...localBadges])).filter(Boolean);
+
+            return {
+              ...s,
+              customBadges: combinedBadges.length > 0 ? combinedBadges : undefined,
+              chapters: (s.chapters || []).map((ch: Chapter) => {
+                if (ch.is18Plus && !(ch.id in ch18Map)) {
+                  ch18Map[ch.id] = true;
+                  mapUpdated = true;
+                }
+                return {
+                  ...ch,
+                  is18Plus: ch.id in ch18Map ? ch18Map[ch.id] : Boolean(ch.is18Plus)
+                };
+              })
+            };
+          });
           if (mapUpdated) {
             try {
               localStorage.setItem('mk_chapter_18plus_map', JSON.stringify(ch18Map));
