@@ -353,6 +353,7 @@ const defaultNovelSettings: NovelSettings = {
   isBold: false,
   scrollSpeed: 1,
   readingMode: 'scroll',
+  paragraphsPerPage: 8,
 };
 
 const defaultFolders: BookmarkFolder[] = [

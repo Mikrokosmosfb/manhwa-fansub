@@ -200,6 +200,7 @@ export interface NovelSettings {
   isBold: boolean;
   scrollSpeed: number; // 1, 2, 3
   readingMode?: 'scroll' | 'book'; // Dikey kaydırma veya sayfa sayfa kitap modu
+  paragraphsPerPage?: number; // Kitap modunda sayfa başına paragraf sayısı
 }
 
 export interface Comment {

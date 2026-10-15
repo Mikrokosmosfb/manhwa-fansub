@@ -4,6 +4,7 @@ import { NovelSettings, isChapter18Plus } from '../types';
 import { extractImageUrls, isHtmlContent, isIframeUrl } from '../utils/imageParser';
 import {
   Settings,
+  BookOpen,
   ChevronLeft,
   ChevronRight,
   List,
@@ -83,6 +84,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   useEffect(() => {
     setCurrentBookPage(0);
   }, [chapterId]);
+
+  const novelContentRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<NodeJS.Timeout | null>(null);
 
   // Paragraph Comments State (Webnovel / Wattpad style inline comments)
@@ -602,7 +605,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   }, [comments, seriesId, currentChapter?.id]);
 
   const totalParagraphCommentsInChapter = useMemo(() => {
-    return Object.values(paragraphCommentCounts).reduce((sum, n) => sum + n, 0);
+    return (Object.values(paragraphCommentCounts) as number[]).reduce((sum: number, n: number) => sum + n, 0);
   }, [paragraphCommentCounts]);
 
   const paragraphLookup = useMemo(() => {
@@ -657,6 +660,90 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     if (nextChapter && series && currentChapter) {
       markChapterCompleted(series.id, currentChapter.id, currentChapter.number, currentChapter.title);
       setView({ type: 'reader', seriesId: series.id, chapterId: nextChapter.id });
+    }
+  };
+
+  // BOOK MODE (SAYFA SAYFA KİTAP OKUMA) LOGIC & HELPERS
+  const isBookMode = novelSettings.readingMode === 'book';
+  const paragraphsPerPage = novelSettings.paragraphsPerPage || 8;
+  const totalBookPages = Math.max(1, Math.ceil(parsedParagraphs.length / paragraphsPerPage));
+  const activeBookPage = Math.min(Math.max(0, currentBookPage), totalBookPages - 1);
+  const displayedParagraphs = isBookMode
+    ? parsedParagraphs.slice(activeBookPage * paragraphsPerPage, (activeBookPage + 1) * paragraphsPerPage)
+    : parsedParagraphs;
+
+  const goToPage = (page: number) => {
+    const target = Math.max(0, Math.min(page, totalBookPages - 1));
+    setCurrentBookPage(target);
+    if (target >= totalBookPages - 1 && series && currentChapter) {
+      markChapterCompleted(series.id, currentChapter.id, currentChapter.number, currentChapter.title);
+    }
+    if (novelContentRef.current) {
+      const yOffset = -70;
+      const y = novelContentRef.current.getBoundingClientRect().top + window.pageYOffset + yOffset;
+      window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const goToNextPage = () => {
+    if (activeBookPage < totalBookPages - 1) {
+      goToPage(activeBookPage + 1);
+    } else if (nextChapter) {
+      handleGoToNextChapter();
+    }
+  };
+
+  const goToPrevPage = () => {
+    if (activeBookPage > 0) {
+      goToPage(activeBookPage - 1);
+    } else if (prevChapter) {
+      setView({ type: 'reader', seriesId: series.id, chapterId: prevChapter.id });
+    }
+  };
+
+  // Keyboard navigation for Book Mode (ArrowLeft, ArrowRight, PageUp, PageDown)
+  useEffect(() => {
+    if (!isBookMode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const tag = activeEl?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || (activeEl as HTMLElement)?.isContentEditable) return;
+
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        goToNextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        goToPrevPage();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isBookMode, activeBookPage, totalBookPages, nextChapter, prevChapter]);
+
+  // Touch swipe support for Book Mode on mobile
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleBookTouchStart = (e: React.TouchEvent) => {
+    if (!isBookMode) return;
+    touchStartXRef.current = e.changedTouches[0].clientX;
+    touchStartYRef.current = e.changedTouches[0].clientY;
+  };
+
+  const handleBookTouchEnd = (e: React.TouchEvent) => {
+    if (!isBookMode || touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(diffX) > 45 && Math.abs(diffX) > Math.abs(diffY) * 1.3) {
+      if (diffX < 0) {
+        goToNextPage();
+      } else {
+        goToPrevPage();
+      }
     }
   };
 
@@ -892,6 +979,29 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                   {totalParagraphCommentsInChapter}
                 </span>
               )}
+            </button>
+
+            {/* Quick Book Mode Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                const nextMode = isBookMode ? 'scroll' : 'book';
+                updateNovelSettings({ readingMode: nextMode });
+                if (nextMode === 'book') {
+                  setIsAutoScrolling(false);
+                }
+              }}
+              className={`h-9 px-2.5 sm:h-10 sm:px-3 rounded-xl border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm ${
+                isBookMode
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400 text-white font-extrabold shadow-purple-900/40'
+                  : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
+              }`}
+              title={isBookMode ? 'Kitap Modu Aktif (Dikey Kaydırmaya Dönmek İçin Tıkla)' : 'Sayfa Sayfa Kitap Moduna Geç'}
+            >
+              <BookOpen size={16} className={isBookMode ? 'animate-pulse' : ''} />
+              <span className="text-[11px] font-bold hidden xs:inline">
+                {isBookMode ? 'Kitap' : 'Kaydır'}
+              </span>
             </button>
 
             <button
@@ -1152,15 +1262,15 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                 <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1 text-[10px] sm:text-[11px]">Okuma Modu</label>
                 <select
                   value={novelSettings.readingMode || 'scroll'}
-                  onChange={e =>
-                    updateNovelSettings({
-                      readingMode: e.target.value as 'scroll' | 'book'
-                    })
-                  }
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-1.5 font-medium"
+                  onChange={e => {
+                    const mode = e.target.value as 'scroll' | 'book';
+                    updateNovelSettings({ readingMode: mode });
+                    if (mode === 'book') setIsAutoScrolling(false);
+                  }}
+                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-1.5 font-bold"
                 >
-                  <option value="scroll">Dikey Kaydırma</option>
-                  <option value="book">Sayfa Sayfa (Kitap)</option>
+                  <option value="scroll">📜 Dikey Kaydırma</option>
+                  <option value="book">📖 Sayfa Sayfa (Kitap)</option>
                 </select>
               </div>
 
@@ -1268,28 +1378,52 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                 </div>
               </div>
 
-              {/* Scroll Speed Selector */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold text-[10px] sm:text-[11px] mb-1 truncate">
-                  Kaydırma Hızı ({novelSettings.scrollSpeed}x)
-                </label>
-                <div className="flex gap-1 bg-slate-100 dark:bg-purple-900/60 p-1 rounded-xl border border-purple-200 dark:border-purple-700/50">
-                  {[1, 2, 3].map(speed => (
-                    <button
-                      key={speed}
-                      type="button"
-                      onClick={() => updateNovelSettings({ scrollSpeed: speed })}
-                      className={`flex-1 py-1 rounded-lg font-bold text-[11px] transition ${
-                        novelSettings.scrollSpeed === speed
-                          ? 'bg-purple-600 text-white shadow-sm'
-                          : 'bg-slate-200 dark:bg-purple-800/50 text-slate-800 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-700'
-                      }`}
-                    >
-                      {speed}x
-                    </button>
-                  ))}
+              {/* Scroll Speed or Book Page Paragraphs Selector */}
+              {isBookMode ? (
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold text-[10px] sm:text-[11px] mb-1 truncate">
+                    Sayfa Başı Paragraf ({paragraphsPerPage})
+                  </label>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-purple-900/60 p-1 rounded-xl border border-purple-200 dark:border-purple-700/50">
+                    {[5, 8, 12, 16].map(count => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => updateNovelSettings({ paragraphsPerPage: count })}
+                        className={`flex-1 py-1 rounded-lg font-bold text-[11px] transition ${
+                          paragraphsPerPage === count
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-slate-200 dark:bg-purple-800/50 text-slate-800 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-700'
+                        }`}
+                      >
+                        {count}p
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="block text-slate-700 dark:text-purple-300 font-bold text-[10px] sm:text-[11px] mb-1 truncate">
+                    Kaydırma Hızı ({novelSettings.scrollSpeed}x)
+                  </label>
+                  <div className="flex gap-1 bg-slate-100 dark:bg-purple-900/60 p-1 rounded-xl border border-purple-200 dark:border-purple-700/50">
+                    {[1, 2, 3].map(speed => (
+                      <button
+                        key={speed}
+                        type="button"
+                        onClick={() => updateNovelSettings({ scrollSpeed: speed })}
+                        className={`flex-1 py-1 rounded-lg font-bold text-[11px] transition ${
+                          novelSettings.scrollSpeed === speed
+                            ? 'bg-purple-600 text-white shadow-sm'
+                            : 'bg-slate-200 dark:bg-purple-800/50 text-slate-800 dark:text-purple-200 hover:bg-purple-100 dark:hover:bg-purple-700'
+                        }`}
+                      >
+                        {speed}x
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
             </div>
 
@@ -1369,16 +1503,13 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </button>
       )}
 
-        const isBookMode = novelSettings.readingMode === 'book';
-  const paragraphsPerPage = 6;
-  const totalBookPages = Math.max(1, Math.ceil(parsedParagraphs.length / paragraphsPerPage));
-  const activeBookPage = Math.min(currentBookPage, totalBookPages - 1);
-  const displayedParagraphs = isBookMode
-    ? parsedParagraphs.slice(activeBookPage * paragraphsPerPage, (activeBookPage + 1) * paragraphsPerPage)
-    : parsedParagraphs;
-
   {/* Novel Reading Container */}
-      <div className={`mx-auto px-4 py-8 ${getWidthClass()}`}>
+      <div
+        ref={novelContentRef}
+        onTouchStart={handleBookTouchStart}
+        onTouchEnd={handleBookTouchEnd}
+        className={`mx-auto px-4 py-8 ${getWidthClass()}`}
+      >
         
         {/* Title Header */}
         <div className="text-center mb-8 border-b border-purple-200 dark:border-purple-500/20 pb-6">
@@ -1423,7 +1554,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </div>
 
         {/* Chapter / Translator Profile Card (Blogger <div class="profile"> & Automatic Novel Credits) */}
-        {chapterProfileCard && (
+        {chapterProfileCard && (!isBookMode || activeBookPage === 0) && (
           <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#180b2e] via-[#110722] to-[#210d3a] text-white p-4 sm:p-5 shadow-[0_14px_38px_rgba(88,28,135,0.38)] border border-purple-500/35 max-w-xl mx-auto my-6 flex items-center gap-4 sm:gap-5 text-left select-none">
             {/* Ambient Blurred Cover Glow */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -1516,6 +1647,50 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                 />
               )
             ))}
+          </div>
+        )}
+
+        {/* Book Mode Header Bar */}
+        {isBookMode && totalBookPages > 1 && (
+          <div className="mb-6 p-3 bg-gradient-to-r from-purple-950/70 via-gray-900/90 to-purple-950/70 border border-purple-500/35 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 select-none shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-purple-600/30 border border-purple-400/40 flex items-center justify-center text-purple-200 shrink-0">
+                <BookOpen size={16} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-white">Kitap Sayfası:</span>
+                  <span className="text-xs font-extrabold text-purple-300 font-mono bg-purple-900/60 px-2 py-0.5 rounded-lg border border-purple-500/30">
+                    {activeBookPage + 1} / {totalBookPages}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-medium">
+                    (%{Math.round(((activeBookPage + 1) / totalBookPages) * 100)})
+                  </span>
+                </div>
+                <div className="w-36 sm:w-48 h-1.5 bg-gray-800 rounded-full overflow-hidden mt-1.5 border border-purple-500/20">
+                  <div
+                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 transition-all duration-300"
+                    style={{ width: `${Math.round(((activeBookPage + 1) / totalBookPages) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Page Jump Selector */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-purple-300 text-[11px] font-bold">Sayfaya Git:</span>
+              <select
+                value={activeBookPage}
+                onChange={e => goToPage(Number(e.target.value))}
+                className="bg-purple-900/90 border border-purple-400/40 text-white rounded-xl px-2.5 py-1 text-xs font-extrabold focus:outline-none focus:border-purple-300 cursor-pointer shadow-sm"
+              >
+                {Array.from({ length: totalBookPages }, (_, i) => (
+                  <option key={i} value={i}>
+                    Sayfa {i + 1} / {totalBookPages}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -1618,6 +1793,69 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
           )}
         </div>
 
+        {/* Book Mode Turn Page Controls */}
+        {isBookMode && (
+          <div className="my-8 p-3.5 sm:p-5 bg-gradient-to-r from-purple-950/80 via-gray-900/95 to-purple-950/80 border border-purple-500/40 rounded-3xl shadow-2xl space-y-3.5 select-none">
+            <div className="flex items-center justify-between gap-2.5">
+              {/* Previous Page Button */}
+              <button
+                type="button"
+                disabled={activeBookPage === 0 && !prevChapter}
+                onClick={goToPrevPage}
+                className={`flex-1 py-3.5 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${
+                  activeBookPage > 0
+                    ? 'bg-purple-900/80 hover:bg-purple-800 text-white border border-purple-400/40 cursor-pointer'
+                    : prevChapter
+                    ? 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-500/30 cursor-pointer'
+                    : 'bg-gray-800/40 text-gray-500 border border-gray-700/30 cursor-not-allowed opacity-40'
+                }`}
+              >
+                <ChevronLeft size={19} className="shrink-0" />
+                <span>{activeBookPage > 0 ? 'Önceki Sayfa' : 'Önceki Bölüm'}</span>
+              </button>
+
+              {/* Page Number Indicator */}
+              <div className="flex flex-col items-center justify-center px-3 sm:px-5 shrink-0 bg-gray-950/60 py-2 rounded-2xl border border-purple-500/20">
+                <span className="text-xs sm:text-base font-black text-purple-200 font-mono tracking-wider">
+                  {activeBookPage + 1} <span className="text-purple-400 font-normal">/</span> {totalBookPages}
+                </span>
+                <span className="text-[10px] text-purple-300/70 font-semibold mt-0.5">
+                  %{Math.round(((activeBookPage + 1) / totalBookPages) * 100)} Okundu
+                </span>
+              </div>
+
+              {/* Next Page Button */}
+              <button
+                type="button"
+                disabled={activeBookPage >= totalBookPages - 1 && !nextChapter}
+                onClick={goToNextPage}
+                className={`flex-1 py-3.5 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg ${
+                  activeBookPage < totalBookPages - 1
+                    ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-300/50 cursor-pointer ring-2 ring-purple-400/20'
+                    : nextChapter
+                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-300/50 cursor-pointer shadow-emerald-900/50 animate-pulse'
+                    : 'bg-gray-800/40 text-gray-500 border border-gray-700/30 cursor-not-allowed opacity-40'
+                }`}
+              >
+                <span>
+                  {activeBookPage < totalBookPages - 1
+                    ? 'Sonraki Sayfa'
+                    : nextChapter
+                    ? 'Sonraki Bölüme Geç'
+                    : 'Bölüm Sonu'}
+                </span>
+                <ChevronRight size={19} className="shrink-0" />
+              </button>
+            </div>
+
+            {/* Practical Hints */}
+            <div className="flex items-center justify-center gap-3 text-[11px] text-purple-300/80 pt-1 border-t border-purple-500/20 text-center font-medium">
+              <span className="hidden sm:inline">💡 Klavyedeki yön tuşları (← / →) ile sayfaları çevirebilirsiniz.</span>
+              <span className="sm:hidden">💡 Ekranı sağa/sola kaydırarak (swipe) sayfaları çevirebilirsiniz.</span>
+            </div>
+          </div>
+        )}
+
         {/* Reader Ad (If enabled in Admin) */}
         {adSettings?.readerAdEnabled && (
           <AdBannerBlock
@@ -1695,6 +1933,34 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
         </div>
 
       </div>
+
+      {/* Large Screen Floating Book Flip Controls */}
+      {isBookMode && (
+        <>
+          <button
+            type="button"
+            onClick={goToPrevPage}
+            disabled={activeBookPage === 0 && !prevChapter}
+            className={`fixed left-3 top-1/2 -translate-y-1/2 z-40 hidden xl:flex w-12 h-24 rounded-2xl bg-gray-950/80 hover:bg-purple-900/90 border border-purple-500/40 hover:border-purple-300 text-purple-200 hover:text-white items-center justify-center backdrop-blur-md transition-all duration-200 shadow-2xl group ${
+              activeBookPage === 0 && !prevChapter ? 'opacity-20 pointer-events-none' : 'cursor-pointer hover:scale-105'
+            }`}
+            title={activeBookPage > 0 ? 'Önceki Sayfa (Sol Ok)' : 'Önceki Bölüm'}
+          >
+            <ChevronLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
+          </button>
+          <button
+            type="button"
+            onClick={goToNextPage}
+            disabled={activeBookPage >= totalBookPages - 1 && !nextChapter}
+            className={`fixed right-3 top-1/2 -translate-y-1/2 z-40 hidden xl:flex w-12 h-24 rounded-2xl bg-gray-950/80 hover:bg-purple-900/90 border border-purple-500/40 hover:border-purple-300 text-purple-200 hover:text-white items-center justify-center backdrop-blur-md transition-all duration-200 shadow-2xl group ${
+              activeBookPage >= totalBookPages - 1 && !nextChapter ? 'opacity-20 pointer-events-none' : 'cursor-pointer hover:scale-105'
+            }`}
+            title={activeBookPage < totalBookPages - 1 ? 'Sonraki Sayfa (Sağ Ok)' : 'Sonraki Bölüm'}
+          >
+            <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
+          </button>
+        </>
+      )}
 
       {/* WEBNOVEL-STYLE PARAGRAPH COMMENTS DRAWER (Desktop Right Sidebar / Mobile Bottom Sheet) */}
       {activeParagraph && (
