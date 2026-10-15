@@ -111,6 +111,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
     user,
     showNsfw,
     toggleNsfw,
+    toggleEmailNotifications,
     readingHistory,
     comments,
     bookmarks,
@@ -1043,6 +1044,25 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                       }`}
                     >
                       {showNsfw ? 'Açık (+18)' : 'Kapalı'}
+                    </button>
+                  </div>
+
+                  {/* Yorum Yanıtı E-posta Bildirimi */}
+                  <div className="flex items-center justify-between p-3.5 rounded-2xl bg-slate-950 border border-purple-900/30">
+                    <div className="space-y-0.5">
+                      <span className="text-xs font-bold text-white block">Yorum Yanıtlarında E-posta Bildirimi</span>
+                      <span className="text-[11px] text-gray-400">Yorumunuza biri yanıt verdiğinde e-postanıza bildirim gelsin.</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleEmailNotifications}
+                      className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        (user?.emailNotificationsEnabled !== false)
+                          ? 'bg-purple-600 text-white shadow-sm shadow-purple-900/40'
+                          : 'bg-slate-800 text-gray-400'
+                      }`}
+                    >
+                      {(user?.emailNotificationsEnabled !== false) ? 'Açık' : 'Kapalı'}
                     </button>
                   </div>
 

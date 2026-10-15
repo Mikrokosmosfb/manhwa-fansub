@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Megaphone,
   Sparkles,
+  MessageCircle,
   Info,
   Layers,
   Search,
@@ -94,6 +95,10 @@ export const NotificationsView: React.FC = () => {
   const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
   const validUserNotifications = (notifications || []).filter(n => {
+    // Sadece hedef kullanıcıya özel olan kişisel bildirimleri başkalarından gizle
+    if (n.targetUserId && (!user || user.uid !== n.targetUserId)) {
+      return false;
+    }
     // Don't show notifications created before user registered (except welcome message)
     if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
       const notifTime = new Date(n.createdAt).getTime();
@@ -413,6 +418,11 @@ export const NotificationsView: React.FC = () => {
                     referrerPolicy="no-referrer"
                     className="w-full h-full object-cover"
                   />
+                  {notif.type === 'comment-reply' && (
+                    <span className="px-2 py-0.5 rounded-md bg-gradient-to-r from-pink-900/90 to-purple-900/90 text-pink-200 text-xs font-black border border-pink-500/40 flex items-center gap-1">
+                      <MessageCircle size={12} /> YANIT
+                    </span>
+                  )}
                   {notif.type === 'new-series' && (
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent py-0.5 text-center">
                       <span className="text-[9px] font-black text-pink-300">YENİ SERİ</span>
@@ -425,6 +435,8 @@ export const NotificationsView: React.FC = () => {
                     <Megaphone size={22} className="text-amber-400" />
                   ) : notif.type === 'reward' ? (
                     <Sparkles size={22} className="text-yellow-400" />
+                  ) : notif.type === 'comment-reply' ? (
+                    <MessageCircle size={22} className="text-pink-400" />
                   ) : (
                     <Info size={22} className="text-purple-300" />
                   )}

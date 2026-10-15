@@ -32,6 +32,7 @@ export interface User {
   claimedCheckinDays?: number[]; // [1, 2, 3, 4, 5, 6, 7]
   lastDailySpin?: string; // Date string "YYYY-MM-DD"
   showNsfw?: boolean; // Adult (+18) content filter preference
+  emailNotificationsEnabled?: boolean; // Yorum yanıtlarında e-posta bildirim tercihi (açık/kapalı)
   teamRole?: string | null; // Staff / team role e.g. 'Çevirmen', 'Editör', 'Kurucu', 'Yönetici'
   teamRoles?: string[]; // Multiple staff team roles
 }
@@ -293,7 +294,8 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type: 'chapter' | 'new-series' | 'announcement' | 'system' | 'reward';
+  type: 'chapter' | 'new-series' | 'announcement' | 'system' | 'reward' | 'comment-reply';
+  targetUserId?: string;
   seriesId?: string;
   seriesTitle?: string;
   chapterId?: string;

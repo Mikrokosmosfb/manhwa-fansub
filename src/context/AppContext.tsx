@@ -276,6 +276,7 @@ interface AppContextType {
   updateUserProfile: (newName: string, newAvatar: string, newBio?: string, newUsername?: string) => Promise<{ success: boolean; message?: string }>;
   deleteAccount: () => Promise<{ success: boolean; message?: string }>;
   logout: () => void;
+  toggleEmailNotifications: () => void;
 
   // Admin authentication
   isAdminLoggedIn: boolean;
@@ -2783,6 +2784,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   const unreadNotificationsCount = !user ? 0 : notifications.filter(n => {
     if (n.isRead) return false;
+    if (n.targetUserId && (!user || user.uid !== n.targetUserId)) return false;
     const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
     if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
       const notifTime = new Date(n.createdAt).getTime();
@@ -3471,6 +3473,25 @@ const deleteShopItemAndStyle = (itemId: string) => {
       : '';
     const parentComment = data.parentId ? comments.find(c => c.id === data.parentId) : null;
     const replyTargetAuthor = parentComment?.userName || null;
+    const replyTargetUserId = parentComment?.userId || null;
+
+    // Okuyucuya özel yanıt bildirimi (sadece yanıt verilen kullanıcıya gider, globalde görünmez)
+    if (replyTargetUserId && replyTargetUserId !== data.userId) {
+      const replyNotif: AppNotification = {
+        id: 'notif-reply-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+        title: '💬 Yorumunuza Yanıt Geldi!',
+        message: `${data.userName}, "${seriesTitle}" (${chapterLabel}) altındaki yorumunuza yanıt verdi: "${data.text.slice(0, 80)}${data.text.length > 80 ? '...' : ''}"`,
+        type: 'comment-reply',
+        targetUserId: replyTargetUserId,
+        seriesId: data.seriesId,
+        seriesTitle,
+        chapterId: baseChapterId,
+        chapterTitle: chapterLabel,
+        createdAt: new Date().toISOString(),
+        isRead: false
+      };
+      setNotifications(prev => [replyNotif, ...prev.slice(0, 49)]);
+    }
 
     const payload = {
       ...newCm,
@@ -3479,7 +3500,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
       seriesTitle,
       chapterTitle: chapterLabel,
       pageUrl,
-      replyTargetAuthor
+      replyTargetAuthor,
+      replyTargetUserId
     };
 
     fetch('/api/comments', {
@@ -4040,6 +4062,28 @@ const deleteShopItemAndStyle = (itemId: string) => {
     return { success: true, message: 'Profil başarıyla güncellendi.' };
   };
 
+  const toggleEmailNotifications = () => {
+    if (!user) return;
+    const current = user.emailNotificationsEnabled !== false;
+    const nextVal = !current;
+    const updatedUser: User = {
+      ...user,
+      emailNotificationsEnabled: nextVal
+    };
+    setUser(updatedUser);
+    try {
+      localStorage.setItem('mk_user', JSON.stringify(updatedUser));
+    } catch (e) {}
+    safeFetchJson('/api/auth/update-settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        uid: user.uid,
+        emailNotificationsEnabled: nextVal
+      })
+    }).catch(() => {});
+  };
+
   const deleteAccount = async (): Promise<{ success: boolean; message?: string }> => {
     if (!user) return { success: false, message: 'Giriş yapılmamış.' };
     const curUid = user.uid;
@@ -4185,6 +4229,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
         updateUserProfile,
         deleteAccount,
         logout,
+        toggleEmailNotifications,
         isAdminLoggedIn,
         verifyAdminPassword,
         changeAdminPassword,

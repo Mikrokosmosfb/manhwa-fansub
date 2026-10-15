@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Megaphone,
   Sparkles,
+  MessageCircle,
   Info,
   Layers,
   X,
@@ -62,6 +63,10 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
   const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
   const validUserNotifications = (notifications || []).filter(n => {
+    // Sadece hedeflenen kullanıcıya ait olan özel bildirimleri (ör. yorum yanıtı) başkalarından gizle
+    if (n.targetUserId && (!user || user.uid !== n.targetUserId)) {
+      return false;
+    }
     // Don't show notifications created before user registered (except welcome message)
     if (userCreatedTime > 0 && n.createdAt && !n.id.startsWith('welcome-')) {
       const notifTime = new Date(n.createdAt).getTime();
@@ -299,6 +304,8 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                     <Megaphone size={18} className="text-amber-400" />
                   ) : notif.type === 'reward' ? (
                     <Sparkles size={18} className="text-yellow-400" />
+                  ) : notif.type === 'comment-reply' ? (
+                    <MessageCircle size={18} className="text-pink-400" />
                   ) : (
                     <Info size={18} className="text-purple-300" />
                   )}
@@ -320,6 +327,11 @@ export const NotificationsDropdown: React.FC<NotificationsDropdownProps> = ({ is
                       {notif.chapterTitle}
                     </span>
                   ) : null}
+                  {notif.type === 'comment-reply' && (
+                    <span className="px-1.5 py-0.2 rounded-full bg-pink-900/80 text-pink-300 border border-pink-500/40 text-[9px] font-black flex items-center gap-0.5">
+                      <MessageCircle size={9} /> Yanıt
+                    </span>
+                  )}
                   {isFollowed && notif.type === 'chapter' && (
                     <span className="px-1.5 py-0.2 rounded-full bg-purple-900/90 text-amber-300 border border-purple-500/40 text-[9px] font-extrabold flex items-center gap-0.5">
                       <Sparkles size={9} /> Takipte
