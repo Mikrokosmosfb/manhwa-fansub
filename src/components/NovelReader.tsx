@@ -981,7 +981,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               )}
             </button>
 
-            {/* Quick Book Mode Toggle */}
+            {/* Quick Book Mode Toggle (Desktop & Tablet only; on mobile it is inside the settings cog) */}
             <button
               type="button"
               onClick={() => {
@@ -991,7 +991,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                   setIsAutoScrolling(false);
                 }
               }}
-              className={`h-9 px-2.5 sm:h-10 sm:px-3 rounded-xl border flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm ${
+              className={`hidden sm:flex h-9 px-2.5 sm:h-10 sm:px-3 rounded-xl border items-center justify-center gap-1.5 transition cursor-pointer shadow-sm ${
                 isBookMode
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400 text-white font-extrabold shadow-purple-900/40'
                   : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
@@ -1218,6 +1218,42 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               </div>
             </div>
 
+            {/* Okuma Modu (Dikey Kaydırma vs Sayfa Sayfa Kitap Modu) */}
+            <div>
+              <label className="text-[10px] sm:text-[11px] uppercase font-bold text-slate-600 dark:text-purple-300 block mb-1">
+                Okuma Modu
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateNovelSettings({ readingMode: 'scroll' })}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition cursor-pointer ${
+                    !isBookMode
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md font-extrabold ring-1 ring-purple-400/40'
+                      : 'bg-slate-100 dark:bg-purple-900/40 border-purple-200 dark:border-purple-700/50 text-slate-700 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-purple-800/60'
+                  }`}
+                >
+                  <List size={15} />
+                  <span>Dikey Kaydırma</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    updateNovelSettings({ readingMode: 'book' });
+                    setIsAutoScrolling(false);
+                  }}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition cursor-pointer ${
+                    isBookMode
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md font-extrabold ring-1 ring-purple-400/40'
+                      : 'bg-slate-100 dark:bg-purple-900/40 border-purple-200 dark:border-purple-700/50 text-slate-700 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-purple-800/60'
+                  }`}
+                >
+                  <BookOpen size={15} className={isBookMode ? 'animate-pulse' : ''} />
+                  <span>Sayfa Sayfa (Kitap)</span>
+                </button>
+              </div>
+            </div>
+
             {/* Presets (Gündüz, Sepya, Gece) */}
             <div>
               <label className="text-[10px] sm:text-[11px] uppercase font-bold text-slate-600 dark:text-purple-300 block mb-1">
@@ -1256,23 +1292,6 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
             {/* Dropdown Options Grid (2x2 on mobile, 4 cols on sm) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-              
-              {/* Reading Mode */}
-              <div>
-                <label className="block text-slate-700 dark:text-purple-300 font-bold mb-1 text-[10px] sm:text-[11px]">Okuma Modu</label>
-                <select
-                  value={novelSettings.readingMode || 'scroll'}
-                  onChange={e => {
-                    const mode = e.target.value as 'scroll' | 'book';
-                    updateNovelSettings({ readingMode: mode });
-                    if (mode === 'book') setIsAutoScrolling(false);
-                  }}
-                  className="w-full bg-slate-100 dark:bg-purple-900 border border-purple-200 dark:border-purple-700 text-slate-900 dark:text-white rounded-lg p-1.5 font-bold"
-                >
-                  <option value="scroll">📜 Dikey Kaydırma</option>
-                  <option value="book">📖 Sayfa Sayfa (Kitap)</option>
-                </select>
-              </div>
 
               {/* Font Family */}
               <div>
