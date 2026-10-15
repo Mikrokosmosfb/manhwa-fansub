@@ -108,11 +108,13 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const [newReadingListName, setNewReadingListName] = useState('');
 
   if (!series) {
-    if (isLoadingSeries || !seriesList || seriesList.length === 0) {
+    if (isLoadingSeries) {
       return (
-        <div className="max-w-7xl mx-auto px-4 py-24 text-center text-gray-300 min-h-[60vh] flex flex-col items-center justify-center">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4 shadow-lg shadow-purple-900/50" />
-          <p className="text-sm font-extrabold text-purple-300 animate-pulse">Seri Bilgileri Yükleniyor...</p>
+        <div className="max-w-7xl mx-auto px-4 py-24 text-center text-gray-300 min-h-[60vh] flex flex-col items-center justify-center space-y-4">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-purple-900/50" />
+          <p className="text-sm font-extrabold text-purple-300 animate-pulse tracking-wider uppercase">
+            Seri Bilgileri Yükleniyor...
+          </p>
         </div>
       );
     }

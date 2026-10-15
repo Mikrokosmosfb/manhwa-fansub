@@ -486,12 +486,14 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     }
   }, [seriesId, chapterId]);
 
-  if (!series || !currentChapter) {
+    if (!series || !currentChapter) {
     if (isLoadingSeries) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-bold text-purple-300">Bölüm Yükleniyor...</p>
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950 space-y-4">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-purple-900/50" />
+          <p className="text-sm font-bold text-purple-300 animate-pulse tracking-wider uppercase">
+            Bölüm Yükleniyor...
+          </p>
         </div>
       );
     }

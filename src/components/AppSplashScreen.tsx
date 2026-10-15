@@ -43,7 +43,7 @@ export const AppSplashScreen: React.FC<AppSplashScreenProps> = ({ onFinished }) 
     // Absolute fallback safety: never block UI for more than 2s
     const fallbackTimer = setTimeout(() => {
       if (onFinished) onFinished();
-    }, 2000);
+    }, 1200);
 
     return () => {
       clearTimeout(timer1);

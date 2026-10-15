@@ -489,10 +489,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return [];
   });
-  const [isLoadingSeries, setIsLoadingSeries] = useState<boolean>(() => {
-    const saved = localStorage.getItem('mk_series_list');
-    return !saved || saved === '[]';
-  });
+  const [isLoadingSeries, setIsLoadingSeries] = useState<boolean>(true);
 
   // Reading History (capped at 500 series)
   const [readingHistory, setReadingHistory] = useState<Record<string, ReadingProgress>>(() => {
@@ -1993,7 +1990,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => {}).finally(() => setIsLoadingSeries(false));
   }, [isAdminLoggedIn]);
 
   // Attempt to fetch live Cloudflare R2/KV data on mount
