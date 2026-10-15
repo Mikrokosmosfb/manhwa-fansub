@@ -1737,6 +1737,118 @@ ${seriesXml}
           if (request.method === 'POST') {
             const c: any = await request.json();
 
+            // SEND INSTANT EMAIL NOTIFICATION TO mikrokosmosfansub@gmail.com FOR EVERY NEW COMMENT
+            if (c.isNewComment || c.notifyAdmin) {
+              try {
+                const escapeHtml = (str: any) =>
+                  String(str ?? '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+
+                const sTitle = c.seriesTitle || c.seriesId || 'Seri';
+                const chTitle = c.chapterTitle || (c.chapterId ? `Bölüm ${c.chapterId}` : 'Seri Genel Tanıtımı');
+                const authorName = c.userName || 'Okuyucu';
+                const commentSubject = `💬 [Yeni Yorum] ${sTitle} (${chTitle}) - ${authorName}`;
+                const directLink = c.pageUrl || (c.chapterId
+                  ? `https://mikrokosmosfansub.com/#/oku/${encodeURIComponent(c.seriesId || '')}/${encodeURIComponent(c.chapterId || '')}`
+                  : c.seriesId
+                  ? `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(c.seriesId || '')}`
+                  : `https://mikrokosmosfansub.com/`);
+
+                const commentHtml = `<!DOCTYPE html><html><head>
+  <meta charset="utf-8">
+  <title>${escapeHtml(commentSubject)}</title>
+</head><body style="margin:0;padding:0;background-color:#090614;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#090614;padding:28px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:600px;background:linear-gradient(180deg, #1b0e34 0%, #0d0722 100%);border:1px solid rgba(168,85,247,0.4);border-radius:24px;overflow:hidden;box-shadow:0 20px 48px rgba(0,0,0,0.85);" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="padding:32px 28px;">
+              <div style="display:inline-block;padding:6px 14px;background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.45);border-radius:999px;font-size:12px;font-weight:bold;color:#d8b4fe;margin-bottom:16px;">
+                💬 MIKROKOSMOS FANSUB • YENİ OKUYUCU YORUMU
+              </div>
+              <h2 style="margin:0 0 8px;font-size:22px;font-weight:900;color:#ffffff;letter-spacing:-0.5px;">
+                Sitenize Yeni Bir Yorum Geldi!
+              </h2>
+              <p style="margin:0 0 22px;font-size:13px;color:#c4b5fd;line-height:1.6;">
+                Okuyucunuz <strong>${escapeHtml(authorName)}</strong> sitede yeni bir yorum paylaştı. Detaylar ve yorum metni aşağıdadır:
+              </p>
+
+              <!-- COMMENT TEXT BOX -->
+              <div style="background:#130a24;border-left:4px solid #a855f7;border-radius:14px;padding:18px;margin-bottom:20px;box-shadow:inset 0 2px 4px rgba(0,0,0,0.4);">
+                <div style="font-size:11px;color:#c084fc;font-weight:bold;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">
+                  💬 Yorum Metni:
+                </div>
+                <div style="font-size:15px;line-height:1.65;color:#f3f4f6;white-space:pre-wrap;word-break:break-word;background:#090514;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.08);">
+                  ${escapeHtml(c.text || '(Metin yok)')}
+                </div>
+                ${c.imageUrl ? `
+                  <div style="margin-top:12px;padding:10px;background:rgba(0,0,0,0.3);border-radius:8px;font-size:12px;color:#93c5fd;">
+                    📎 <strong>Ekli Görsel:</strong> <a href="${escapeHtml(c.imageUrl)}" target="_blank" style="color:#60a5fa;text-decoration:underline;">Görseli İncele</a>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- DETAILS TABLE -->
+              <table width="100%" cellspacing="0" cellpadding="10" style="background:#0d071b;border:1px solid rgba(168,85,247,0.25);border-radius:14px;font-size:13px;color:#e5e7eb;margin-bottom:22px;">
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;width:140px;border-bottom:1px solid rgba(255,255,255,0.06);">📖 Seri Adı:</td>
+                  <td style="color:#ffffff;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(sTitle)}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">📑 Bölüm:</td>
+                  <td style="color:#fcd34d;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">${escapeHtml(chTitle)}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">👤 Yazan Kişi:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);"><strong>${escapeHtml(authorName)}</strong> ${c.userHandle ? `<span style="color:#a78bfa;">(@${escapeHtml(c.userHandle)})</span>` : ''}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">⏰ Tarih & Saat:</td>
+                  <td style="color:#9ca3af;border-bottom:1px solid rgba(255,255,255,0.06);">${new Date().toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' })}</td>
+                </tr>
+                <tr>
+                  <td style="color:#a78bfa;font-weight:bold;border-bottom:1px solid rgba(255,255,255,0.06);">🏷️ Tür / Durum:</td>
+                  <td style="border-bottom:1px solid rgba(255,255,255,0.06);">${c.parentId ? ('↩️ ' + (c.replyTargetAuthor ? `${escapeHtml(c.replyTargetAuthor)} adlı okuyucuya yanıt` : 'Bir yoruma yanıt')) : '💬 Doğrudan Yorum'}${c.isSpoiler ? ' • <span style="color:#f87171;font-weight:bold;">⚠️ Spoiler</span>' : ''}</td>
+                </tr>
+              </table>
+
+              <!-- DIRECT LINK BUTTON -->
+              <div style="text-align:center;margin-bottom:22px;">
+                <a href="${escapeHtml(directLink)}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg, #9333ea 0%, #7c3aed 100%);color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;border-radius:12px;box-shadow:0 8px 20px rgba(124,58,237,0.4);border:1px solid rgba(216,180,254,0.3);">
+                  🚀 Yorumun Olduğu Bölüme / Sayfaya Git
+                </a>
+              </div>
+
+              <!-- FOOTER -->
+              <div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:16px;text-align:center;">
+                <p style="margin:0;font-size:11px;color:#8b5cf6;">
+                  Bu bildirim yöneticiniz için <strong>mikrokosmosfansub@gmail.com</strong> adresine otomatik iletilmiştir.<br>
+                  © 2026 Mikrokosmos Fansub. Tüm hakları saklıdır.
+                </p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body></html>`.trim();
+
+                const emailPromise = sendAdminNotificationEmail(env, commentSubject, commentHtml);
+                if (ctx && typeof ctx.waitUntil === 'function') {
+                  ctx.waitUntil(emailPromise);
+                } else {
+                  emailPromise.catch(() => {});
+                }
+              } catch (notifyErr) {
+                console.warn('Comment admin notification failed:', notifyErr);
+              }
+            }
+
             if (false && r2) {
               const item = await r2.get('data/comments.json');
               let existing: any[] = item ? await item.json() : [];

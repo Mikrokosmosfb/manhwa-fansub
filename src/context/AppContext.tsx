@@ -3455,10 +3455,37 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return next;
     });
 
+    const matchedSeries = seriesList.find(s => s.id === data.seriesId);
+    const rawChapterId = String(data.chapterId || '');
+    const isParaComment = rawChapterId.includes('__p__');
+    const baseChapterId = isParaComment ? rawChapterId.split('__p__')[0] : rawChapterId;
+    const matchedChapter = matchedSeries?.chapters?.find(ch => ch.id === baseChapterId);
+    const chapterLabel = matchedChapter
+      ? `Bölüm ${matchedChapter.number}${matchedChapter.title ? ' - ' + matchedChapter.title : ''}${isParaComment ? ' (Paragraf Yorumu)' : ''}`
+      : (baseChapterId ? `Bölüm ${baseChapterId}` : 'Seri Genel Tanıtımı');
+    const seriesTitle = matchedSeries?.title || data.seriesId;
+    const pageUrl = typeof window !== 'undefined'
+      ? (baseChapterId
+          ? `${window.location.origin}/#/oku/${encodeURIComponent(data.seriesId)}/${encodeURIComponent(baseChapterId)}`
+          : `${window.location.origin}/#/seri/${encodeURIComponent(data.seriesId)}`)
+      : '';
+    const parentComment = data.parentId ? comments.find(c => c.id === data.parentId) : null;
+    const replyTargetAuthor = parentComment?.userName || null;
+
+    const payload = {
+      ...newCm,
+      isNewComment: true,
+      notifyAdmin: true,
+      seriesTitle,
+      chapterTitle: chapterLabel,
+      pageUrl,
+      replyTargetAuthor
+    };
+
     fetch('/api/comments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newCm),
+      body: JSON.stringify(payload),
       keepalive: true
     }).catch(() => {});
   };
