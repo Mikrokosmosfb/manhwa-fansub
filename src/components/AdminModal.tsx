@@ -1,3 +1,4 @@
+import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
@@ -3330,6 +3331,9 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                                   <span className="bg-purple-950 border border-purple-700/50 text-purple-200 font-extrabold text-[11px] px-2 py-0.5 rounded flex-shrink-0">
                                     Bölüm {ch.number}
                                   </span>
+                                  {ch.specialTag && (
+                                    <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                                  )}
                                   {isCh18 && (
                                     <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0 shadow-sm">
                                       <Flame size={10} className="fill-amber-200 text-amber-200" />
