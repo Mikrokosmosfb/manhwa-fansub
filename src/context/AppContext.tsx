@@ -2915,6 +2915,110 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }, duration);
   };
 
+  // Live Realtime Background Polling & Multi-Tab Synchronization for Notifications
+  useEffect(() => {
+    // 1. Storage Event listener for multi-tab notification updates
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'mk_notifications_list' && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed)) {
+            setNotifications(parsed);
+          }
+        } catch (err) {}
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+
+    // 2. Periodic background notification fetcher
+    const fetchLatestNotifications = () => {
+      // Fetch global notifications
+      safeFetchJson<{ success: boolean; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
+        .then(data => {
+          if (data && data.success && Array.isArray(data.globalNotifications)) {
+            setNotifications(prev => {
+              const deletedIdsStr = localStorage.getItem('mk_deleted_notifs') || '[]';
+              let deletedIds: string[] = [];
+              try { deletedIds = JSON.parse(deletedIdsStr); } catch(e){}
+              const existingIds = new Set(prev.map(p => p.id));
+              const deletedSet = new Set(deletedIds);
+              const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
+
+              const newGlobals = data.globalNotifications.filter((n: any) => {
+                if (existingIds.has(n.id) || deletedSet.has(n.id)) return false;
+                if (n.targetUserId && (!user || user.uid !== n.targetUserId)) return false;
+                if (userCreatedTime > 0 && n.createdAt) {
+                  const notifTime = new Date(n.createdAt).getTime();
+                  if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
+                }
+                return true;
+              });
+
+              if (newGlobals.length > 0) {
+                // Instantly pop up toast & sound/push notification for each new notification!
+                newGlobals.forEach((n: any) => {
+                  showToast({
+                    title: n.title || '💬 Yeni Bildirim',
+                    message: n.message || '',
+                    type: n.type === 'comment-reply' ? 'info' : 'bell',
+                    seriesId: n.seriesId
+                  });
+                  sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '');
+                });
+
+                const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                return combined.slice(0, 49);
+              }
+              return prev;
+            });
+          }
+        })
+        .catch(() => {});
+
+      // If user is logged in, also fetch user_library notifications directly
+      if (user && user.uid) {
+        safeFetchJson<{ success: boolean; notifications?: any }>('/api/auth/library?uid=' + encodeURIComponent(user.uid), { cache: 'no-store' })
+          .then(libData => {
+            if (libData && libData.success && libData.notifications) {
+              const fetched = typeof libData.notifications === 'string' ? JSON.parse(libData.notifications) : libData.notifications;
+              if (Array.isArray(fetched) && fetched.length > 0) {
+                setNotifications(prev => {
+                  const existingIds = new Set(prev.map(p => p.id));
+                  const newFromLib = fetched.filter((n: any) => {
+                    if (existingIds.has(n.id)) return false;
+                    if (n.targetUserId && n.targetUserId !== user.uid) return false;
+                    return true;
+                  });
+                  if (newFromLib.length > 0) {
+                    newFromLib.forEach((n: any) => {
+                      showToast({
+                        title: n.title || '💬 Yorumunuza Yanıt Geldi!',
+                        message: n.message || '',
+                        type: 'info',
+                        seriesId: n.seriesId
+                      });
+                      sendDeviceNotification(n.title || 'Yorumunuza Yanıt Geldi!', n.message || '');
+                    });
+                    return [...newFromLib, ...prev].slice(0, 49);
+                  }
+                  return prev;
+                });
+              }
+            }
+          })
+          .catch(() => {});
+      }
+    };
+
+    // Run interval every 5 seconds for fast instant live notification drops
+    const interval = setInterval(fetchLatestNotifications, 5000);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      clearInterval(interval);
+    };
+  }, [user?.uid]);
+
   const isFollowingSeries = (seriesId: string): boolean => {
     return followedSeriesIds.includes(seriesId);
   };
