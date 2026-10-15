@@ -2078,6 +2078,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
               const newGlobals = data.globalNotifications.filter((n: any) => {
                 if (existingIds.has(n.id) || deletedSet.has(n.id)) return false;
+                if (n.targetUserId && (!user || user.uid !== n.targetUserId)) return false;
 
                 // Do not receive old notifications created before the user registered
                 if (userCreatedTime > 0 && n.createdAt) {

@@ -988,6 +988,7 @@ ${seriesXml}
                     chapter_title TEXT,
                     chapter_number REAL,
                     cover_image TEXT,
+                    target_user_id TEXT,
                     created_at TEXT
                   );
                 `),
@@ -1264,7 +1265,9 @@ ${seriesXml}
                 globalNotifications = (notifRes as any[]).map((n: any) => ({
                   id: n.id, title: n.title, message: n.message, type: n.type,
                   seriesId: n.series_id, seriesTitle: n.series_title, chapterTitle: n.chapter_title,
-                  chapterNumber: n.chapter_number, coverImage: n.cover_image, createdAt: n.created_at
+                  chapterNumber: n.chapter_number, coverImage: n.cover_image,
+                  targetUserId: n.target_user_id || undefined,
+                  createdAt: n.created_at
                 }));
               } catch(e) {}
 
@@ -1846,6 +1849,84 @@ ${seriesXml}
                 }
               } catch (notifyErr) {
                 console.warn('Comment admin notification failed:', notifyErr);
+              }
+            }
+
+            // PERSIST & SEND TARGETED REPLY NOTIFICATION TO USER
+            if (c.replyTargetUserId && c.replyTargetUserId !== c.userId) {
+              try {
+                const sTitle = c.seriesTitle || c.seriesId || 'Seri';
+                const chTitle = c.chapterTitle || (c.chapterId ? `Bölüm ${c.chapterId}` : 'Seri Genel Tanıtımı');
+                const authorName = c.userName || 'Okuyucu';
+                const replyNotifId = 'notif-reply-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6);
+                const replyTitle = '💬 Yorumunuza Yanıt Geldi!';
+                const replyMsg = `${authorName}, "${sTitle}" (${chTitle}) altındaki yorumunuza yanıt verdi: "${(c.text || '').slice(0, 80)}${(c.text || '').length > 80 ? '...' : ''}"`;
+                const createdAtIso = new Date().toISOString();
+                const activeDb = usersDb || db || commentsDb;
+
+                if (activeDb) {
+                  // Ensure target_user_id column exists
+                  try { await activeDb.prepare("ALTER TABLE global_notifications ADD COLUMN target_user_id TEXT").run(); } catch(eCol) {}
+
+                  // 1. Insert into global_notifications
+                  try {
+                    await activeDb.prepare(`
+                      INSERT INTO global_notifications (id, title, message, type, series_id, series_title, chapter_title, target_user_id, created_at)
+                      VALUES (?, ?, ?, 'comment-reply', ?, ?, ?, ?, ?)
+                    `).bind(replyNotifId, replyTitle, replyMsg, c.seriesId || null, sTitle, chTitle, c.replyTargetUserId, createdAtIso).run();
+                  } catch(eG) {
+                    console.warn('Reply global_notif failed:', eG);
+                  }
+
+                  // 2. Save into target user_library
+                  try {
+                    const libRecord: any = await activeDb.prepare("SELECT notifications FROM user_library WHERE uid = ?").bind(c.replyTargetUserId).first();
+                    let userNotifs: any[] = [];
+                    if (libRecord && libRecord.notifications) {
+                      try { userNotifs = JSON.parse(libRecord.notifications); } catch (eParse) {}
+                    }
+                    userNotifs.unshift({
+                      id: replyNotifId,
+                      title: replyTitle,
+                      message: replyMsg,
+                      type: 'comment-reply',
+                      targetUserId: c.replyTargetUserId,
+                      seriesId: c.seriesId,
+                      seriesTitle: sTitle,
+                      chapterId: c.chapterId,
+                      chapterTitle: chTitle,
+                      createdAt: createdAtIso,
+                      isRead: false
+                    });
+                    await activeDb.prepare("UPDATE user_library SET notifications = ? WHERE uid = ?").bind(JSON.stringify(userNotifs.slice(0, 40)), c.replyTargetUserId).run();
+                  } catch(eL) {
+                    console.warn('Reply user_library failed:', eL);
+                  }
+
+                  // 3. Send email to replied user if email exists
+                  try {
+                    const targetUserRow: any = await activeDb.prepare("SELECT email FROM users WHERE uid = ?").bind(c.replyTargetUserId).first();
+                    if (targetUserRow && targetUserRow.email) {
+                      const targetEmail = targetUserRow.email;
+                      const directLink = c.pageUrl || (c.chapterId
+                        ? `https://mikrokosmosfansub.com/#/oku/${encodeURIComponent(c.seriesId || '')}/${encodeURIComponent(c.chapterId || '')}`
+                        : `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(c.seriesId || '')}`);
+
+                      const replySubject = `💬 [Yorum Yanıtı] ${sTitle} (${chTitle}) - Mikrokosmos Fansub`;
+                      const replyHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Yorum Yanıtı</title></head><body style="margin:0;padding:0;background-color:#090614;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#090614;padding:28px 12px;"><tr><td align="center"><table role="presentation" width="100%" style="max-width:600px;background:linear-gradient(180deg, #1b0e34 0%, #0d0722 100%);border:1px solid rgba(168,85,247,0.4);border-radius:24px;overflow:hidden;padding:28px;" cellspacing="0" cellpadding="0"><tr><td><div style="display:inline-block;padding:6px 14px;background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.45);border-radius:999px;font-size:12px;font-weight:bold;color:#d8b4fe;margin-bottom:16px;">💬 MIKROKOSMOS FANSUB • YORUM YANITI</div><h2 style="margin:0 0 8px;font-size:20px;font-weight:900;color:#ffffff;">Yorumunuza Bir Yanıt Geldi!</h2><p style="margin:0 0 18px;font-size:13px;color:#c4b5fd;"><strong>${authorName}</strong>, <strong>${sTitle}</strong> (${chTitle}) altındaki yorumunuza yanıt verdi:</p><div style="background:#130a24;border-left:4px solid #a855f7;border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;color:#f3f4f6;">"${(c.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</div><div style="text-align:center;margin-bottom:20px;"><a href="${directLink}" style="display:inline-block;padding:12px 24px;background:#9333ea;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;border-radius:10px;">🚀 Yanıtı Görüntüle</a></div><div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:12px;text-align:center;font-size:11px;color:#8b5cf6;">Profilinizden bildirim tercihlerinizi yönetebilirsiniz.<br>© 2026 Mikrokosmos Fansub</div></td></tr></table></td></tr></table></body></html>`.trim();
+                      const emailPromise = sendGmailSmtpDirect(env, targetEmail, replySubject, replyHtml);
+                      if (ctx && typeof ctx.waitUntil === 'function') {
+                        ctx.waitUntil(emailPromise);
+                      } else {
+                        emailPromise.catch(() => {});
+                      }
+                    }
+                  } catch(eE) {
+                    console.warn('Reply email failed:', eE);
+                  }
+                }
+              } catch(eMainReply) {
+                console.warn('Target reply process error:', eMainReply);
               }
             }
 
