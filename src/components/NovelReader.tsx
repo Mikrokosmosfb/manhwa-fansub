@@ -422,28 +422,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       }
     }
 
-        // 2. Only consume short introductory metadata lines that strictly start with Seri:, Çevirmen:, Çeviri: etc.
-    const labelHeadRegex =
-      /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)s*:s*(.*)$/i;
-    let consumeCount = 0;
-    const maxScan = Math.min(candidateParagraphs.length, 6);
-    while (consumeCount < maxScan) {
-      const cur = candidateParagraphs[consumeCount];
-      if (!cur || cur.isMediaOnly) break;
-      const match = cur.text.match(labelHeadRegex);
-      if (!match) break;
-      const rawLabel = match[1];
-      let val = match[2].trim();
-      consumeCount++;
-      if (!val && consumeCount < maxScan && candidateParagraphs[consumeCount] && !candidateParagraphs[consumeCount].isMediaOnly && candidateParagraphs[consumeCount].text.length < 80 && !labelHeadRegex.test(candidateParagraphs[consumeCount].text)) {
-        val = candidateParagraphs[consumeCount].text.trim();
-        consumeCount++;
-      }
-      if (val) {
-        addMetadataField(rawLabel, val);
-      }
-    }
-    const finalParagraphs = consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
+        // Do not consume or strip paragraphs from the story text. Keep 100% of paragraphs intact!
+    const finalParagraphs = candidateParagraphs;
 
     // 3. Build the Chapter Profile Card
     // If this chapter doesn't explicitly contain Seri/Çevirmen/Çeviri lines, inherit from previous chapters of THIS same series
