@@ -422,73 +422,28 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       }
     }
 
-    // 2. Scan leading paragraphs for stripped Blogger profile lines (e.g., "Seri:", "Heaven Officials Blessing", "Çevirmen:", "Theia", "Çeviri:", "Çince-", "CN")
+        // 2. Only consume short introductory metadata lines that strictly start with Seri:, Çevirmen:, Çeviri: etc.
     const labelHeadRegex =
-      /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.*)$/i;
-    const multiLabelRegex =
-      /\b(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:/gi;
-
+      /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)s*:s*(.*)$/i;
     let consumeCount = 0;
-    const maxScan = Math.min(candidateParagraphs.length, 12);
-
+    const maxScan = Math.min(candidateParagraphs.length, 6);
     while (consumeCount < maxScan) {
       const cur = candidateParagraphs[consumeCount];
-      if (!cur || cur.isMediaOnly || cur.text.length > 160) break;
-
-      const labelMatches = Array.from(cur.text.matchAll(multiLabelRegex));
-      if (labelMatches.length > 1 && labelHeadRegex.test(cur.text)) {
-        parseMetadataTextChunk(cur.text);
-        consumeCount++;
-        continue;
-      }
-
+      if (!cur || cur.isMediaOnly) break;
       const match = cur.text.match(labelHeadRegex);
       if (!match) break;
-
       const rawLabel = match[1];
       let val = match[2].trim();
       consumeCount++;
-
-      // If label was alone on its line (e.g. "Seri:" or "Çevirmen:" or "Çeviri:"), take next line as value
-      if (
-        !val &&
-        consumeCount < maxScan &&
-        candidateParagraphs[consumeCount] &&
-        !candidateParagraphs[consumeCount].isMediaOnly &&
-        candidateParagraphs[consumeCount].text.length < 90 &&
-        !labelHeadRegex.test(candidateParagraphs[consumeCount].text)
-      ) {
+      if (!val && consumeCount < maxScan && candidateParagraphs[consumeCount] && !candidateParagraphs[consumeCount].isMediaOnly && candidateParagraphs[consumeCount].text.length < 80 && !labelHeadRegex.test(candidateParagraphs[consumeCount].text)) {
         val = candidateParagraphs[consumeCount].text.trim();
         consumeCount++;
       }
-
-      // If value ends with "-" (e.g. "Çince-") or next line is a short language code ("CN", "EN", "KR", "JP")
-      if (
-        val &&
-        consumeCount < maxScan &&
-        candidateParagraphs[consumeCount] &&
-        !candidateParagraphs[consumeCount].isMediaOnly
-      ) {
-        const nextTxt = candidateParagraphs[consumeCount].text.trim();
-        if (
-          (val.endsWith('-') && nextTxt.length <= 15 && !labelHeadRegex.test(nextTxt)) ||
-          /^-?\s*(CN|EN|KR|JP|TR|ENG|KOR|CHN)$/i.test(nextTxt)
-        ) {
-          const cleanSuffix = nextTxt.replace(/^-\s*/, '');
-          val = val.endsWith('-') ? `${val} ${cleanSuffix}` : `${val} - ${cleanSuffix}`;
-          consumeCount++;
-        }
-      }
-
       if (val) {
         addMetadataField(rawLabel, val);
       }
     }
-
-    const slicedParagraphs =
-      consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
-    const finalParagraphs =
-      slicedParagraphs.length > 0 ? slicedParagraphs : candidateParagraphs;
+    const finalParagraphs = consumeCount > 0 ? candidateParagraphs.slice(consumeCount) : candidateParagraphs;
 
     // 3. Build the Chapter Profile Card
     // If this chapter doesn't explicitly contain Seri/Çevirmen/Çeviri lines, inherit from previous chapters of THIS same series
