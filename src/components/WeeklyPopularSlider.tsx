@@ -18,7 +18,8 @@ export const WeeklyPopularSlider: React.FC = () => {
   };
 
   // Filter or sort popular series for "Bu Haftanın Sevilenleri"
-  const popularSeries = seriesList.filter(s => (isAdminLoggedIn || !s.isDraft) && (s.rating >= 8.0 || s.isHot || s.isNew)).slice(0, 15);
+  const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
+  const popularSeries = seriesList.filter(s => (isUserAdmin || !s.isDraft) && (s.rating >= 8.0 || s.isHot || s.isNew)).slice(0, 15);
 
   const getFlag = (s: Series) => {
     if (s.type === 'Manhua') return '🇨🇳';

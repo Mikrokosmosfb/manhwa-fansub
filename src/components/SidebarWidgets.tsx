@@ -8,7 +8,7 @@ import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';
 
 export const RandomSeriesWidget: React.FC = () => {
   const { seriesList, setView, isLoadingSeries, isAdminLoggedIn } = useApp();
-  const pubSeries = React.useMemo(() => seriesList.filter(s => isAdminLoggedIn || !s.isDraft), [seriesList, isAdminLoggedIn]);
+  const pubSeries = React.useMemo(() => seriesList.filter(s => (isAdminLoggedIn || isAuthorizedAdmin(user?.email) || !s.isDraft)), [seriesList, isAdminLoggedIn, user?.email]);
   const [randomSeries, setRandomSeries] = useState<Series | null>(() => {
     if (!pubSeries || pubSeries.length === 0) return null;
     return pubSeries[Math.floor(Math.random() * pubSeries.length)];

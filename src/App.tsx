@@ -78,7 +78,8 @@ const MainContent: React.FC = () => {
 
   // Filter series based on NSFW preference
   const visibleSeriesList = useMemo(() => {
-    const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+    const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
+    const base = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);
     return showNsfw ? base : base.filter(s => !isSeries18Plus(s));
   }, [seriesList, showNsfw, isAdminLoggedIn]);
 

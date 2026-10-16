@@ -18,7 +18,8 @@ const DAYS_OF_WEEK = [
 
 export const ScheduleView: React.FC = () => {
   const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
-  const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
+  const base = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);
   const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
 
   // Current Turkish day name

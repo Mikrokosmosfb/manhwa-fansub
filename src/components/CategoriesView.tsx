@@ -12,7 +12,8 @@ interface CategoriesViewProps {
 export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) => {
   const { seriesList, showNsfw, toggleNsfw, isAdminLoggedIn } = useApp();
 
-  const baseSeries = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
+  const baseSeries = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);
   const visibleSeriesList = showNsfw ? baseSeries : baseSeries.filter(s => !isSeries18Plus(s));
 
   // Collect all unique custom badges and manual tags across all visible series

@@ -16,7 +16,8 @@ export const SeriesListView: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'rating' | 'title' | 'chapters' | 'updated'>('newest');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
 
-  const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
+  const base = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);
   const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
 
   // Extract all genres and custom badges across the entire site catalog & predefined list
