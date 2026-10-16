@@ -1103,6 +1103,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
   // Chapter Management & Edit State
   const [manageSearchQuery, setManageSearchQuery] = useState('');
+  const [chapterSearchQueries, setChapterSearchQueries] = useState<Record<string, string>>({});
   const [expandedSeriesId, setExpandedSeriesId] = useState<string | null>(null);
   const [editingChapterSeriesId, setEditingChapterSeriesId] = useState<string | null>(null);
   const [editingChapter, setEditingChapter] = useState<Chapter | null>(null);
@@ -2580,7 +2581,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
           {/* Chapter Edit Modal / Drawer */}
           {editingChapter && (
             <div className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 overflow-y-auto">
-              <div className="relative bg-gray-900 border-2 border-purple-500 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] flex flex-col my-auto animate-fadeIn overflow-hidden">
+              <div className="relative bg-gray-900 border-2 border-purple-500 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-5xl xl:max-w-6xl max-h-[95vh] h-[92vh] flex flex-col my-auto animate-fadeIn overflow-hidden">
                 {/* Fixed Header */}
                 <div className="flex items-center justify-between border-b border-purple-800/80 p-4 sm:p-5 bg-gray-950/90 shrink-0">
                   <h3 className="font-extrabold text-sm sm:text-base text-purple-200 flex items-center gap-2 truncate pr-2">
@@ -2603,7 +2604,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 <form id="chapterEditForm" onSubmit={handleSaveChapterEdit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
 
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs sm:text-sm">
                   <div>
                     <label className="block text-purple-300 font-bold mb-1">Bölüm Numarası</label>
                     <input
@@ -2773,12 +2774,20 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       + Künye Kartı Bilgisi Ekle (Seri / Çevirmen / Dil)
                     </button>
                   </div>
+                  <div className="flex items-center justify-between text-[11px] text-purple-300/80 px-1 font-mono">
+                    <span>
+                      Kelime: <strong className="text-white font-bold">{editingChapterContentText.trim() ? editingChapterContentText.trim().split(/\s+/).length : 0}</strong> | 
+                      Paragraf: <strong className="text-white font-bold">{editingChapterContentText.trim() ? editingChapterContentText.split(/\n\s*\n/).length : 0}</strong> | 
+                      Karakter: <strong className="text-white font-bold">{editingChapterContentText.length}</strong>
+                    </span>
+                    <span className="text-gray-400">Yazı alanını sağ alt köşeden istediğiniz kadar uzatabilirsiniz ↘</span>
+                  </div>
                   <textarea
-                    rows={5}
-                    placeholder="Roman paragraf içeriği..."
+                    rows={18}
+                    placeholder="Roman paragraf içeriğini buraya rahatça yazın veya yapıştırın..."
                     value={editingChapterContentText}
                     onChange={e => setEditingChapterContentText(e.target.value)}
-                    className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none resize-none"
+                    className="w-full bg-gray-950/90 border border-purple-500/40 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-white text-sm leading-relaxed rounded-2xl p-4 sm:p-5 focus:outline-none resize-y min-h-[380px] sm:min-h-[460px] shadow-inner font-sans selection:bg-purple-600"
                   />
                 </div>
 
@@ -3304,80 +3313,124 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     </div>
                   </div>
 
-                  {/* Expanded Chapter List */}
+                  {/* Expanded Chapter List - Spacious & Searchable */}
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-purple-800/40 bg-gray-950/80 rounded-xl p-3 space-y-2 animate-fadeIn">
-                      <div className="flex items-center justify-between text-xs font-bold text-purple-300 pb-1 border-b border-gray-800">
-                        <span>"{s.title}" Bölüm Listesi ({s.chapters.length} Bölüm)</span>
-                        <span className="text-[10px] text-gray-400">Herhangi bir bölümü düzenleyebilir veya silebilirsiniz.</span>
+                    <div className="mt-4 pt-4 border-t border-purple-800/50 bg-gray-950/90 rounded-2xl p-4 sm:p-5 space-y-3 animate-fadeIn shadow-inner">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-purple-800/40">
+                        <div className="flex items-center gap-2.5">
+                          <span className="text-sm sm:text-base font-black text-white">
+                            "{s.title}" Bölüm Listesi
+                          </span>
+                          <span className="bg-purple-900/80 text-purple-200 border border-purple-500/40 text-xs font-extrabold px-3 py-1 rounded-full shadow-sm">
+                            {s.chapters.length} Bölüm
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Bölüm ara... (örn: 15 veya Final)"
+                            value={chapterSearchQueries[s.id] || ''}
+                            onChange={e => {
+                              const val = e.target.value;
+                              setChapterSearchQueries(prev => ({ ...prev, [s.id]: val }));
+                            }}
+                            className="bg-gray-900/90 border border-purple-500/40 text-white text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-purple-400 w-full sm:w-64 placeholder-gray-500 shadow-sm"
+                          />
+                          {chapterSearchQueries[s.id] && (
+                            <button
+                              type="button"
+                              onClick={() => setChapterSearchQueries(prev => ({ ...prev, [s.id]: '' }))}
+                              className="text-xs bg-gray-800 text-gray-300 hover:text-white px-2.5 py-2 rounded-xl border border-gray-700"
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {sortedChapters.length === 0 ? (
-                        <p className="text-xs text-gray-400 py-3 text-center">Bu seride henüz yayınlanmış bölüm bulunmamaktadır.</p>
-                      ) : (
-                        <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                          {sortedChapters.map(ch => {
-                            const isCh18 = isChapter18Plus(ch);
-                            return (
-                              <div
-                                key={ch.id}
-                                className={`bg-gray-900 hover:bg-purple-950/40 border rounded-lg p-2.5 flex items-center justify-between gap-3 text-xs transition ${
-                                  isCh18
-                                    ? 'border-rose-500/40 hover:border-rose-400/60'
-                                    : 'border-gray-800 hover:border-purple-600/40'
-                                }`}
-                              >
-                                <div className="min-w-0 flex items-center gap-2">
-                                  <span className="bg-purple-950 border border-purple-700/50 text-purple-200 font-extrabold text-[11px] px-2 py-0.5 rounded flex-shrink-0">
-                                    Bölüm {ch.number}
-                                  </span>
-                                  {ch.specialTag && (
-                                    <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
-                                  )}
-                                  {isCh18 && (
-                                    <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 flex-shrink-0 shadow-sm">
-                                      <Flame size={10} className="fill-amber-200 text-amber-200" />
-                                      18+
+                      {(() => {
+                        const q = (chapterSearchQueries[s.id] || '').trim().toLowerCase();
+                        const displayedChapters = q
+                          ? sortedChapters.filter(ch =>
+                              String(ch.number).includes(q) ||
+                              ch.title?.toLowerCase().includes(q) ||
+                              ch.specialTag?.toLowerCase().includes(q)
+                            )
+                          : sortedChapters;
+
+                        if (displayedChapters.length === 0) {
+                          return (
+                            <p className="text-xs text-gray-400 py-6 text-center">
+                              {q ? 'Aramanıza uygun bölüm bulunamadı.' : 'Bu seride henüz yayınlanmış bölüm bulunmamaktadır.'}
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="space-y-2 max-h-[580px] overflow-y-auto pr-2 custom-scrollbar">
+                            {displayedChapters.map(ch => {
+                              const isCh18 = isChapter18Plus(ch);
+                              return (
+                                <div
+                                  key={ch.id}
+                                  className={`bg-gray-900/90 hover:bg-purple-950/50 border rounded-xl p-3 sm:p-3.5 flex items-center justify-between gap-3 text-xs sm:text-sm transition shadow-sm ${
+                                    isCh18
+                                      ? 'border-rose-500/40 hover:border-rose-400/60'
+                                      : 'border-gray-800 hover:border-purple-600/50'
+                                  }`}
+                                >
+                                  <div className="min-w-0 flex items-center gap-2.5 flex-1">
+                                    <span className="bg-gradient-to-r from-purple-950 to-indigo-950 border border-purple-600/50 text-purple-200 font-black text-xs px-2.5 py-1 rounded-lg flex-shrink-0 shadow-sm">
+                                      Bölüm {ch.number}
                                     </span>
-                                  )}
-                                  <span className="font-bold text-gray-200 truncate">{ch.title}</span>
-
+                                    {ch.specialTag && (
+                                      <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
+                                    )}
+                                    {isCh18 && (
+                                      <span className="bg-gradient-to-r from-rose-600 to-red-600 text-white font-black text-[10px] px-2 py-0.5 rounded-md flex items-center gap-1 flex-shrink-0 shadow-sm">
+                                        <Flame size={11} className="fill-amber-200 text-amber-200" />
+                                        18+
+                                      </span>
+                                    )}
+                                    <span className="font-bold text-gray-200 truncate text-xs sm:text-sm">
+                                      {ch.title}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleChapter18Plus(s.id, ch.id)}
+                                      className={`text-xs font-black px-2.5 py-1.5 rounded-lg border flex items-center gap-1 transition cursor-pointer ${
+                                        isCh18
+                                          ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-sm'
+                                          : 'bg-gray-950 hover:bg-rose-950/70 text-gray-400 hover:text-rose-200 border-gray-700 hover:border-rose-500/50'
+                                      }`}
+                                      title={isCh18 ? '18+ (Smut) etiketini kaldır' : 'Bu bölümü 18+ (Smut) olarak işaretle'}
+                                    >
+                                      <Flame size={12} className={isCh18 ? 'fill-amber-200 text-amber-200' : ''} />
+                                      18+
+                                    </button>
+                                    <button
+                                      onClick={() => startEditingChapter(s.id, ch)}
+                                      className="bg-purple-900/90 hover:bg-purple-700 text-purple-100 text-xs font-bold px-3.5 py-1.5 rounded-lg border border-purple-500/60 flex items-center gap-1.5 transition shadow-sm cursor-pointer"
+                                    >
+                                      <Edit2 size={13} />
+                                      Düzenle
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteChapter(s.id, ch.id, ch.number)}
+                                      className="bg-red-950/80 hover:bg-red-900 text-red-300 text-xs font-bold p-1.5 rounded-lg border border-red-800 transition cursor-pointer"
+                                      title="Bölümü Sil"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
                                 </div>
-
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleChapter18Plus(s.id, ch.id)}
-                                    className={`text-[11px] font-black px-2 py-1 rounded-md border flex items-center gap-1 transition cursor-pointer ${
-                                      isCh18
-                                        ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-400 shadow-sm'
-                                        : 'bg-gray-950 hover:bg-rose-950/70 text-gray-400 hover:text-rose-200 border-gray-700 hover:border-rose-500/50'
-                                    }`}
-                                    title={isCh18 ? '18+ (Smut) etiketini kaldır' : 'Bu bölümü 18+ (Smut) olarak işaretle'}
-                                  >
-                                    <Flame size={11} className={isCh18 ? 'fill-amber-200 text-amber-200' : ''} />
-                                    18+
-                                  </button>
-                                  <button
-                                    onClick={() => startEditingChapter(s.id, ch)}
-                                    className="bg-purple-900/80 hover:bg-purple-800 text-purple-100 text-[11px] font-bold px-2.5 py-1 rounded-md border border-purple-600/50 flex items-center gap-1 transition"
-                                  >
-                                    <Edit2 size={12} />
-                                    Düzenle
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteChapter(s.id, ch.id, ch.number)}
-                                    className="bg-red-950 hover:bg-red-900 text-red-300 text-[11px] font-bold p-1 rounded-md border border-red-800 transition"
-                                    title="Bölümü Sil"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
