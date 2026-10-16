@@ -484,7 +484,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return sortSeriesByLatestRelease(applyChapter18PlusMap(parsed));
+          // If cached chapters had 500-character truncated content, clear content so fresh D1 content loads
+          const cleaned = parsed.map((s: any) => ({
+            ...s,
+            chapters: (s.chapters || []).map((ch: any) => ({
+              ...ch,
+              content: ch.content && ch.content.length <= 500 ? undefined : ch.content
+            }))
+          }));
+          return sortSeriesByLatestRelease(applyChapter18PlusMap(cleaned));
         }
       } catch (e) {}
     }
@@ -505,9 +513,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     loadSeriesFromIndexedDB().then(cachedList => {
       if (cachedList && Array.isArray(cachedList) && cachedList.length > 0) {
         setSeriesList(prev => {
-          // If state is empty or has fewer series than IndexedDB, immediately upgrade
-          if (!prev || prev.length < cachedList.length) {
-            return sortSeriesByLatestRelease(applyChapter18PlusMap(cachedList));
+          const cleaned = cachedList.map((s: any) => ({
+            ...s,
+            chapters: (s.chapters || []).map((ch: any) => ({
+              ...ch,
+              content: ch.content && ch.content.length <= 500 ? undefined : ch.content
+            }))
+          }));
+          if (!prev || prev.length < cleaned.length) {
+            return sortSeriesByLatestRelease(applyChapter18PlusMap(cleaned));
           }
           return prev;
         });

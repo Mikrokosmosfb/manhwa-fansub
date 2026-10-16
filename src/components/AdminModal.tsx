@@ -1253,6 +1253,20 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setEditingChapter({ ...chapter, notice: cleanedNotice });
     setEditingChapterImagesText(chapter.images ? chapter.images.join('\n') : '');
     setEditingChapterContentText(chapter.content || '');
+
+    // Fetch fresh, full untruncated chapter from Cloudflare D1
+    fetch(`/api/series?seriesId=${encodeURIComponent(seriesId)}`, { cache: 'no-store' })
+      .then(r => r.json())
+      .then(data => {
+        if (data && data.success && Array.isArray(data.chapters)) {
+          const freshCh = data.chapters.find((c: any) => c.id === chapter.id);
+          if (freshCh && freshCh.content && freshCh.content.length > (chapter.content || '').length) {
+            setEditingChapterContentText(freshCh.content);
+            setEditingChapter(prev => prev && prev.id === chapter.id ? { ...prev, content: freshCh.content } : prev);
+          }
+        }
+      })
+      .catch(() => {});
   };
 
   const handleSaveChapterEdit = (e: React.FormEvent) => {
@@ -2829,7 +2843,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     <span>
                       Kelime: <strong className="text-white font-bold">{editingChapterContentText.trim() ? editingChapterContentText.trim().split(/\s+/).length : 0}</strong> | 
                       Paragraf: <strong className="text-white font-bold">{editingChapterContentText.trim() ? editingChapterContentText.split(/\n\s*\n/).length : 0}</strong> | 
-                      Karakter: <strong className="text-white font-bold">{editingChapterContentText.length}</strong>
+                      Karakter: <strong className="text-emerald-400 font-extrabold">{editingChapterContentText.length}</strong> <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/60 border border-emerald-500/40 px-1.5 py-0.5 rounded-md ml-1">Sınırsız</span>
                     </span>
                     <span className="text-gray-400">Yazı alanını sağ alt köşeden istediğiniz kadar uzatabilirsiniz ↘</span>
                   </div>
