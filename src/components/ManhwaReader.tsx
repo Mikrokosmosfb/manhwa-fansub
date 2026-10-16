@@ -242,9 +242,16 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   // Dynamically extract clean image & iframe URLs from chapter.images OR chapter.content
   const chapterImageUrls = useMemo(() => {
     if (!currentChapter) return [];
-    let urls = extractImageUrls(currentChapter.images);
+    let rawImgs: any = currentChapter.images;
+    if (typeof rawImgs === 'string') {
+      try { rawImgs = JSON.parse(rawImgs); } catch {}
+    }
+    let urls = extractImageUrls(rawImgs);
     if (urls.length === 0 && currentChapter.content) {
       urls = extractImageUrls(currentChapter.content);
+    }
+    if (urls.length === 0 && Array.isArray(currentChapter.images)) {
+      urls = currentChapter.images.map(String).map(u => u.trim()).filter(Boolean);
     }
     return urls;
   }, [currentChapter]);

@@ -440,6 +440,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
             .slice(0, 900)
             .replace(/<[^>]+>/g, '\n')
         );
+    const labelHeadRegex = /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.*)$/i;
         const lines = sample
           .split(/\n+/)
           .map(l => l.replace(/\s+/g, ' ').trim())
