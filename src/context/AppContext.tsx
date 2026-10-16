@@ -1990,7 +1990,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           });
         }
       })
-      .catch(() => {}).finally(() => setIsLoadingSeries(false));
+      .catch(() => {});
   }, [isAdminLoggedIn]);
 
   // Attempt to fetch live Cloudflare R2/KV data on mount
@@ -2100,7 +2100,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
           }
         }
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => setIsLoadingSeries(false));
 
     const commentsTimer = setTimeout(() => {
       safeFetchJson<{ success: boolean; data: any[] }>('/api/comments')
