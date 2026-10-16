@@ -2288,7 +2288,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
             notice: ch.notice,
             createdAt: ch.createdAt,
             images: Array.isArray(ch.images) && ch.images.length > 0 ? [ch.images[0]] : [],
-            content: ch.content ? ch.content.slice(0, 500) : undefined
+            content: undefined
           }))
         }));
         localStorage.setItem('mk_series_list', JSON.stringify(safeCatalog));
