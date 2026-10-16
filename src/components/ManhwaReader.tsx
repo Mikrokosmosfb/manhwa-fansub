@@ -488,25 +488,9 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   }, [seriesId, chapterId]);
 
     if (!series || !currentChapter) {
-    if (!seriesList || seriesList.length === 0) {
-      return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950 space-y-4">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-purple-900/50" />
-          <p className="text-sm font-bold text-purple-300 animate-pulse tracking-wider uppercase">
-            Bölüm Yükleniyor...
-          </p>
-        </div>
-      );
-    }
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950">
-        <h2 className="text-xl font-bold mb-4">Bölüm Bulunamadı</h2>
-        <button
-          onClick={() => setView({ type: 'home' })}
-          className="bg-purple-600 px-6 py-2 rounded-full font-bold text-sm"
-        >
-          Ana Sayfa
-        </button>
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950">
+        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

@@ -102,25 +102,9 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const [newReadingListName, setNewReadingListName] = useState('');
 
   if (!series) {
-    if (!seriesList || seriesList.length === 0) {
-      return (
-        <div className="max-w-7xl mx-auto px-4 py-24 text-center text-gray-300 min-h-[60vh] flex flex-col items-center justify-center space-y-4">
-          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-purple-900/50" />
-          <p className="text-sm font-extrabold text-purple-300 animate-pulse tracking-wider uppercase">
-            Seri Bilgileri Yükleniyor...
-          </p>
-        </div>
-      );
-    }
     return (
-      <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-300">
-        <h2 className="text-2xl font-bold mb-4">Seri Bulunamadı</h2>
-        <button
-          onClick={() => setView({ type: 'home' })}
-          className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2 rounded-full"
-        >
-          Ana Sayfaya Dön
-        </button>
+      <div className="max-w-7xl mx-auto px-4 py-24 flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }

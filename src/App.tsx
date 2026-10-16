@@ -96,15 +96,30 @@ const MainContent: React.FC = () => {
   }, [visibleSeriesList]);
 
   if (view.type === 'series-detail') {
+    const targetSeries = findSeriesByQuery(seriesList, view.seriesId);
+    if (!targetSeries && (!seriesList || seriesList.length === 0)) {
+      return (
+        <div className="min-h-[60vh] flex items-center justify-center p-4 bg-gray-950">
+          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
     return <SeriesDetail key={`series-detail-${view.seriesId}`} seriesId={view.seriesId} />;
   }
 
   if (view.type === 'reader') {
     const targetSeries = findSeriesByQuery(seriesList, view.seriesId);
-    return targetSeries?.type === 'Web Novel' ? (
-      <NovelReader key={`novel-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
+    if (!targetSeries) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950">
+          <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+    return targetSeries.type === 'Web Novel' ? (
+      <NovelReader key={`novel-${targetSeries.id}-${view.chapterId}`} seriesId={targetSeries.id} chapterId={view.chapterId} />
     ) : (
-      <ManhwaReader key={`manhwa-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
+      <ManhwaReader key={`manhwa-${targetSeries.id}-${view.chapterId}`} seriesId={targetSeries.id} chapterId={view.chapterId} />
     );
   }
 
