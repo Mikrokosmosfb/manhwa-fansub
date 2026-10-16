@@ -7,24 +7,25 @@ import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';
 
 export const RandomSeriesWidget: React.FC = () => {
-  const { seriesList, setView, isLoadingSeries } = useApp();
+  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn } = useApp();
+  const pubSeries = React.useMemo(() => seriesList.filter(s => isAdminLoggedIn || !s.isDraft), [seriesList, isAdminLoggedIn]);
   const [randomSeries, setRandomSeries] = useState<Series | null>(() => {
-    if (!seriesList || seriesList.length === 0) return null;
-    return seriesList[Math.floor(Math.random() * seriesList.length)];
+    if (!pubSeries || pubSeries.length === 0) return null;
+    return pubSeries[Math.floor(Math.random() * pubSeries.length)];
   });
   const [isSpinning, setIsSpinning] = useState(false);
 
   useEffect(() => {
     if (!randomSeries && seriesList && seriesList.length > 0) {
-      setRandomSeries(seriesList[Math.floor(Math.random() * seriesList.length)]);
+      setRandomSeries(pubSeries[Math.floor(Math.random() * pubSeries.length)]);
     }
   }, [seriesList, randomSeries]);
 
   const handlePickRandom = () => {
-    if (!seriesList || seriesList.length === 0) return;
+    if (!pubSeries || pubSeries.length === 0) return;
     setIsSpinning(true);
     setTimeout(() => {
-      let next = seriesList[Math.floor(Math.random() * seriesList.length)];
+      let next = pubSeries[Math.floor(Math.random() * pubSeries.length)];
       if (seriesList.length > 1 && randomSeries && next.id === randomSeries.id) {
         next = seriesList.find(s => s.id !== randomSeries.id) || next;
       }
@@ -148,14 +149,15 @@ export const RandomSeriesWidget: React.FC = () => {
 };
 
 export const QuickCategoriesWidget: React.FC = () => {
-  const { seriesList, setView } = useApp();
+  const { seriesList, setView, isAdminLoggedIn } = useApp();
+  const pubSeries = React.useMemo(() => seriesList.filter(s => isAdminLoggedIn || !s.isDraft), [seriesList, isAdminLoggedIn]);
 
   // Extract all actual genres and custom badges from the series in database with counts
   const genreCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
     if (!seriesList) return [];
 
-    seriesList.forEach(s => {
+    pubSeries.forEach(s => {
       // Add series genres
       (s.genres || []).forEach(g => {
         if (g && g.trim()) {

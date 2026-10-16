@@ -21,9 +21,10 @@ import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 
 export const HeroSlider: React.FC = () => {
-  const { seriesList, setView, showNsfw } = useApp();
+  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
 
-  const visibleSeriesList = showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
+  const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
   // En son güncellenen 7 seriyi göster
   const featuredSeries = [...visibleSeriesList]
     .sort((a, b) => getSeriesLatestActivityTime(b) - getSeriesLatestActivityTime(a))

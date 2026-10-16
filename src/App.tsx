@@ -78,8 +78,9 @@ const MainContent: React.FC = () => {
 
   // Filter series based on NSFW preference
   const visibleSeriesList = useMemo(() => {
-    return showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
-  }, [seriesList, showNsfw]);
+    const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+    return showNsfw ? base : base.filter(s => !isSeries18Plus(s));
+  }, [seriesList, showNsfw, isAdminLoggedIn]);
 
   // Home Page Feed sections - strictly sorted by latest chapter / release (newest first)
   const novelSeries = useMemo(() => {
@@ -104,6 +105,20 @@ const MainContent: React.FC = () => {
         </div>
       );
     }
+    if (targetSeries?.isDraft && !isAdminLoggedIn) {
+      return (
+        <div className="max-w-2xl mx-auto px-4 py-24 text-center text-white space-y-4">
+          <div className="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
+            <Layers size={32} />
+          </div>
+          <h2 className="text-2xl font-black text-amber-200">Bu Seri Henüz Taslak Aşamasındadır</h2>
+          <p className="text-sm text-gray-400">Bu içerik henüz yayınlanmamıştır veya yapım aşamasındadır. Lütfen daha sonra tekrar kontrol ediniz.</p>
+          <button onClick={() => setView({ type: 'home' })} className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-full text-sm">
+            Ana Sayfaya Dön
+          </button>
+        </div>
+      );
+    }
     return <SeriesDetail key={`series-detail-${view.seriesId}`} seriesId={view.seriesId} />;
   }
 
@@ -113,6 +128,20 @@ const MainContent: React.FC = () => {
       return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gray-950">
           <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      );
+    }
+    if (targetSeries.isDraft && !isAdminLoggedIn) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950 space-y-4">
+          <div className="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center mx-auto text-amber-400">
+            <Layers size={32} />
+          </div>
+          <h2 className="text-2xl font-black text-amber-200">Bu Bölüm Henüz Taslak Aşamasındadır</h2>
+          <p className="text-sm text-gray-400 max-w-md">Seri taslak modunda olduğu için bölümler şu anda ziyarete kapalıdır.</p>
+          <button onClick={() => setView({ type: 'home' })} className="bg-purple-600 hover:bg-purple-500 text-white font-bold px-6 py-2.5 rounded-full text-sm">
+            Ana Sayfaya Dön
+          </button>
         </div>
       );
     }

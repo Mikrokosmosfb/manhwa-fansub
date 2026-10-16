@@ -81,7 +81,8 @@ export const Header: React.FC = () => {
     setIsProfileDropdownOpen(false);
   };
 
-  const searchableSeries = showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
+  const baseSeries = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const searchableSeries = showNsfw ? baseSeries : baseSeries.filter(s => !isSeries18Plus(s));
 
   const filteredResults: Series[] = searchQuery.trim()
     ? searchableSeries.filter(

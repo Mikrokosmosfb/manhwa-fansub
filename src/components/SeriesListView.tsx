@@ -8,7 +8,7 @@ import { sortSeriesByLatestRelease } from '../utils/dateUtils';
 import { GENRE_LIST } from '../data/mockData';
 
 export const SeriesListView: React.FC = () => {
-  const { seriesList, setView, showNsfw } = useApp();
+  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('Tümü');
   const [selectedGenre, setSelectedGenre] = useState<string>('Tümü');
@@ -16,7 +16,8 @@ export const SeriesListView: React.FC = () => {
   const [sortBy, setSortBy] = useState<'newest' | 'rating' | 'title' | 'chapters' | 'updated'>('newest');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
 
-  const visibleSeriesList = showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
+  const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
 
   // Extract all genres and custom badges across the entire site catalog & predefined list
   const genreCounts = useMemo(() => {

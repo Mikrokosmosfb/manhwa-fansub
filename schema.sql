@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS series (
     is_new INTEGER DEFAULT 0,
     is_guncel INTEGER DEFAULT 1,
     is_18_plus INTEGER DEFAULT 0,
+    is_draft INTEGER DEFAULT 0,
     views INTEGER DEFAULT 0,
     likes_count INTEGER DEFAULT 0,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP

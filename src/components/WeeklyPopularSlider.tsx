@@ -7,7 +7,7 @@ import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { WeeklyPopularSliderSkeleton } from './SkeletonLoader';
 
 export const WeeklyPopularSlider: React.FC = () => {
-  const { seriesList, setView, isLoadingSeries } = useApp();
+  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {
@@ -18,7 +18,7 @@ export const WeeklyPopularSlider: React.FC = () => {
   };
 
   // Filter or sort popular series for "Bu Haftanın Sevilenleri"
-  const popularSeries = seriesList.filter(s => s.rating >= 8.0 || s.isHot || s.isNew).slice(0, 15);
+  const popularSeries = seriesList.filter(s => (isAdminLoggedIn || !s.isDraft) && (s.rating >= 8.0 || s.isHot || s.isNew)).slice(0, 15);
 
   const getFlag = (s: Series) => {
     if (s.type === 'Manhua') return '🇨🇳';

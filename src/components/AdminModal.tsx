@@ -1051,6 +1051,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const [isHot, setIsHot] = useState(false);
   const [isNew, setIsNew] = useState(false);
   const [isGuncel, setIsGuncel] = useState(false);
+  const [isDraft, setIsDraft] = useState(false);
+  const [manageDraftFilter, setManageDraftFilter] = useState<'all' | 'published' | 'draft'>('all');
   const [notifyNewSeriesAll, setNotifyNewSeriesAll] = useState(true);
   const [notifyNewSeriesCustomMessage, setNotifyNewSeriesCustomMessage] = useState('');
   const [copiedCode, setCopiedCode] = useState(false);
@@ -1346,6 +1348,16 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     alert('Güncellenmiş "mockData.ts" kodu kopyalandı! Projenizdeki src/data/mockData.ts dosyasına yapıştırabilirsiniz.');
   };
 
+  const handleToggleSeriesDraft = (s: Series) => {
+    const nextDraft = !s.isDraft;
+    addOrUpdateSeries({
+      ...s,
+      isDraft: nextDraft,
+      updatedAt: new Date().toISOString()
+    });
+    alert(`"${s.title}" serisi ${nextDraft ? 'TASLAĞA ALINDI (Sitede gizlendi)' : 'YAYINLANDI (Sitede görünür hale getirildi)'}!`);
+  };
+
   const handleCreateSeries = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !coverImage.trim()) {
@@ -1383,7 +1395,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       isHot,
       isNew,
       isGuncel,
-      is18Plus
+      is18Plus,
+      isDraft
     };
 
     addOrUpdateSeries(newSeries, {
@@ -1406,6 +1419,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setIsHot(false);
     setIsNew(false);
     setIsGuncel(false);
+    setIsDraft(false);
     setNotifyNewSeriesCustomMessage('');
     setActiveTab('add-chapter');
     setSelectedSeriesId(newSeries.id);
@@ -1425,7 +1439,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       updatedAt: new Date().toISOString(),
       bannerImage: editingSeries.bannerImage?.trim() || undefined,
       heroImage: editingSeries.bannerImage?.trim() || editingSeries.heroImage?.trim() || undefined,
-      customBadges: parsedBadges.length > 0 ? parsedBadges : undefined
+      customBadges: parsedBadges.length > 0 ? parsedBadges : undefined,
+      isDraft: Boolean(editingSeries.isDraft)
     };
 
     addOrUpdateSeries(updatedSeries);
@@ -2560,6 +2575,42 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         <div className="space-y-4">
           
           {/* Search bar for series */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setManageDraftFilter('all')}
+              className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition cursor-pointer ${
+                manageDraftFilter === 'all'
+                  ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                  : 'bg-gray-900/90 text-gray-300 border-gray-800 hover:border-purple-600/50'
+              }`}
+            >
+              Tümü ({seriesList.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setManageDraftFilter('published')}
+              className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition cursor-pointer ${
+                manageDraftFilter === 'published'
+                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-sm'
+                  : 'bg-gray-900/90 text-gray-300 border-gray-800 hover:border-emerald-600/50'
+              }`}
+            >
+              Yayında ({seriesList.filter(s => !s.isDraft).length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setManageDraftFilter('draft')}
+              className={`text-xs font-black px-3.5 py-1.5 rounded-xl border transition cursor-pointer ${
+                manageDraftFilter === 'draft'
+                  ? 'bg-amber-600 text-white border-amber-400 shadow-sm'
+                  : 'bg-gray-900/90 text-gray-300 border-gray-800 hover:border-amber-600/50'
+              }`}
+            >
+              Taslaklar ({seriesList.filter(s => s.isDraft).length})
+            </button>
+          </div>
+
           <div className="bg-gray-900/90 border border-purple-500/20 rounded-2xl p-3 flex items-center gap-3 shadow">
             <input
               type="text"
@@ -3258,6 +3309,11 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                               18+
                             </span>
                           )}
+                          {s.isDraft && (
+                            <span className="text-[10px] bg-amber-950/90 text-amber-300 border border-amber-500/60 font-black px-1.5 py-0.2 rounded flex items-center gap-1 shadow-sm">
+                              <FileText size={10} /> TASLAK
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-gray-400 mt-0.5">
                           <span>{s.type}</span> • <span className="text-purple-300 font-bold">{s.chapters.length} Bölüm</span> • <span>{s.status}</span>
@@ -3284,6 +3340,19 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                         {isExpanded ? 'Bölümleri Gizle' : `Bölümleri Yönet (${s.chapters.length})`}
                       </button>
 
+                      <button
+                        type="button"
+                        onClick={() => handleToggleSeriesDraft(s)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 border transition cursor-pointer ${
+                          s.isDraft
+                            ? 'bg-amber-600 hover:bg-amber-500 text-white border-amber-400 shadow-md font-extrabold'
+                            : 'bg-gray-800 hover:bg-amber-950/60 text-gray-300 hover:text-amber-200 border-gray-700 hover:border-amber-500/40'
+                        }`}
+                        title={s.isDraft ? 'Taslaktan çıkar ve sitede yayınla' : 'Seriyi taslağa al (ziyaretçilerden gizle)'}
+                      >
+                        {s.isDraft ? <Eye size={13} /> : <EyeOff size={13} />}
+                        <span>{s.isDraft ? 'Yayınla' : 'Taslağa Al'}</span>
+                      </button>
                       <button
                         onClick={() => startEditingSeries(s)}
                         className="bg-purple-800 hover:bg-purple-700 text-white text-xs px-3 py-1.5 rounded-xl font-bold flex items-center gap-1 border border-purple-600"

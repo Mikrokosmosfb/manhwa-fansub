@@ -17,8 +17,9 @@ const DAYS_OF_WEEK = [
 ];
 
 export const ScheduleView: React.FC = () => {
-  const { seriesList, setView, showNsfw } = useApp();
-  const visibleSeriesList = showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));
+  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
+  const base = isAdminLoggedIn ? seriesList : seriesList.filter(s => !s.isDraft);
+  const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
 
   // Current Turkish day name
   const turkishDays = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];

@@ -149,6 +149,7 @@ export interface Series {
   rating: number; // e.g. 9.4
   ageRating?: '18+' | '21+' | 'Genel';
   is18Plus?: boolean; // 18+ adult content tag managed by admin
+  isDraft?: boolean; // Draft status - if true, hidden from non-admin visitors
   isHot?: boolean;
   isNew?: boolean;
   isGuncel?: boolean; // "GÜNCEL" badge for up-to-date ongoing series

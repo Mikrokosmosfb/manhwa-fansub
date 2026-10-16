@@ -237,6 +237,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
   return (
     <div className="min-h-screen pb-16">
+      {series.isDraft && (
+        <div className="bg-amber-950/90 border-b border-amber-500/50 py-3 px-4 text-center">
+          <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 text-amber-200 text-xs sm:text-sm font-extrabold">
+            <span className="bg-amber-500 text-black font-black text-[11px] px-2 py-0.5 rounded shadow-sm">TASLAK</span>
+            <span>Bu seri şu anda Taslak modundadır. Sadece yöneticiler görebilir, sitede henüz yayında değildir.</span>
+          </div>
+        </div>
+      )}
       
       {/* Hero Banner Section */}
       <div className="relative w-full h-64 sm:h-80 md:h-96 overflow-hidden bg-gray-950">
