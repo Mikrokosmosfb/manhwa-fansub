@@ -7,7 +7,7 @@ import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';
 
 export const RandomSeriesWidget: React.FC = () => {
-  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn } = useApp();
+  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn, user } = useApp();
   const pubSeries = React.useMemo(() => seriesList.filter(s => (isAdminLoggedIn || isAuthorizedAdmin(user?.email) || !s.isDraft)), [seriesList, isAdminLoggedIn, user?.email]);
   const [randomSeries, setRandomSeries] = useState<Series | null>(() => {
     if (!pubSeries || pubSeries.length === 0) return null;
