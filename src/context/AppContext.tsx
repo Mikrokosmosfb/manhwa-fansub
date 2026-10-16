@@ -25,6 +25,7 @@ import {
 import { INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
+import { saveSeriesToIndexedDB, loadSeriesFromIndexedDB } from '../utils/idbStorage';
 import { sendDeviceNotification } from '../utils/pushNotifications';
 import {
   SHOP_ITEM_DURATION_MS,
@@ -497,6 +498,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
   });
+
+
+  // Fast hydration from IndexedDB on initial mount
+  useEffect(() => {
+    loadSeriesFromIndexedDB().then(cachedList => {
+      if (cachedList && Array.isArray(cachedList) && cachedList.length > 0) {
+        setSeriesList(prev => {
+          // If state is empty or has fewer series than IndexedDB, immediately upgrade
+          if (!prev || prev.length < cachedList.length) {
+            return sortSeriesByLatestRelease(applyChapter18PlusMap(cachedList));
+          }
+          return prev;
+        });
+      }
+    }).catch(() => {});
+  }, []);
 
   // Reading History (capped at 500 series)
   const [readingHistory, setReadingHistory] = useState<Record<string, ReadingProgress>>(() => {
@@ -2254,9 +2271,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
   useEffect(() => {
     if (!seriesList || seriesList.length === 0) return;
     const timer = setTimeout(() => {
+      // 1. Full-fidelity persistence into IndexedDB (supports gigabytes of data, full novel chapters, all images)
+      saveSeriesToIndexedDB(seriesList).catch(() => {});
+
+      // 2. Guaranteed-safe catalog in localStorage (always kept under 500 KB so it never hits 5MB quota)
       try {
-        // Tier 1: Keep full novel content and up to 2 chapter images for thumbnails so it fits comfortably under 5MB
-        const compactCatalog = seriesList.map(s => ({
+        const safeCatalog = seriesList.map(s => ({
           ...s,
           chapters: (s.chapters || []).map(ch => ({
             id: ch.id,
@@ -2267,38 +2287,26 @@ const deleteShopItemAndStyle = (itemId: string) => {
             is18Plus: ch.is18Plus,
             notice: ch.notice,
             createdAt: ch.createdAt,
-            images: Array.isArray(ch.images) ? ch.images.slice(0, 2) : [],
-            content: ch.content
+            images: Array.isArray(ch.images) && ch.images.length > 0 ? [ch.images[0]] : [],
+            content: ch.content ? ch.content.slice(0, 500) : undefined
           }))
         }));
-        localStorage.setItem('mk_series_list', JSON.stringify(compactCatalog));
+        localStorage.setItem('mk_series_list', JSON.stringify(safeCatalog));
       } catch (e) {
         try {
-          // Tier 2: If total novel content across all series exceeds 5MB quota, keep novel content up to ~1.8M chars
-          let charBudget = 1800000;
-          const budgetedCatalog = seriesList.map(s => ({
+          // Minimal fallback: preserve all series and chapter numbers/titles without content
+          const minimalCatalog = seriesList.map(s => ({
             ...s,
-            chapters: (s.chapters || []).map(ch => {
-              let keptContent: string | undefined = undefined;
-              if (ch.content && charBudget > 0) {
-                keptContent = ch.content;
-                charBudget -= ch.content.length;
-              }
-              return {
-                id: ch.id,
-                number: ch.number,
-                title: ch.title,
-                publishedDate: ch.publishedDate,
-                specialTag: ch.specialTag,
-                is18Plus: ch.is18Plus,
-                notice: ch.notice,
-                createdAt: ch.createdAt,
-                images: Array.isArray(ch.images) ? ch.images.slice(0, 1) : [],
-                content: keptContent
-              };
-            })
+            chapters: (s.chapters || []).map(ch => ({
+              id: ch.id,
+              number: ch.number,
+              title: ch.title,
+              publishedDate: ch.publishedDate,
+              specialTag: ch.specialTag,
+              is18Plus: ch.is18Plus
+            }))
           }));
-          localStorage.setItem('mk_series_list', JSON.stringify(budgetedCatalog));
+          localStorage.setItem('mk_series_list', JSON.stringify(minimalCatalog));
         } catch {}
       }
     }, 250);

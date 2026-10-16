@@ -1190,7 +1190,7 @@ ${seriesXml}
                 return new Response(cachedSeriesResponseJson, {
                   headers: {
                     ...headers,
-                    'Cache-Control': 'public, max-age=15, stale-while-revalidate=60'
+                    'Cache-Control': 'public, max-age=30, stale-while-revalidate=120'
                   }
                 });
               }
@@ -1293,12 +1293,12 @@ ${seriesXml}
                 globalNotifications
               });
               cachedSeriesResponseJson = responseBody;
-              cachedSeriesExpiresAt = Date.now() + 20000;
+              cachedSeriesExpiresAt = Date.now() + 120000;
 
               return new Response(responseBody, {
                 headers: {
                   ...headers,
-                  'Cache-Control': 'no-cache'
+                  'Cache-Control': 'public, max-age=30, stale-while-revalidate=120'
                 }
               });
             }
