@@ -912,28 +912,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
               )}
             </button>
 
-            {/* Quick Book Mode Toggle (Desktop & Tablet only; on mobile it is inside the settings cog) */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextMode = isBookMode ? 'scroll' : 'book';
-                updateNovelSettings({ readingMode: nextMode });
-                if (nextMode === 'book') {
-                  setIsAutoScrolling(false);
-                }
-              }}
-              className={`hidden sm:flex h-9 px-2.5 sm:h-10 sm:px-3 rounded-xl border items-center justify-center gap-1.5 transition cursor-pointer shadow-sm ${
-                isBookMode
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 border-purple-400 text-white font-extrabold shadow-purple-900/40'
-                  : 'bg-purple-50 dark:bg-purple-950/60 border-purple-200 dark:border-purple-500/30 text-purple-700 dark:text-purple-200 hover:text-purple-950 dark:hover:text-white'
-              }`}
-              title={isBookMode ? 'Kitap Modu Aktif (Dikey Kaydırmaya Dönmek İçin Tıkla)' : 'Sayfa Sayfa Kitap Moduna Geç'}
-            >
-              <BookOpen size={16} className={isBookMode ? 'animate-pulse' : ''} />
-              <span className="text-[11px] font-bold hidden xs:inline">
-                {isBookMode ? 'Kitap' : 'Kaydır'}
-              </span>
-            </button>
+
 
             <button
               type="button"
@@ -1167,21 +1146,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
                   <List size={15} />
                   <span>Dikey Kaydırma</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateNovelSettings({ readingMode: 'book' });
-                    setIsAutoScrolling(false);
-                  }}
-                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition cursor-pointer ${
-                    isBookMode
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md font-extrabold ring-1 ring-purple-400/40'
-                      : 'bg-slate-100 dark:bg-purple-900/40 border-purple-200 dark:border-purple-700/50 text-slate-700 dark:text-purple-200 hover:bg-purple-50 dark:hover:bg-purple-800/60'
-                  }`}
-                >
-                  <BookOpen size={15} className={isBookMode ? 'animate-pulse' : ''} />
-                  <span>Sayfa Sayfa (Kitap)</span>
-                </button>
+
               </div>
             </div>
 
