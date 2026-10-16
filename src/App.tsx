@@ -64,7 +64,7 @@ const ViewLoadingFallback: React.FC = () => (
 );
 
 const MainContent: React.FC = () => {
-  const { view, setView, seriesList, showNsfw, isLoadingSeries } = useApp();
+  const { view, setView, seriesList, showNsfw, isLoadingSeries, isAdminLoggedIn } = useApp();
   const [popularTab, setPopularTab] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [visibleComicCount, setVisibleComicCount] = useState(12);
   const novelScrollRef = useRef<HTMLDivElement>(null);
