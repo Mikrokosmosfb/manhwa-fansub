@@ -31,9 +31,9 @@ import { sortSeriesByLatestRelease } from './utils/dateUtils';
 import { getOptimizedImageUrl, handleImageError } from './utils/imageUtils';
 
 // Lazy-loaded secondary views and modals to minimize initial bundle size and maximize PageSpeed
-const SeriesDetail = React.lazy(() => import('./components/SeriesDetail').then(m => ({ default: m.SeriesDetail })));
-const ManhwaReader = React.lazy(() => import('./components/ManhwaReader').then(m => ({ default: m.ManhwaReader })));
-const NovelReader = React.lazy(() => import('./components/NovelReader').then(m => ({ default: m.NovelReader })));
+import { SeriesDetail } from './components/SeriesDetail';
+import { ManhwaReader } from './components/ManhwaReader';
+import { NovelReader } from './components/NovelReader';
 const LibraryView = React.lazy(() => import('./components/LibraryView').then(m => ({ default: m.LibraryView })));
 const AdvancedSearchView = React.lazy(() => import('./components/AdvancedSearchView').then(m => ({ default: m.AdvancedSearchView })));
 const LeaderboardView = React.lazy(() => import('./components/LeaderboardView').then(m => ({ default: m.LeaderboardView })));
@@ -96,23 +96,15 @@ const MainContent: React.FC = () => {
   }, [visibleSeriesList]);
 
   if (view.type === 'series-detail') {
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        <SeriesDetail key={`series-detail-${view.seriesId}`} seriesId={view.seriesId} />
-      </Suspense>
-    );
+    return <SeriesDetail key={`series-detail-${view.seriesId}`} seriesId={view.seriesId} />;
   }
 
   if (view.type === 'reader') {
     const targetSeries = findSeriesByQuery(seriesList, view.seriesId);
-    return (
-      <Suspense fallback={<ViewLoadingFallback />}>
-        {targetSeries?.type === 'Web Novel' ? (
-          <NovelReader key={`novel-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
-        ) : (
-          <ManhwaReader key={`manhwa-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
-        )}
-      </Suspense>
+    return targetSeries?.type === 'Web Novel' ? (
+      <NovelReader key={`novel-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
+    ) : (
+      <ManhwaReader key={`manhwa-${view.seriesId}-${view.chapterId}`} seriesId={view.seriesId} chapterId={view.chapterId} />
     );
   }
 

@@ -489,7 +489,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return [];
   });
-  const [isLoadingSeries, setIsLoadingSeries] = useState<boolean>(true);
+  const [isLoadingSeries, setIsLoadingSeries] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('mk_series_list');
+      return !saved || saved === '[]';
+    } catch {
+      return true;
+    }
+  });
 
   // Reading History (capped at 500 series)
   const [readingHistory, setReadingHistory] = useState<Record<string, ReadingProgress>>(() => {

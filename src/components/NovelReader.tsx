@@ -790,15 +790,6 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     return () => window.removeEventListener('scroll', handleScroll);
   }, [series, currentChapter]);
 
-  // Initial loading grace period to prevent premature "Bulunamadı" flash on hard refresh
-  const [isInitialGracePeriod, setIsInitialGracePeriod] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialGracePeriod(false);
-    }, 4500);
-    return () => clearTimeout(timer);
-  }, [seriesId, chapterId]);
-
   // Record last opened position on mount
   useEffect(() => {
     if (series && currentChapter) {
@@ -808,7 +799,7 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
   }, [seriesId, chapterId]);
 
     if (!series || !currentChapter) {
-    if (isLoadingSeries || isInitialGracePeriod || !seriesList || seriesList.length === 0) {
+    if (!seriesList || seriesList.length === 0) {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 text-center text-white bg-gray-950 space-y-4">
           <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin shadow-lg shadow-purple-900/50" />
