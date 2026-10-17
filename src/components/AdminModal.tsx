@@ -2410,11 +2410,14 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
               {/* Textarea for manual URLs, HTML embed tags, or batch list */}
               <div className="mt-3">
-                <label className="block text-gray-400 text-[11px] font-semibold mb-1">
-                  Harici Görsel Linkleri, Blogger Bölüm Kodu (&lt;baslik&gt;, .manga-alert, &lt;img src="..."&gt;) veya URL Listesi:
-                </label>
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                  <label className="block text-purple-300 font-bold text-xs">
+                    Harici Görsel Linkleri, Blogger Bölüm Kodu (&lt;baslik&gt;, .manga-alert, &lt;img src="..."&gt;) veya URL Listesi:
+                  </label>
+                  <span className="text-[11px] text-gray-400 hidden sm:inline">Yazı alanını sağ alttan büyütebilirsiniz ↘</span>
+                </div>
                 <textarea
-                  rows={4}
+                  rows={10}
                   placeholder="Blogger bölüm HTML kodunu (&lt;baslik&gt;...&lt;/baslik&gt;&lt;div class='wt-cont'&gt;...), &lt;img src=...&gt; veya URL listesini doğrudan buraya yapıştırabilirsiniz."
                   value={chapterImages}
                   onChange={e => {
@@ -2427,7 +2430,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       }
                     }
                   }}
-                  className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none font-mono resize-none"
+                  className="w-full bg-gray-950/90 border border-purple-500/40 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-white text-xs leading-relaxed rounded-2xl p-4 focus:outline-none font-mono resize-y min-h-[200px] sm:min-h-[250px] shadow-inner selection:bg-purple-600"
                 />
               </div>
 
@@ -2766,11 +2769,17 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 <div>
-                  <label className="block text-purple-300 font-bold text-xs mb-1">
-                    Manhwa / Çizgi Roman Resim Linkleri veya Blogger HTML Kodu
-                  </label>
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                    <label className="block text-purple-300 font-bold text-xs">
+                      Manhwa / Çizgi Roman Resim Linkleri veya Blogger HTML Kodu
+                    </label>
+                    <div className="flex items-center gap-2 text-[11px] text-purple-300/80 font-mono">
+                      <span>Satır / Görsel: <strong className="text-white font-bold">{editingChapterImagesText.trim() ? editingChapterImagesText.trim().split(/\n+/).length : 0}</strong></span>
+                      <span className="text-gray-400 hidden sm:inline">• Yazı alanını sağ alttan büyütebilirsiniz ↘</span>
+                    </div>
+                  </div>
                   <textarea
-                    rows={5}
+                    rows={12}
                     placeholder="https://image1.jpg&#10;https://image2.jpg veya Blogger HTML kodunu (&lt;baslik&gt;...&lt;/baslik&gt;&lt;div class='wt-cont'&gt;...) yapıştırın"
                     value={editingChapterImagesText}
                     onChange={e => {
@@ -2783,7 +2792,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                         }
                       }
                     }}
-                    className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none font-mono resize-none"
+                    className="w-full bg-gray-950/90 border border-purple-500/40 focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-white text-xs leading-relaxed rounded-2xl p-4 focus:outline-none font-mono resize-y min-h-[220px] sm:min-h-[280px] shadow-inner selection:bg-purple-600"
                   />
                   {(() => {
                     const previewNotice = mergeChapterNoticesFromSources(
