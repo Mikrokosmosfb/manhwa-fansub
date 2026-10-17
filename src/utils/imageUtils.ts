@@ -38,6 +38,8 @@ export function getOptimizedImageUrl(
 
   let trimmed = url.trim();
   if (!trimmed) return undefined;
+  // Completely filter out imgbox.com images
+  if (trimmed.toLowerCase().includes('imgbox.com')) return '';
 
   // Return data URIs, SVGs, or blob URLs as-is
   if (trimmed.startsWith('data:') || trimmed.startsWith('blob:') || trimmed.includes('.svg')) {

@@ -253,7 +253,7 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     if (urls.length === 0 && Array.isArray(currentChapter.images)) {
       urls = currentChapter.images.map(String).map(u => u.trim()).filter(Boolean);
     }
-    return urls;
+    return urls.filter(u => u && !u.toLowerCase().includes('imgbox.com'));
   }, [currentChapter]);
 
   const totalPages = chapterImageUrls.length;
