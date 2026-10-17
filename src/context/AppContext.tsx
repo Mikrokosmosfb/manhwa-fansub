@@ -3010,27 +3010,48 @@ const deleteShopItemAndStyle = (itemId: string) => {
               });
 
                             if (newGlobals.length > 0) {
-                // Realtime Push & Toast: Only trigger for genuinely fresh notifications (last 15 min) that were NEVER pushed on this device before
-                newGlobals.forEach((n: any) => {
-                  const alreadyPushed = isNotificationAlreadyPushed(n.id);
-                  const isFresh = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 15 * 60 * 1000;
-                  
-                  if (!alreadyPushed && isFresh) {
-                    const shouldSend = n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId);
-                    if (shouldSend) {
+                // Filter items that have not yet triggered a push/toast on this device
+                const unpushedGlobals = newGlobals.filter((n: any) => !isNotificationAlreadyPushed(n.id));
+
+                if (unpushedGlobals.length > 0) {
+                  // 1-2 new releases: notify individually with direct title & cover
+                  if (unpushedGlobals.length <= 2) {
+                    unpushedGlobals.forEach((n: any) => {
+                      const shouldSend = n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId);
+                      if (shouldSend) {
+                        showToast({
+                          title: n.title || '🎉 Yeni Bildirim',
+                          message: n.message || '',
+                          type: n.type === 'comment-reply' ? 'info' : 'bell',
+                          seriesId: n.seriesId,
+                          coverImage: n.coverImage
+                        });
+                        sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '', n.coverImage, undefined, n.id);
+                      }
+                      markNotificationAsPushed(n.id);
+                    });
+                  } else {
+                    // Multiple new releases (e.g. user was away for days):
+                    // Group into one clean catch-up alert instead of freezing Windows with 20 chime popups!
+                    const relevantCount = unpushedGlobals.filter((n: any) => n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId)).length;
+                    if (relevantCount > 0) {
                       showToast({
-                        title: n.title || '🎉 Yeni Bildirim',
-                        message: n.message || '',
-                        type: n.type === 'comment-reply' ? 'info' : 'bell',
-                        seriesId: n.seriesId,
-                        coverImage: n.coverImage
+                        title: 'Hoş Geldiniz! 🔔',
+                        message: `Siz yokken takip ettiğiniz serilere ${relevantCount} yeni bölüm/içerik eklendi! Bildirimlerinizden inceleyebilirsiniz.`,
+                        type: 'bell',
+                        duration: 8000
                       });
-                      sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '', n.coverImage, undefined, n.id);
+                      sendDeviceNotification(
+                        'Mikrokosmos - Yeni Bölümler Yayında! 🔔',
+                        `Siz yokken takip ettiğiniz serilere ${relevantCount} yeni bölüm eklendi. Keyifli okumalar!`,
+                        '/pwa-192x192.png',
+                        undefined,
+                        'summary-catchup-alert'
+                      );
                     }
+                    unpushedGlobals.forEach((n: any) => markNotificationAsPushed(n.id));
                   }
-                  // Permanently remember that this notification was processed on this device
-                  markNotificationAsPushed(n.id);
-                });
+                }
 
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return combined.slice(0, 100);
