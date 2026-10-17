@@ -1179,8 +1179,13 @@ ${seriesXml}
               const targetSeriesId = url.searchParams.get('seriesId');
               if (targetSeriesId) {
                 const chRows = await db
-                  .prepare("SELECT * FROM chapters WHERE series_id = ?")
-                  .bind(targetSeriesId)
+                  .prepare(`
+                    SELECT * FROM chapters 
+                    WHERE series_id = ? 
+                       OR series_id = (SELECT id FROM series WHERE slug = ? OR id = ?)
+                       OR series_id = (SELECT slug FROM series WHERE id = ? OR slug = ?)
+                  `)
+                  .bind(targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId)
                   .all();
                 const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => ({
                   id: ch.id,
@@ -1218,7 +1223,7 @@ ${seriesXml}
               const activeDb = usersDb || db;
               const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
                 db.prepare("SELECT * FROM series").all(),
-                db.prepare("SELECT id, series_id, chapter_number, title, published_date, special_tag, images_json, is_18_plus, notice, created_at FROM chapters").all(),
+                db.prepare("SELECT id, series_id, chapter_number, title, published_date, special_tag, images_json, is_18_plus, content, notice, created_at FROM chapters").all(),
                 activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions', 'coin_package_urls')").all().catch(() => ({ results: [] })),
                 activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
               ]);

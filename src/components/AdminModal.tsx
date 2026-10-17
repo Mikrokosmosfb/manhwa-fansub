@@ -814,7 +814,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             createdAt: Date.now() - (detSeries.chapterPosts.length - cIdx) * 1000,
             isNew: true,
             images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-            content: cleanContent.length > 30 ? cleanContent : undefined,
+            content: cleanContent.length > 10 ? cleanContent : (detSeries.type === 'Web Novel' ? post.contentHtml : undefined),
             notice: formattedAlertsNotice
           };
         });
@@ -953,7 +953,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         createdAt: Date.now() - (selectedPosts.length - index) * 1000,
         isNew: true,
         images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
-        content: cleanContent.length > 30 ? cleanContent : undefined,
+        content: cleanContent.length > 10 ? cleanContent : (targetSeries!.type === 'Web Novel' ? post.contentHtml : undefined),
         notice: formattedAlertsNotice
       };
     });
@@ -1264,10 +1264,16 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
   const startEditingChapter = (seriesId: string, chapter: Chapter) => {
     const cleanedNotice = chapter.notice?.replace(/Blogger Etiketleri\s*:.*$/im, '').trim() || undefined;
+    const targetSeries = seriesList.find(s => s.id === seriesId);
+    let initialContent = chapter.content || '';
+    if (!initialContent.trim() && targetSeries?.type === 'Web Novel' && Array.isArray(chapter.images)) {
+      const htmlOrText = chapter.images.find(img => typeof img === 'string' && (img.includes('<') || img.length > 250 || !img.startsWith('http')));
+      if (htmlOrText) initialContent = htmlOrText;
+    }
     setEditingChapterSeriesId(seriesId);
     setEditingChapter({ ...chapter, notice: cleanedNotice });
     setEditingChapterImagesText(chapter.images ? chapter.images.join('\n') : '');
-    setEditingChapterContentText(chapter.content || '');
+    setEditingChapterContentText(initialContent);
 
     // Fetch fresh, full untruncated chapter from Cloudflare D1
     fetch(`/api/series?seriesId=${encodeURIComponent(seriesId)}`, { cache: 'no-store' })
@@ -1298,10 +1304,18 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       editingChapterContentText
     );
 
+    let finalContent = editingChapterContentText.trim() || undefined;
+    if (!finalContent && targetSeries.type === 'Web Novel' && editingChapterImagesText.trim()) {
+      const hasHtml = /<[a-z][\s\S]*>/i.test(editingChapterImagesText);
+      const isPlainUrlList = editingChapterImagesText.split('\n').filter(Boolean).every(l => /^https?:\/\//i.test(l.trim()));
+      if (hasHtml || !isPlainUrlList) {
+        finalContent = editingChapterImagesText.trim();
+      }
+    }
     const updatedChapter: Chapter = {
       ...editingChapter,
       images: parsedImages,
-      content: editingChapterContentText.trim() || undefined,
+      content: finalContent,
       notice: mergedEditNotice
     };
 

@@ -248,10 +248,17 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
   // Deterministic content hash (FNV-1a) + Blogger/Novel Chapter Profile Card extraction
   const { parsedParagraphs, chapterProfileCard, remainingChapterImages } = useMemo(() => {
-    const raw = (currentChapter?.content || '')
-      .replace(/mikrokosmosdeposu/g, 'mediadepo')
-      .replace(/<img[^>]*src=["'][^"']*imgbox\.com[^"']*["'][^>]*>/gi, '')
-      .replace(/<a[^>]*href=["'][^"']*imgbox\.com[^"']*["'][^>]*>[\s\S]*?<\/a>/gi, '');
+    // Safely use chapter content, or fallback to any HTML/text payload stored in images
+    let rawContent = currentChapter?.content || '';
+    if (!rawContent.trim() && Array.isArray(currentChapter?.images) && currentChapter.images.length > 0) {
+      const htmlPayload = currentChapter.images.find(
+        img => typeof img === 'string' && (img.includes('<p>') || img.includes('<div>') || img.includes('<br') || img.length > 300)
+      );
+      if (htmlPayload) {
+        rawContent = htmlPayload;
+      }
+    }
+    const raw = rawContent.replace(/mikrokosmosdeposu/g, 'mediadepo');
     const allChapterImgs = extractImageUrls(currentChapter?.images);
 
     const computeHash = (text: string, occurrence: number): string => {
