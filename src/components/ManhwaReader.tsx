@@ -258,6 +258,52 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
   const totalPages = chapterImageUrls.length;
 
+  // Hydrate full chapter images & content from Cloudflare D1 if missing
+  useEffect(() => {
+    let cancelled = false;
+    const needsFetch = !currentChapter || chapterImageUrls.length === 0;
+    if (needsFetch) {
+      fetch(`/api/series?seriesId=${encodeURIComponent(seriesId)}`, { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+          if (cancelled) return;
+          if (data && data.success && Array.isArray(data.chapters)) {
+            setSeriesList(prev =>
+              prev.map(s => {
+                if (s.id !== seriesId) return s;
+                const merged = s.chapters.map(ch => {
+                  const fresh = data.chapters.find((fc: any) => fc.id === ch.id);
+                  if (fresh && ((fresh.images && fresh.images.length > 0) || fresh.content)) {
+                    return { ...ch, images: fresh.images || ch.images, content: fresh.content || ch.content };
+                  }
+                  return fresh || ch;
+                });
+                return { ...s, chapters: merged };
+              })
+            );
+          }
+        })
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [seriesId, chapterId, chapterImageUrls.length]);
+
+  // High-performance image preloader for initial chapter pages
+  useEffect(() => {
+    if (!chapterImageUrls || chapterImageUrls.length === 0) return;
+    const preloadCount = Math.min(chapterImageUrls.length, 8);
+    for (let i = 0; i < preloadCount; i++) {
+      const url = chapterImageUrls[i];
+      if (url && !isIframeUrl(url)) {
+        const fullSrc = getOptimizedImageUrl(url, getImageOptimizationConfig()) || url;
+        const img = new Image();
+        img.src = fullSrc;
+      }
+    }
+  }, [chapterImageUrls]);
+
   // Reset active scene drawer when switching chapters
   useEffect(() => {
     setActiveScene(null);
@@ -1468,7 +1514,8 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                         src={getOptimizedImageUrl(imgUrl, getImageOptimizationConfig())}
                         alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
                         className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
-                        loading={idx < 2 ? 'eager' : 'lazy'}
+                        loading={idx < 6 ? 'eager' : 'lazy'}
+                        fetchPriority={(idx < 3 ? 'high' : 'auto') as any}
                         decoding="async"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
