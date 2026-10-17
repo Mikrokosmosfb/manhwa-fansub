@@ -539,37 +539,18 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
     let cleanedParagraphs = finalParagraphs;
     if (profileCard) {
-      let startIndex = 0;
       const metaLabels = ['seri', 'roman', 'kitap', 'çevirmen', 'cevirmen', 'çeviren', 'çeviri', 'kaynak dil', 'editör', 'editor', 'redaktör', 'redaktor', 'kontrol'];
-      const langCodes = ['kr', 'cn', 'en', 'jp', 'tr', 'korece', 'çince', 'ingilizce', 'japonca'];
-
-      for (let i = 0; i < Math.min(finalParagraphs.length, 10); i++) {
-        const p = finalParagraphs[i];
-        if (p.isMediaOnly) {
-          startIndex = i + 1;
-          continue;
+      cleanedParagraphs = finalParagraphs.filter((p, index) => {
+        if (index > 15 || p.isMediaOnly) return true;
+        const t = p.text.trim();
+        const lower = t.toLowerCase();
+        const isLabel = metaLabels.some(l => lower === l || lower === l + ':' || lower.startsWith(l + ':'));
+        const isVal = t.length < 30 && (!/[.!?]/.test(t) && !/^["'“‘(«]/.test(t) && t.length < 25);
+        if (isLabel || isVal) {
+          return false;
         }
-        const textTrim = p.text.trim();
-        const lower = textTrim.toLowerCase();
-        
-        const isMetadataLabel = metaLabels.some(l => lower === l || lower.startsWith(l + ':'));
-        const isMetadataValue = textTrim.length < 35 && (
-          langCodes.includes(lower) || 
-          lower.endsWith('-') || 
-          (!/[.!?]/.test(textTrim) && !/^["'“‘(«]/.test(textTrim))
-        );
-        const isRealSentence = /[.!?]/.test(textTrim) || /^["'“‘(«]/.test(textTrim) || textTrim.length > 50;
-
-        if (isRealSentence) {
-          break;
-        }
-        if (isMetadataLabel || isMetadataValue) {
-          startIndex = i + 1;
-        } else {
-          break;
-        }
-      }
-      cleanedParagraphs = finalParagraphs.slice(startIndex);
+        return true;
+      });
     }
 
     return {
