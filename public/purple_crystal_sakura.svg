@@ -1,0 +1,249 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#120626" />
+      <stop offset="35%" stop-color="#0a0218" />
+      <stop offset="70%" stop-color="#180a36" />
+      <stop offset="100%" stop-color="#070112" />
+    </linearGradient>
+
+    <!-- Radial Background Glows -->
+    <radialGradient id="glowGlow1" cx="25%" cy="50%" r="40%">
+      <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#6d28d9" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="glowGlow2" cx="80%" cy="20%" r="35%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.4" />
+      <stop offset="50%" stop-color="#7e22ce" stop-opacity="0.15" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="glowGlow3" cx="75%" cy="85%" r="35%">
+      <stop offset="0%" stop-color="#c084fc" stop-opacity="0.35" />
+      <stop offset="60%" stop-color="#581c87" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#000000" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Crystal Petal Gradient -->
+    <linearGradient id="crystalPetalGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#7c3aed" stop-opacity="0.85" />
+      <stop offset="40%" stop-color="#a855f7" stop-opacity="0.75" />
+      <stop offset="85%" stop-color="#c084fc" stop-opacity="0.9" />
+      <stop offset="100%" stop-color="#ede9fe" stop-opacity="0.98" />
+    </linearGradient>
+
+    <!-- Soft Petal Inner Gradient -->
+    <radialGradient id="petalInnerLight" cx="50%" cy="30%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+      <stop offset="50%" stop-color="#d8b4fe" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#9333ea" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Diamond Core Gradient -->
+    <radialGradient id="diamondCore" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="25%" stop-color="#f5d0fe" />
+      <stop offset="65%" stop-color="#d946ef" />
+      <stop offset="100%" stop-color="#6b21a8" />
+    </radialGradient>
+
+    <!-- Diamond Facet Overlay -->
+    <linearGradient id="diamondFacet" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+      <stop offset="45%" stop-color="#e9d5ff" stop-opacity="0.4" />
+      <stop offset="70%" stop-color="#a855f7" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Blur Filters for Glows -->
+    <filter id="bloomFilter" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="18" result="blur1" />
+      <feGaussianBlur stdDeviation="8" result="blur2" />
+      <feMerge>
+        <feMergeNode in="blur1" />
+        <feMergeNode in="blur2" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <!-- Single Sakura Petal with Heart-Notch (centered at 0,0 pointing upwards) -->
+    <path id="sakuraPetal" d="M 0,0 C -35,-40 -65,-95 -50,-155 C -40,-190 -18,-210 -2,-188 C -1,-187 1,-187 2,-188 C 18,-210 40,-190 50,-155 C 65,-95 35,-40 0,0 Z" />
+
+    <!-- Sakura Flower with Diamond Center -->
+    <g id="crystalSakuraFlower">
+      <!-- Outer Glow of Flower -->
+      <circle cx="0" cy="0" r="180" fill="#a855f7" opacity="0.25" filter="url(#bloomFilter)" />
+      
+      <!-- 5 Petals -->
+      <g filter="url(#softGlow)">
+        <!-- Petal 1 (0 deg) -->
+        <g transform="rotate(0)">
+          <use href="#sakuraPetal" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="2.5" stroke-opacity="0.85" />
+          <use href="#sakuraPetal" fill="url(#petalInnerLight)" opacity="0.7" />
+          <line x1="0" y1="-20" x2="0" y2="-170" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="8 6" />
+        </g>
+        <!-- Petal 2 (72 deg) -->
+        <g transform="rotate(72)">
+          <use href="#sakuraPetal" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="2.5" stroke-opacity="0.85" />
+          <use href="#sakuraPetal" fill="url(#petalInnerLight)" opacity="0.7" />
+          <line x1="0" y1="-20" x2="0" y2="-170" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="8 6" />
+        </g>
+        <!-- Petal 3 (144 deg) -->
+        <g transform="rotate(144)">
+          <use href="#sakuraPetal" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="2.5" stroke-opacity="0.85" />
+          <use href="#sakuraPetal" fill="url(#petalInnerLight)" opacity="0.7" />
+          <line x1="0" y1="-20" x2="0" y2="-170" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="8 6" />
+        </g>
+        <!-- Petal 4 (216 deg) -->
+        <g transform="rotate(216)">
+          <use href="#sakuraPetal" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="2.5" stroke-opacity="0.85" />
+          <use href="#sakuraPetal" fill="url(#petalInnerLight)" opacity="0.7" />
+          <line x1="0" y1="-20" x2="0" y2="-170" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="8 6" />
+        </g>
+        <!-- Petal 5 (288 deg) -->
+        <g transform="rotate(288)">
+          <use href="#sakuraPetal" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="2.5" stroke-opacity="0.85" />
+          <use href="#sakuraPetal" fill="url(#petalInnerLight)" opacity="0.7" />
+          <line x1="0" y1="-20" x2="0" y2="-170" stroke="#ffffff" stroke-width="1.5" stroke-opacity="0.6" stroke-dasharray="8 6" />
+        </g>
+      </g>
+
+      <!-- Shimmering Stamen Aura -->
+      <circle cx="0" cy="0" r="38" fill="#ffffff" opacity="0.9" filter="url(#bloomFilter)" />
+
+      <!-- Faceted Diamond Gem Core -->
+      <g>
+        <circle cx="0" cy="0" r="28" fill="url(#diamondCore)" stroke="#ffffff" stroke-width="2" />
+        <polygon points="0,-24 17,-17 24,0 17,17 0,24 -17,17 -24,0 -17,-17" fill="url(#diamondFacet)" stroke="#ffffff" stroke-width="1.5" opacity="0.9" />
+        <polygon points="0,-14 10,-10 14,0 10,10 0,14 -10,10 -14,0 -10,-10" fill="#ffffff" opacity="0.95" />
+        <circle cx="0" cy="0" r="5" fill="#ffffff" />
+      </g>
+
+      <!-- Radiant Diamond Starlight Flares (8-point star) -->
+      <g filter="url(#bloomFilter)">
+        <polygon points="0,-90 5,-20 0,-10 -5,-20" fill="#ffffff" opacity="0.95" />
+        <polygon points="0,90 5,20 0,10 -5,20" fill="#ffffff" opacity="0.95" />
+        <polygon points="-90,0 -20,5 -10,0 -20,-5" fill="#ffffff" opacity="0.95" />
+        <polygon points="90,0 20,5 10,0 20,-5" fill="#ffffff" opacity="0.95" />
+        <polygon points="-55,-55 -15,-10 -10,-15" fill="#e9d5ff" opacity="0.85" />
+        <polygon points="55,55 15,10 10,15" fill="#e9d5ff" opacity="0.85" />
+        <polygon points="55,-55 15,-10 10,-15" fill="#e9d5ff" opacity="0.85" />
+        <polygon points="-55,55 -15,10 -10,15" fill="#e9d5ff" opacity="0.85" />
+      </g>
+    </g>
+
+    <!-- Single Falling / Floating Petal -->
+    <g id="floatingPetal">
+      <use href="#sakuraPetal" transform="scale(0.38)" fill="url(#crystalPetalGrad)" stroke="#f3e8ff" stroke-width="1.8" stroke-opacity="0.8" filter="url(#softGlow)" />
+      <circle cx="0" cy="-35" r="4" fill="#ffffff" opacity="0.9" filter="url(#bloomFilter)" />
+    </g>
+  </defs>
+
+  <!-- Background Base -->
+  <rect width="1080" height="1920" fill="url(#bgGrad)" />
+
+  <!-- Atmospheric Glow Clusters -->
+  <rect width="1080" height="1920" fill="url(#glowGlow1)" />
+  <rect width="1080" height="1920" fill="url(#glowGlow2)" />
+  <rect width="1080" height="1920" fill="url(#glowGlow3)" />
+
+  <!-- Distant Soft Bokeh Light Spheres -->
+  <circle cx="200" cy="300" r="12" fill="#c084fc" opacity="0.4" filter="url(#bloomFilter)" />
+  <circle cx="550" cy="180" r="8" fill="#ffffff" opacity="0.7" filter="url(#bloomFilter)" />
+  <circle cx="900" cy="450" r="14" fill="#e879f9" opacity="0.35" filter="url(#bloomFilter)" />
+  <circle cx="420" cy="720" r="10" fill="#a855f7" opacity="0.3" filter="url(#bloomFilter)" />
+  <circle cx="680" cy="1050" r="16" fill="#c084fc" opacity="0.4" filter="url(#bloomFilter)" />
+  <circle cx="180" cy="1250" r="14" fill="#ffffff" opacity="0.6" filter="url(#bloomFilter)" />
+  <circle cx="340" cy="1650" r="9" fill="#e879f9" opacity="0.5" filter="url(#bloomFilter)" />
+  <circle cx="860" cy="1420" r="12" fill="#d8b4fe" opacity="0.4" filter="url(#bloomFilter)" />
+
+  <!-- LAYER 1: Distant Background Flowers -->
+  <g opacity="0.45" filter="url(#softGlow)">
+    <use href="#crystalSakuraFlower" transform="translate(180, 120) scale(0.65) rotate(18)" />
+    <use href="#crystalSakuraFlower" transform="translate(560, 140) scale(0.7) rotate(-24)" />
+    <use href="#crystalSakuraFlower" transform="translate(120, 520) scale(0.6) rotate(42)" />
+    <use href="#crystalSakuraFlower" transform="translate(860, 680) scale(0.55) rotate(-15)" />
+    <use href="#crystalSakuraFlower" transform="translate(940, 1220) scale(0.65) rotate(30)" />
+    <use href="#crystalSakuraFlower" transform="translate(780, 1380) scale(0.7) rotate(-40)" />
+  </g>
+
+  <!-- LAYER 2: Midground Crystal Sakura Flowers -->
+  <g opacity="0.82">
+    <use href="#crystalSakuraFlower" transform="translate(320, 240) scale(0.9) rotate(8)" />
+    <use href="#crystalSakuraFlower" transform="translate(130, 290) scale(0.75) rotate(-35)" />
+    <use href="#crystalSakuraFlower" transform="translate(880, 280) scale(1.15) rotate(22)" />
+    <use href="#crystalSakuraFlower" transform="translate(960, 780) scale(0.85) rotate(-12)" />
+    <use href="#crystalSakuraFlower" transform="translate(450, 1620) scale(0.8) rotate(48)" />
+    <use href="#crystalSakuraFlower" transform="translate(580, 1780) scale(0.75) rotate(-20)" />
+    <use href="#crystalSakuraFlower" transform="translate(850, 1720) scale(0.95) rotate(15)" />
+    <use href="#crystalSakuraFlower" transform="translate(520, 1940) scale(0.85) rotate(35)" />
+  </g>
+
+  <!-- LAYER 3: FOREGROUND HERO CRYSTAL SAKURA FLOWERS -->
+  <g>
+    <g transform="translate(240, 1080) scale(1.65) rotate(-18)">
+      <use href="#crystalSakuraFlower" />
+    </g>
+    <g transform="translate(200, 1780) scale(1.35) rotate(28)">
+      <use href="#crystalSakuraFlower" />
+    </g>
+  </g>
+
+  <!-- Floating / Drifting Glowing Petals -->
+  <g>
+    <use href="#floatingPetal" transform="translate(500, 520) rotate(35)" />
+    <use href="#floatingPetal" transform="translate(680, 720) rotate(-45) scale(1.2)" />
+    <use href="#floatingPetal" transform="translate(420, 880) rotate(70) scale(0.9)" />
+    <use href="#floatingPetal" transform="translate(640, 1260) rotate(-25) scale(1.1)" />
+    <use href="#floatingPetal" transform="translate(380, 1420) rotate(115) scale(1)" />
+    <use href="#floatingPetal" transform="translate(760, 1540) rotate(-65) scale(0.8)" />
+    <use href="#floatingPetal" transform="translate(610, 420) rotate(15) scale(0.7)" />
+  </g>
+
+  <!-- Glittering Diamond Sparkle Bursts across Canvas -->
+  <g filter="url(#bloomFilter)">
+    <g transform="translate(360, 460) scale(0.4)">
+      <polygon points="0,-40 3,-10 0,-3 -3,-10" fill="#ffffff" />
+      <polygon points="0,40 3,10 0,3 -3,10" fill="#ffffff" />
+      <polygon points="-40,0 -10,3 -3,0 -10,-3" fill="#ffffff" />
+      <polygon points="40,0 10,3 3,0 10,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3" fill="#ffffff" />
+    </g>
+    <g transform="translate(780, 620) scale(0.5)">
+      <polygon points="0,-40 3,-10 0,-3 -3,-10" fill="#ffffff" />
+      <polygon points="0,40 3,10 0,3 -3,10" fill="#ffffff" />
+      <polygon points="-40,0 -10,3 -3,0 -10,-3" fill="#ffffff" />
+      <polygon points="40,0 10,3 3,0 10,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3" fill="#ffffff" />
+    </g>
+    <g transform="translate(560, 940) scale(0.45)">
+      <polygon points="0,-40 3,-10 0,-3 -3,-10" fill="#ffffff" />
+      <polygon points="0,40 3,10 0,3 -3,10" fill="#ffffff" />
+      <polygon points="-40,0 -10,3 -3,0 -10,-3" fill="#ffffff" />
+      <polygon points="40,0 10,3 3,0 10,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3" fill="#ffffff" />
+    </g>
+    <g transform="translate(680, 1420) scale(0.55)">
+      <polygon points="0,-40 3,-10 0,-3 -3,-10" fill="#ffffff" />
+      <polygon points="0,40 3,10 0,3 -3,10" fill="#ffffff" />
+      <polygon points="-40,0 -10,3 -3,0 -10,-3" fill="#ffffff" />
+      <polygon points="40,0 10,3 3,0 10,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3" fill="#ffffff" />
+    </g>
+    <g transform="translate(880, 1100) scale(0.4)">
+      <polygon points="0,-40 3,-10 0,-3 -3,-10" fill="#ffffff" />
+      <polygon points="0,40 3,10 0,3 -3,10" fill="#ffffff" />
+      <polygon points="-40,0 -10,3 -3,0 -10,-3" fill="#ffffff" />
+      <polygon points="40,0 10,3 3,0 10,-3" fill="#ffffff" />
+      <circle cx="0" cy="0" r="3" fill="#ffffff" />
+    </g>
+  </g>
+</svg>

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <defs>
+    <radialGradient id="favPlanetCore" cx="42%" cy="40%" r="58%">
+      <stop offset="0%" stop-color="#1a0b2e" />
+      <stop offset="65%" stop-color="#0a0518" />
+      <stop offset="100%" stop-color="#04020a" />
+    </radialGradient>
+    <linearGradient id="favRingNeon1" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe" />
+      <stop offset="25%" stop-color="#4facfe" />
+      <stop offset="48%" stop-color="#b122e6" />
+      <stop offset="72%" stop-color="#ff007f" />
+      <stop offset="90%" stop-color="#ff77e9" />
+      <stop offset="100%" stop-color="#ffffff" />
+    </linearGradient>
+    <linearGradient id="favRingNeon2" x1="0%" y1="80%" x2="100%" y2="20%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="35%" stop-color="#c084fc" />
+      <stop offset="70%" stop-color="#f43f5e" />
+      <stop offset="100%" stop-color="#fb7185" />
+    </linearGradient>
+    <linearGradient id="favLeftRimCyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#c084fc" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background Aura -->
+  <circle cx="58" cy="58" r="32" fill="#9333ea" opacity="0.3" />
+  
+  <!-- Back Orbital Ring -->
+  <path d="M 22 84 C 10 52 38 20 78 20 C 96 20 108 26 106 38 C 104 48 94 58 78 68" stroke="url(#favRingNeon1)" stroke-width="6" stroke-linecap="round" />
+  <path d="M 28 80 C 18 52 42 24 80 23 C 100 23 112 30 110 42 C 108 50 100 60 84 70" stroke="url(#favRingNeon2)" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- Planet Disc -->
+  <circle cx="58" cy="58" r="26" fill="url(#favPlanetCore)" />
+  <circle cx="58" cy="58" r="25.5" stroke="#4f46e5" stroke-width="1.5" stroke-opacity="0.6" />
+  
+  <!-- Rim Light -->
+  <path d="M 36 40 C 33 50 35 64 42 74 C 36 64 36 50 42 38 C 48 28 58 24 70 24 C 56 26 44 32 36 40 Z" fill="url(#favLeftRimCyan)" opacity="0.9" />
+
+  <!-- Front Orbital Rings -->
+  <path d="M 104 36 C 96 48 76 66 48 82 C 28 92 12 94 14 84 C 16 74 32 62 58 48 C 76 38 96 30 106 32" stroke="url(#favRingNeon1)" stroke-width="7" stroke-linecap="round" />
+  <path d="M 110 42 C 102 56 80 74 50 90 C 30 100 12 102 14 88 C 16 78 34 66 60 52" stroke="url(#favRingNeon2)" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 94 44 C 82 55 64 70 42 82 C 30 88 22 88 24 84 C 26 78 40 68 62 56 C 76 48 90 42 96 42" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" />
+
+  <!-- Sparkles -->
+  <polygon points="80,16 82,22 88,24 82,26 80,32 78,26 72,24 78,22" fill="#ffffff" />
+  <polygon points="44,78 46.5,84 52,86 46.5,88 44,94 41.5,88 36,86 41.5,84" fill="#ffffff" />
+  <polygon points="38,12 39.5,16 44,18 39.5,20 38,24 36.5,20 32,18 36.5,16" fill="#ffffff" />
+</svg>
