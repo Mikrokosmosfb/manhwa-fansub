@@ -50,6 +50,7 @@ import {
   Sliders,
   X as CloseIcon,
   RotateCcw,
+  Search,
   Loader2,
   Bell,
   Send,
@@ -2868,14 +2869,15 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     <button
                       type="button"
                       onClick={() => {
+                        const curSeries = seriesList.find(s => s.id === editingChapterSeriesId);
                         let sTrans =
-                          series.translator &&
-                          series.translator !== 'Blogger' &&
-                          series.translator !== 'Mikrokosmos Fansub'
-                            ? series.translator
+                          curSeries?.translator &&
+                          curSeries.translator !== 'Blogger' &&
+                          curSeries.translator !== 'Mikrokosmos Fansub'
+                            ? curSeries.translator
                             : '';
                         let sLang = '';
-                        for (const ch of series.chapters || []) {
+                        for (const ch of curSeries?.chapters || []) {
                           if (!ch.content) continue;
                           const head = ch.content.slice(0, 600).replace(/<[^>]+>/g, '\n');
                           const tm = head.match(/Çevirmen\s*:\s*\n?\s*([^\n]+)/i);
@@ -2884,7 +2886,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                           if (lm && !sLang) sLang = lm[1].replace(/\s+/g, ' ').trim();
                           if (sTrans && sLang) break;
                         }
-                        const headerTemplate = `Seri: ${series.title}\nÇevirmen: ${
+                        const headerTemplate = `Seri: ${curSeries?.title || ''}\nÇevirmen: ${
                           sTrans || 'Çevirmen Adı'
                         }\nÇeviri: ${sLang || 'Korece-KR'}\n\n`;
                         if (!editingChapterContentText.trim().startsWith('Seri:')) {
