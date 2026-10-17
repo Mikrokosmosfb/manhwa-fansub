@@ -515,7 +515,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...s,
             chapters: (s.chapters || []).map((ch: any) => ({
               ...ch,
-              content: ch.content && ch.content.length <= 500 ? undefined : ch.content
+              content: ch.content
             }))
           }));
           return sortSeriesByLatestRelease(applyChapter18PlusMap(cleaned));
@@ -543,7 +543,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             ...s,
             chapters: (s.chapters || []).map((ch: any) => ({
               ...ch,
-              content: ch.content && ch.content.length <= 500 ? undefined : ch.content
+              content: ch.content
             }))
           }));
           if (!prev || prev.length < cleaned.length) {
@@ -2330,7 +2330,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
             notice: ch.notice,
             createdAt: ch.createdAt,
             images: Array.isArray(ch.images) && ch.images.length > 0 ? [ch.images[0]] : [],
-            content: undefined
+            content: ch.content
           }))
         }));
         localStorage.setItem('mk_series_list', JSON.stringify(safeCatalog));
