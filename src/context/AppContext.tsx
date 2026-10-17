@@ -389,6 +389,32 @@ const trimReadingHistory = (
   return trimmed;
 };
 
+
+// Persistent helper to prevent repeating/spamming toast & desktop push notifications
+const markAndCheckIfAlreadyToasted = (notifId: string): boolean => {
+  if (!notifId) return true;
+  try {
+    const raw = localStorage.getItem('mk_toasted_notif_ids') || '[]';
+    let list: string[] = [];
+    try { list = JSON.parse(raw); } catch {}
+    if (list.includes(notifId)) return true;
+    list.push(notifId);
+    if (list.length > 500) list = list.slice(list.length - 500);
+    localStorage.setItem('mk_toasted_notif_ids', JSON.stringify(list));
+    return false;
+  } catch {
+    return false;
+  }
+};
+
+const isNotificationCreatedRecently = (notifTimeStr?: string): boolean => {
+  if (!notifTimeStr) return false;
+  const t = new Date(notifTimeStr).getTime();
+  if (isNaN(t)) return false;
+  // Only considered recent if created within the last 5 minutes
+  return (Date.now() - t) < 5 * 60 * 1000;
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Theme state (Exclusively Dark Mode)
   const [theme] = useState<'dark' | 'light'>('dark');
@@ -2130,8 +2156,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return true;
               });
               if (newGlobals.length > 0) {
+                // Seed initial notifications so they never spam toast/push alerts later
+                newGlobals.forEach((n: any) => markAndCheckIfAlreadyToasted(n.id));
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                return combined.slice(0, 49);
+                return combined.slice(0, 100);
               }
               return prev;
             });
@@ -3018,15 +3046,19 @@ const deleteShopItemAndStyle = (itemId: string) => {
                   });
                   if (newFromLib.length > 0) {
                     newFromLib.forEach((n: any) => {
-                      showToast({
-                        title: n.title || '💬 Yorumunuza Yanıt Geldi!',
-                        message: n.message || '',
-                        type: 'info',
-                        seriesId: n.seriesId
-                      });
-                      sendDeviceNotification(n.title || 'Yorumunuza Yanıt Geldi!', n.message || '');
+                      const alreadySeen = markAndCheckIfAlreadyToasted(n.id);
+                      const isFresh = isNotificationCreatedRecently(n.createdAt);
+                      if (!alreadySeen && isFresh) {
+                        showToast({
+                          title: n.title || '💬 Yorumunuza Yanıt Geldi!',
+                          message: n.message || '',
+                          type: 'info',
+                          seriesId: n.seriesId
+                        });
+                        sendDeviceNotification(n.title || 'Yorumunuza Yanıt Geldi!', n.message || '');
+                      }
                     });
-                    return [...newFromLib, ...prev].slice(0, 49);
+                    return [...newFromLib, ...prev].slice(0, 100);
                   }
                   return prev;
                 });
