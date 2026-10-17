@@ -2156,8 +2156,6 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return true;
               });
               if (newGlobals.length > 0) {
-                // Seed initial notifications so they never spam toast/push alerts later
-                newGlobals.forEach((n: any) => markAndCheckIfAlreadyToasted(n.id));
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return combined.slice(0, 100);
               }
@@ -3009,20 +3007,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return true;
               });
 
-              if (newGlobals.length > 0) {
-                // Instantly pop up toast & sound/push notification for each new notification!
-                newGlobals.forEach((n: any) => {
-                  showToast({
-                    title: n.title || '💬 Yeni Bildirim',
-                    message: n.message || '',
-                    type: n.type === 'comment-reply' ? 'info' : 'bell',
-                    seriesId: n.seriesId
-                  });
-                  sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '');
-                });
-
+                            if (newGlobals.length > 0) {
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-                return combined.slice(0, 49);
+                return combined.slice(0, 100);
               }
               return prev;
             });
@@ -3045,20 +3032,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
                     return true;
                   });
                   if (newFromLib.length > 0) {
-                    newFromLib.forEach((n: any) => {
-                      const alreadySeen = markAndCheckIfAlreadyToasted(n.id);
-                      const isFresh = isNotificationCreatedRecently(n.createdAt);
-                      if (!alreadySeen && isFresh) {
-                        showToast({
-                          title: n.title || '💬 Yorumunuza Yanıt Geldi!',
-                          message: n.message || '',
-                          type: 'info',
-                          seriesId: n.seriesId
-                        });
-                        sendDeviceNotification(n.title || 'Yorumunuza Yanıt Geldi!', n.message || '');
-                      }
-                    });
-                    return [...newFromLib, ...prev].slice(0, 100);
+                    const combined = [...newFromLib, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+                    return combined.slice(0, 100);
                   }
                   return prev;
                 });
