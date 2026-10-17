@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { ArrowDownAZ, Star, Bookmark } from 'lucide-react';
-import { isSeries18Plus } from '../types';
+import { isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
@@ -12,7 +12,7 @@ const ALPHABET = [
 ];
 
 export const AZListView: React.FC = () => {
-  const { seriesList, setView, bookmarks, showNsfw } = useApp();
+  const { seriesList, setView, bookmarks, showNsfw, isAdminLoggedIn, user } = useApp();
   const [selectedLetter, setSelectedLetter] = useState<string>('Tümü');
 
   const visibleSeriesList = showNsfw ? seriesList : seriesList.filter(s => !isSeries18Plus(s));

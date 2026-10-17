@@ -3,12 +3,12 @@ import { useApp } from '../context/AppContext';
 import { SeriesCard } from './SeriesCard';
 import { HorizontalReleaseCard } from './HorizontalReleaseCard';
 import { Library, Search, ArrowUpDown, LayoutGrid, List, Sparkles, BookOpen, Filter, X, RefreshCw } from 'lucide-react';
-import { Series, isSeries18Plus } from '../types';
+import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
 import { GENRE_LIST } from '../data/mockData';
 
 export const SeriesListView: React.FC = () => {
-  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
+  const { seriesList, setView, showNsfw, isAdminLoggedIn, user } = useApp();
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('Tümü');
   const [selectedGenre, setSelectedGenre] = useState<string>('Tümü');

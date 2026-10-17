@@ -15,13 +15,13 @@ import {
   Zap,
   Bookmark
 } from 'lucide-react';
-import { isSeries18Plus } from '../types';
+import { isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { getSeriesLatestActivityTime } from '../utils/dateUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
 
 export const HeroSlider: React.FC = () => {
-  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
+  const { seriesList, setView, showNsfw, isAdminLoggedIn, user } = useApp();
 
   const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
   const base = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);

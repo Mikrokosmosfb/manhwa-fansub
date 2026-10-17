@@ -15,7 +15,7 @@ import {
 import { SeriesCard } from './components/SeriesCard';
 import { HorizontalReleaseCard } from './components/HorizontalReleaseCard';
 import { NovelRowSkeleton, ReleaseGridSkeleton } from './components/SkeletonLoader';
-import { isSeries18Plus } from './types';
+import { isSeries18Plus, isAuthorizedAdmin } from './types';
 import { ToastNotification } from './components/ToastNotification';
 import { WeeklyPopularSlider } from './components/WeeklyPopularSlider';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -64,7 +64,7 @@ const ViewLoadingFallback: React.FC = () => (
 );
 
 const MainContent: React.FC = () => {
-  const { view, setView, seriesList, showNsfw, isLoadingSeries, isAdminLoggedIn } = useApp();
+  const { view, setView, seriesList, showNsfw, isLoadingSeries, isAdminLoggedIn, user } = useApp();
   const [popularTab, setPopularTab] = useState<'weekly' | 'monthly' | 'yearly'>('weekly');
   const [visibleComicCount, setVisibleComicCount] = useState(12);
   const novelScrollRef = useRef<HTMLDivElement>(null);

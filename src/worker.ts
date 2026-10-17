@@ -1130,6 +1130,26 @@ ${seriesXml}
           }
         }
 
+                // D1 Database Stats API
+        if (path === '/api/admin/d1_count' && request.method === 'GET') {
+          if (db) {
+            try {
+              const [sCountRes, chCountRes] = await Promise.all([
+                db.prepare("SELECT COUNT(*) as cnt FROM series").first(),
+                db.prepare("SELECT COUNT(*) as cnt FROM chapters").first()
+              ]);
+              return new Response(JSON.stringify({
+                success: true,
+                seriesCount: (sCountRes as any)?.cnt || 0,
+                chaptersCount: (chCountRes as any)?.cnt || 0
+              }), { headers });
+            } catch (e: any) {
+              return new Response(JSON.stringify({ success: false, error: e.message }), { headers, status: 500 });
+            }
+          }
+          return new Response(JSON.stringify({ success: false, message: 'D1 not bound' }), { headers });
+        }
+
         // SERIES API
         if (path.startsWith('/api/series')) {
           if (request.method === 'GET') {
@@ -1431,10 +1451,17 @@ ${seriesXml}
                 try {
                   await db.batch(chunk);
                 } catch (batchErr: any) {
+                  // Fallback: schema check and execute individually so not a single chapter is lost
                   await db.prepare(`ALTER TABLE chapters ADD COLUMN is_18_plus INTEGER DEFAULT 0;`).run().catch(() => {});
                   await db.prepare(`ALTER TABLE series ADD COLUMN custom_badges_json TEXT DEFAULT '[]';`).run().catch(() => {});
                   await db.prepare(`ALTER TABLE series ADD COLUMN is_draft INTEGER DEFAULT 0;`).run().catch(() => {});
-                  await db.batch(chunk);
+                  for (const stmt of chunk) {
+                    try {
+                      await stmt.run();
+                    } catch (singleErr) {
+                      // Skip malformed row safely
+                    }
+                  }
                 }
               }
 

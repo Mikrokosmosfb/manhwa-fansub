@@ -3260,8 +3260,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return sortSeriesByLatestRelease(copy);
     });
 
-    // Send series in small chunks to prevent exceeding Cloudflare Workers payload/timeout limits
-    const CHUNK_SIZE = 2;
+    // Send 1 series at a time so massive chapter collections never hit Cloudflare Worker CPU limits
+    const CHUNK_SIZE = 1;
     let lastResult: any = { success: true };
     for (let i = 0; i < seriesBatch.length; i += CHUNK_SIZE) {
       const chunk = seriesBatch.slice(i, i + CHUNK_SIZE);

@@ -1,13 +1,13 @@
 import React, { useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Series, isSeries18Plus } from '../types';
+import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { Triangle, Star } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { WeeklyPopularSliderSkeleton } from './SkeletonLoader';
 
 export const WeeklyPopularSlider: React.FC = () => {
-  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn } = useApp();
+  const { seriesList, setView, isLoadingSeries, isAdminLoggedIn, user } = useApp();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (direction: 'left' | 'right') => {

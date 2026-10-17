@@ -3,14 +3,14 @@ import { useApp } from '../context/AppContext';
 import { GENRE_LIST } from '../data/mockData';
 import { SeriesCard } from './SeriesCard';
 import { Tags, RotateCcw, ShieldAlert, Sparkles, Search, X } from 'lucide-react';
-import { isSeries18Plus, Series } from '../types';
+import { isSeries18Plus, Series, isAuthorizedAdmin } from '../types';
 
 interface CategoriesViewProps {
   initialGenre?: string;
 }
 
 export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) => {
-  const { seriesList, showNsfw, toggleNsfw, isAdminLoggedIn } = useApp();
+  const { seriesList, showNsfw, toggleNsfw, isAdminLoggedIn, user } = useApp();
 
   const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
   const baseSeries = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);

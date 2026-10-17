@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Dices, Tags, MessageSquare, Sparkles, BookOpen, Star, ChevronRight, Users, Layers, Award } from 'lucide-react';
-import { Series } from '../types';
+import { Series, isAuthorizedAdmin } from '../types';
 import { TeamBadges } from './TeamBadge';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 import { RandomSeriesWidgetSkeleton } from './SkeletonLoader';

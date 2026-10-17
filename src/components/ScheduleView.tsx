@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { SeriesType, isSeries18Plus, Series } from '../types';
+import { SeriesType, isSeries18Plus, Series, isAuthorizedAdmin } from '../types';
 import { Calendar, CalendarDays, Clock, ChevronRight, Star, Megaphone, Search, X } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { doesSeriesReleaseOnDay, isMonthlyDateSeries } from '../utils/chapterUtils';
@@ -17,7 +17,7 @@ const DAYS_OF_WEEK = [
 ];
 
 export const ScheduleView: React.FC = () => {
-  const { seriesList, setView, showNsfw, isAdminLoggedIn } = useApp();
+  const { seriesList, setView, showNsfw, isAdminLoggedIn, user } = useApp();
   const isUserAdmin = isAdminLoggedIn || isAuthorizedAdmin(user?.email);
   const base = isUserAdmin ? seriesList : seriesList.filter(s => !s.isDraft);
   const visibleSeriesList = showNsfw ? base : base.filter(s => !isSeries18Plus(s));
