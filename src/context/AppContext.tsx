@@ -26,7 +26,7 @@ import { INITIAL_NOTIFICATIONS } from '../data/mockData';
 import { SHOP_ITEMS, PROMO_CODES, THEME_STYLES, BASE_THEME_STYLES, ShopItem, ThemeStyle } from '../data/shopData';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
 import { saveSeriesToIndexedDB, loadSeriesFromIndexedDB } from '../utils/idbStorage';
-import { sendDeviceNotification } from '../utils/pushNotifications';
+import { sendDeviceNotification, isNotificationAlreadyPushed, markNotificationAsPushed } from '../utils/pushNotifications';
 import {
   SHOP_ITEM_DURATION_MS,
   normalizeShopInventory,
@@ -2156,6 +2156,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return true;
               });
               if (newGlobals.length > 0) {
+                // Mark initial historical notifications so they never spam push alerts
+                newGlobals.forEach((n: any) => markNotificationAsPushed(n.id));
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return combined.slice(0, 100);
               }
@@ -2861,13 +2863,13 @@ const deleteShopItemAndStyle = (itemId: string) => {
     };
     setNotifications(prev => [newNotif, ...prev.slice(0, 49)]);
     
-    // Trigger native browser/device push notification if permission is granted
+    // Trigger native browser/device push notification with unique ID to prevent duplicates
     if (notif.type === 'chapter') {
       if (!notif.seriesId || followedSeriesIds.includes(notif.seriesId)) {
-        sendDeviceNotification(notif.title, notif.message, notif.coverImage);
+        sendDeviceNotification(notif.title, notif.message, notif.coverImage, undefined, newNotif.id);
       }
     } else {
-      sendDeviceNotification(notif.title, notif.message, notif.coverImage);
+      sendDeviceNotification(notif.title, notif.message, notif.coverImage, undefined, newNotif.id);
     }
 
     // Broadcast to global database if user is admin
@@ -3008,6 +3010,28 @@ const deleteShopItemAndStyle = (itemId: string) => {
               });
 
                             if (newGlobals.length > 0) {
+                // Realtime Push & Toast: Only trigger for genuinely fresh notifications (last 15 min) that were NEVER pushed on this device before
+                newGlobals.forEach((n: any) => {
+                  const alreadyPushed = isNotificationAlreadyPushed(n.id);
+                  const isFresh = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 15 * 60 * 1000;
+                  
+                  if (!alreadyPushed && isFresh) {
+                    const shouldSend = n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId);
+                    if (shouldSend) {
+                      showToast({
+                        title: n.title || '🎉 Yeni Bildirim',
+                        message: n.message || '',
+                        type: n.type === 'comment-reply' ? 'info' : 'bell',
+                        seriesId: n.seriesId,
+                        coverImage: n.coverImage
+                      });
+                      sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '', n.coverImage, undefined, n.id);
+                    }
+                  }
+                  // Permanently remember that this notification was processed on this device
+                  markNotificationAsPushed(n.id);
+                });
+
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return combined.slice(0, 100);
               }
@@ -3032,6 +3056,20 @@ const deleteShopItemAndStyle = (itemId: string) => {
                     return true;
                   });
                   if (newFromLib.length > 0) {
+                    newFromLib.forEach((n: any) => {
+                      const alreadyPushed = isNotificationAlreadyPushed(n.id);
+                      const isFresh = n.createdAt && (Date.now() - new Date(n.createdAt).getTime()) < 15 * 60 * 1000;
+                      if (!alreadyPushed && isFresh) {
+                        showToast({
+                          title: n.title || '💬 Yorumunuza Yanıt Geldi!',
+                          message: n.message || '',
+                          type: 'info',
+                          seriesId: n.seriesId
+                        });
+                        sendDeviceNotification(n.title || 'Yorumunuza Yanıt Geldi!', n.message || '', undefined, undefined, n.id);
+                      }
+                      markNotificationAsPushed(n.id);
+                    });
                     const combined = [...newFromLib, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                     return combined.slice(0, 100);
                   }
@@ -3246,16 +3284,28 @@ const deleteShopItemAndStyle = (itemId: string) => {
     if (!seriesBatch || seriesBatch.length === 0) return { success: true, message: 'Boş liste' };
 
     if (options?.notifyNewSeries) {
-      seriesBatch.forEach(newSeries => {
+      if (seriesBatch.length > 3) {
+        // Group multiple batch additions into one clean summary notification instead of bombing user with 30 notifications
         addNotification({
-          title: `🎉 Yeni Seri: ${newSeries.title} Eklendi!`,
-          message: `${newSeries.title} serisi şimdi sitemizde yayında! Hemen inceleyin ve okumaya başlayın.`,
+          title: `🎉 ${seriesBatch.length} Yeni Seri Sitemize Eklendi!`,
+          message: `${seriesBatch.slice(0, 3).map(s => s.title).join(', ')} ve ${seriesBatch.length - 3} seri daha şimdi sitemizde yayında!`,
           type: 'new-series',
-          seriesId: newSeries.id,
-          seriesTitle: newSeries.title,
-          coverImage: newSeries.coverImage
+          seriesId: seriesBatch[0].id,
+          seriesTitle: seriesBatch[0].title,
+          coverImage: seriesBatch[0].coverImage
         });
-      });
+      } else {
+        seriesBatch.forEach(newSeries => {
+          addNotification({
+            title: `🎉 Yeni Seri: ${newSeries.title} Eklendi!`,
+            message: `${newSeries.title} serisi şimdi sitemizde yayında! Hemen inceleyin ve okumaya başlayın.`,
+            type: 'new-series',
+            seriesId: newSeries.id,
+            seriesTitle: newSeries.title,
+            coverImage: newSeries.coverImage
+          });
+        });
+      }
     }
 
     setSeriesList(prev => {
