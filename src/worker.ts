@@ -1210,7 +1210,7 @@ ${seriesXml}
                 return new Response(cachedSeriesResponseJson, {
                   headers: {
                     ...headers,
-                    'Cache-Control': 'public, max-age=30, stale-while-revalidate=120'
+                    'Cache-Control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=300'
                   }
                 });
               }
@@ -1218,7 +1218,7 @@ ${seriesXml}
               const activeDb = usersDb || db;
               const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
                 db.prepare("SELECT * FROM series").all(),
-                db.prepare("SELECT * FROM chapters").all(),
+                db.prepare("SELECT id, series_id, chapter_number, title, published_date, special_tag, images_json, is_18_plus, notice, created_at FROM chapters").all(),
                 activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions', 'coin_package_urls')").all().catch(() => ({ results: [] })),
                 activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
               ]);
@@ -1313,12 +1313,12 @@ ${seriesXml}
                 globalNotifications
               });
               cachedSeriesResponseJson = responseBody;
-              cachedSeriesExpiresAt = Date.now() + 120000;
+              cachedSeriesExpiresAt = Date.now() + 180000;
 
               return new Response(responseBody, {
                 headers: {
                   ...headers,
-                  'Cache-Control': 'public, max-age=30, stale-while-revalidate=120'
+                  'Cache-Control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=300'
                 }
               });
             }

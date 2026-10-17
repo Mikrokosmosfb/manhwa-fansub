@@ -3037,8 +3037,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
       }
     };
 
-    // Run interval every 5 seconds for fast instant live notification drops
-    const interval = setInterval(fetchLatestNotifications, 5000);
+    // Poll for notifications every 60 seconds and ONLY if tab is active (saves 92% Cloudflare Worker CPU)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchLatestNotifications();
+      }
+    }, 60000);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
