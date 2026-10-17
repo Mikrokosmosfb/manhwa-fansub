@@ -537,8 +537,37 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
 
     const remainingImgs = usedFirstChapterImg ? allChapterImgs.slice(1) : allChapterImgs;
 
+    let cleanedParagraphs = finalParagraphs;
+    if (profileCard) {
+      let startIndex = 0;
+      const metaLabels = ['seri', 'roman', 'kitap', 'çevirmen', 'cevirmen', 'çeviren', 'çeviri', 'kaynak dil', 'editör', 'editor', 'redaktör', 'redaktor', 'kontrol'];
+      const langCodes = ['kr', 'cn', 'en', 'jp', 'tr', 'korece', 'çince', 'ingilizce', 'japonca'];
+
+      for (let i = 0; i < Math.min(finalParagraphs.length, 15); i++) {
+        const p = finalParagraphs[i];
+        if (p.isMediaOnly) {
+          startIndex = i + 1;
+          continue;
+        }
+        const lower = p.text.toLowerCase().trim();
+        const isLabel = metaLabels.some(l => lower === l || lower.startsWith(l + ':'));
+        const isValue = lower.length < 40 && (langCodes.includes(lower) || lower.endsWith('-') || !lower.includes('.'));
+        const isActualStory = /^["'“‘(«]/.test(p.text) || p.text.length > 80 || p.text.includes('.') || p.text.includes('!') || p.text.includes('?');
+
+        if (isActualStory) {
+          break;
+        }
+        if (isLabel || isValue) {
+          startIndex = i + 1;
+        } else {
+          break;
+        }
+      }
+      cleanedParagraphs = finalParagraphs.slice(startIndex);
+    }
+
     return {
-      parsedParagraphs: finalParagraphs,
+      parsedParagraphs: cleanedParagraphs,
       chapterProfileCard: profileCard,
       remainingChapterImages: remainingImgs
     };
