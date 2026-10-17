@@ -328,16 +328,22 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     const parseMetadataTextChunk = (chunkText: string) => {
       const decoded = decodeNovelEntities(chunkText).replace(/\s+/g, ' ').trim();
       if (!decoded) return;
-      const parts = decoded
-        .split(/(?=\b(?:Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:)/i)
-        .map(s => s.trim())
-        .filter(Boolean);
-      for (const part of parts) {
-        const m = part.match(
-          /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.+)$/i
-        );
-        if (m) {
-          addMetadataField(m[1], m[2]);
+      const labelRegex = /(?:^|\s)(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:/gi;
+      let matches = [];
+      let match;
+      while ((match = labelRegex.exec(decoded)) !== null) {
+        const label = match[1];
+        const labelIndex = match.index + match[0].indexOf(label);
+        matches.push({ label, index: labelIndex, length: label.length + 1 });
+      }
+      for (let i = 0; i < matches.length; i++) {
+        const current = matches[i];
+        const next = matches[i+1];
+        const start = current.index + current.length;
+        const end = next ? next.index : decoded.length;
+        const val = decoded.slice(start, end).trim();
+        if (val) {
+          addMetadataField(current.label, val);
         }
       }
     };
