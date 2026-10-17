@@ -1483,7 +1483,14 @@ ${seriesXml}
           }
 
           if (request.method === 'DELETE') {
-            const seriesId = url.searchParams.get('id');
+            const seriesId = url.searchParams.get('id') || url.searchParams.get('seriesId');
+            const chapterId = url.searchParams.get('chapterId');
+            if (db && chapterId) {
+              await db.prepare("DELETE FROM chapters WHERE id = ?").bind(chapterId).run();
+              cachedSeriesResponseJson = null;
+              cachedSeriesExpiresAt = 0;
+              return new Response(JSON.stringify({ success: true, storage: 'D1', message: 'Bölüm Cloudflare D1 veritabanından silindi' }), { headers });
+            }
 
             if (false && r2) {
               if (seriesId) {

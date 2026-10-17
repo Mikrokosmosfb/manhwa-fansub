@@ -1343,6 +1343,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         updatedAt: new Date().toISOString(),
         chapters: updatedChapters
       });
+      // Delete chapter from Cloudflare D1 immediately
+      fetch(`/api/series?chapterId=${encodeURIComponent(chapterId)}`, { method: 'DELETE' }).catch(() => {});
       alert(`Bölüm ${chapterNumber} silindi.`);
     }
   };
