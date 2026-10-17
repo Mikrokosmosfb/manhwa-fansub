@@ -61,6 +61,12 @@ export function sortChapters(chapters: Chapter[], order: 'asc' | 'desc' = 'asc')
     if (a.number !== b.number) {
       return order === 'desc' ? b.number - a.number : a.number - b.number;
     }
+    // If numbers are identical, sort strictly by publication date (publishedDate / createdAt) chronologically!
+    const dateA = new Date(a.publishedDate || a.createdAt || 0).getTime();
+    const dateB = new Date(b.publishedDate || b.createdAt || 0).getTime();
+    if (dateA !== dateB) {
+      return dateA - dateB;
+    }
     return order === 'desc'
       ? b.title.localeCompare(a.title, 'tr', { numeric: true })
       : a.title.localeCompare(b.title, 'tr', { numeric: true });

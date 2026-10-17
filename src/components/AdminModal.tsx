@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata, parseChapterNumber } from '../utils/chapterUtils';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata, parseChapterNumber, isExtraChapter } from '../utils/chapterUtils';
 import { MangaAlertStack } from './MangaAlertBox';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
@@ -806,13 +806,30 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             .replace(/\n[ \t]*\n/g, '\n\n')
             .trim();
 
+          const isExtra = isExtraChapter({ title: post.title });
+          let chNum = post.chapterNumber || (cIdx + 1);
+          if (isExtra) {
+            chNum = Number((chNum + 0.5).toFixed(1));
+          }
+          let parsedSpecialTag = undefined;
+          const tLower = post.title.toLowerCase();
+          if (tLower.includes('sezon final')) parsedSpecialTag = 'Sezon Finali';
+          else if (tLower.includes('final')) parsedSpecialTag = 'Final';
+          else if (tLower.includes('ekstra') || tLower.includes('extra')) parsedSpecialTag = 'Ekstra';
+          else if (tLower.includes('yan bölüm') || tLower.includes('yan bolum') || tLower.includes('side story')) parsedSpecialTag = 'Yan Bölüm';
+          else if (tLower.includes('özel') || tLower.includes('ozel') || tLower.includes('special')) parsedSpecialTag = 'Özel';
+
+          // Parse actual published timestamp from post.publishedDate for precise chronological sorting
+          const pubTimestamp = post.publishedDate ? new Date(post.publishedDate).getTime() : (Date.now() - (detSeries.chapterPosts.length - cIdx) * 1000);
+
           return {
             id: `c-blogger-${Date.now()}-${sIdx}-${cIdx}`,
-            number: post.chapterNumber || (cIdx + 1),
+            number: chNum,
             title: post.title,
             publishedDate: post.publishedDate,
-            createdAt: Date.now() - (detSeries.chapterPosts.length - cIdx) * 1000,
+            createdAt: isNaN(pubTimestamp) ? Date.now() : pubTimestamp,
             isNew: true,
+            specialTag: parsedSpecialTag,
             images: post.extractedImages.length > 0 ? post.extractedImages : undefined,
             content: cleanContent.length > 10 ? cleanContent : (detSeries.type === 'Web Novel' ? post.contentHtml : undefined),
             notice: formattedAlertsNotice
