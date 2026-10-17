@@ -1072,6 +1072,20 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
   // New Chapter Form
   const [selectedSeriesId, setSelectedSeriesId] = useState<string>(seriesList[0]?.id || '');
+  const [chapterSeriesSearch, setChapterSeriesSearch] = useState('');
+  const [bloggerSeriesSearch, setBloggerSeriesSearch] = useState('');
+
+  const filteredSeriesForAddChapter = useMemo(() => {
+    if (!chapterSeriesSearch.trim()) return seriesList;
+    const q = chapterSeriesSearch.toLowerCase().trim();
+    return seriesList.filter(s => s.title.toLowerCase().includes(q) || s.type.toLowerCase().includes(q));
+  }, [seriesList, chapterSeriesSearch]);
+
+  const filteredSeriesForBloggerTarget = useMemo(() => {
+    if (!bloggerSeriesSearch.trim()) return seriesList;
+    const q = bloggerSeriesSearch.toLowerCase().trim();
+    return seriesList.filter(s => s.title.toLowerCase().includes(q) || s.type.toLowerCase().includes(q));
+  }, [seriesList, bloggerSeriesSearch]);
   const [chapterNumber, setChapterNumber] = useState('');
   const [chapterTitle, setChapterTitle] = useState('');
   const [chapterSpecialTag, setChapterSpecialTag] = useState('');
@@ -2232,17 +2246,49 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         <form onSubmit={handleAddChapter} className="bg-gray-900/95 border border-purple-500/20 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div>
-              <label className="block text-purple-300 font-bold mb-1">Seri Seçin *</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-purple-300 font-bold">Seri Seçin *</label>
+                {chapterSeriesSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setChapterSeriesSearch('')}
+                    className="text-[10px] text-purple-400 hover:text-white transition font-semibold"
+                  >
+                    Aramayı Temizle ✕
+                  </button>
+                )}
+              </div>
+              <div className="relative mb-2">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="🔍 Seri Ara... (adını yazarak anında bulun)"
+                  value={chapterSeriesSearch}
+                  onChange={e => {
+                    const q = e.target.value;
+                    setChapterSeriesSearch(q);
+                    const matched = seriesList.filter(s => s.title.toLowerCase().includes(q.toLowerCase()) || s.type.toLowerCase().includes(q.toLowerCase()));
+                    if (matched.length > 0 && !matched.some(m => m.id === selectedSeriesId)) {
+                      setSelectedSeriesId(matched[0].id);
+                    }
+                  }}
+                  className="w-full bg-gray-950/90 border border-purple-500/40 rounded-xl pl-9 pr-3 py-2 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400 font-medium"
+                />
+              </div>
               <select
                 value={selectedSeriesId}
                 onChange={e => setSelectedSeriesId(e.target.value)}
-                className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-3 focus:outline-none"
+                className="w-full bg-gray-950 border border-purple-500/30 text-white rounded-xl p-3 focus:outline-none font-medium text-xs sm:text-sm"
               >
-                {seriesList.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.title} ({s.type})
-                  </option>
-                ))}
+                {filteredSeriesForAddChapter.length === 0 ? (
+                  <option value="" disabled>Eşleşen seri bulunamadı</option>
+                ) : (
+                  filteredSeriesForAddChapter.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.title} ({s.type} - {s.chapters.length} Bölüm)
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -3707,14 +3753,42 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 {/* Target Series Dropdown if Existing */}
                 {bloggerImportMode === 'existing-series' && (
                   <div className="pt-2">
-                    <label className="block text-xs font-bold text-gray-300 mb-1">Hedef Seri Seçin *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-gray-300">Hedef Seri Seçin *</label>
+                      {bloggerSeriesSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setBloggerSeriesSearch('')}
+                          className="text-[10px] text-purple-400 hover:text-white transition font-semibold"
+                        >
+                          Temizle ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="relative mb-2">
+                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="🔍 Hedef Seri Ara..."
+                        value={bloggerSeriesSearch}
+                        onChange={e => {
+                          const q = e.target.value;
+                          setBloggerSeriesSearch(q);
+                          const matched = seriesList.filter(s => s.title.toLowerCase().includes(q.toLowerCase()) || s.type.toLowerCase().includes(q.toLowerCase()));
+                          if (matched.length > 0) {
+                            setBloggerTargetSeriesId(matched[0].id);
+                          }
+                        }}
+                        className="w-full bg-gray-900/90 border border-purple-500/40 rounded-xl pl-9 pr-3 py-2 text-white text-xs placeholder-gray-500 focus:outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400"
+                      />
+                    </div>
                     <select
                       value={bloggerTargetSeriesId}
                       onChange={e => setBloggerTargetSeriesId(e.target.value)}
                       className="w-full bg-gray-900 border border-purple-500/40 text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400"
                     >
                       <option value="">-- Seri Seçin --</option>
-                      {seriesList.map(s => (
+                      {filteredSeriesForBloggerTarget.map(s => (
                         <option key={s.id} value={s.id}>
                           {s.title} ({s.type} - {s.chapters.length} Bölüm)
                         </option>
