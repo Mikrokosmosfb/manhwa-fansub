@@ -432,38 +432,8 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
       }
     }
 
-        // Safely skip ONLY leading metadata lines (e.g. "Seri:", "DASH", "Çevirmen:", "Çeviri:", "KR")
-    // and IMMEDIATELY STOP as soon as narrative or dialogue is reached
-    const headerPattern = /^(Seri|Roman|Kitap|Çevirmen|Cevirmen|Çeviren|Çeviri|Ceviri|Kaynak Dil|Editör|Editor|Redaktör|Redaktor|Kontrol)\s*:\s*(.*)$/i;
-    let skipCount = 0;
-    const maxHeaderScan = Math.min(candidateParagraphs.length, 8);
-    while (skipCount < maxHeaderScan) {
-      const p = candidateParagraphs[skipCount];
-      if (!p || p.isMediaOnly) break;
-      const text = p.text.trim();
-      // If it looks like actual dialogue or sentence, STOP immediately
-      if (/^["'“‘(«]/.test(text) || text.length > 70 || text.includes('.')) {
-        break;
-      }
-      if (headerPattern.test(text)) {
-        skipCount++;
-        // If next line is short value, skip it as well
-        if (skipCount < maxHeaderScan && candidateParagraphs[skipCount] && !candidateParagraphs[skipCount].isMediaOnly) {
-          const valText = candidateParagraphs[skipCount].text.trim();
-          if (valText.length < 50 && !/^["'“‘(«]/.test(valText) && !valText.includes('.')) {
-            skipCount++;
-          }
-        }
-        continue;
-      }
-      // Check for standalone language code
-      if (/^-?\s*(KR|CN|EN|JP|TR|Korece|Çince|İngilizce)-?\s*$/i.test(text)) {
-        skipCount++;
-        continue;
-      }
-      break;
-    }
-    const finalParagraphs = skipCount > 0 ? candidateParagraphs.slice(skipCount) : candidateParagraphs;
+        // All rules removed - showing all content without skipping
+    const finalParagraphs = candidateParagraphs;
 
     // 3. Build the Chapter Profile Card
     // If this chapter doesn't explicitly contain Seri/Çevirmen/Çeviri lines, inherit from previous chapters of THIS same series
