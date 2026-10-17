@@ -12,40 +12,37 @@ export const ChapterSpecialBadge: React.FC<ChapterSpecialBadgeProps> = ({
   size = 'sm',
   className = ''
 }) => {
-  if (!tag) return null;
-  const normalized = tag.trim().toLowerCase();
+  if (!tag || !tag.trim()) return null;
+  const rawTag = tag.trim();
+  const normalized = rawTag.toLowerCase();
 
-  // Pick badge styling based on tag type with rich gradients and glows
+  // Pick badge styling and icon based on keywords, but ALWAYS preserve the user's exact custom text!
   let badgeStyle = 'bg-gradient-to-r from-purple-600 via-indigo-600 to-fuchsia-600 text-white border-purple-300/40 shadow-purple-950/50';
   let icon = <Sparkles className="flex-shrink-0" />;
-  let displayText = tag;
 
-  if (normalized.includes('sezon final') || normalized.includes('season final') || normalized.includes('sezon finali')) {
+  if (normalized.includes('sezon final') || normalized.includes('season final')) {
     badgeStyle = 'bg-gradient-to-r from-amber-500 via-orange-600 to-rose-600 text-white border-amber-300/60 shadow-amber-950/80 shadow-md ring-1 ring-amber-400/50';
     icon = <Sparkles className="text-amber-200 fill-amber-200 flex-shrink-0 animate-pulse" />;
-    displayText = 'SEZON FİNALİ';
   } else if (normalized.includes('final')) {
     badgeStyle = 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white border-red-300/60 shadow-red-950/80 shadow-md ring-1 ring-red-400/50 animate-pulse';
     icon = <Crown className="text-amber-300 fill-amber-300 flex-shrink-0" />;
-    displayText = 'FİNAL';
   } else if (normalized.includes('ekstra') || normalized.includes('extra')) {
     badgeStyle = 'bg-gradient-to-r from-cyan-500 via-teal-500 to-blue-600 text-white border-cyan-300/50 shadow-cyan-950/60 shadow-md';
     icon = <Zap className="text-cyan-100 fill-cyan-100 flex-shrink-0" />;
-    displayText = 'EKSTRA';
   } else if (normalized.includes('yan bölüm') || normalized.includes('side story') || normalized.includes('yan bolum')) {
     badgeStyle = 'bg-gradient-to-r from-emerald-500 via-teal-600 to-green-600 text-white border-emerald-300/50 shadow-emerald-950/60 shadow-md';
     icon = <Bookmark className="text-emerald-100 fill-emerald-100 flex-shrink-0" />;
-    displayText = 'YAN BÖLÜM';
-  } else if (normalized.includes('özel') || normalized.includes('ozel') || normalized.includes('special') || normalized.includes('sezon')) {
+  } else if (normalized.includes('özel') || normalized.includes('ozel') || normalized.includes('special')) {
     badgeStyle = 'bg-gradient-to-r from-fuchsia-600 via-purple-600 to-pink-600 text-white border-fuchsia-300/50 shadow-fuchsia-950/60 shadow-md';
     icon = <Star className="text-fuchsia-100 fill-fuchsia-100 flex-shrink-0" />;
-    displayText = tag.toUpperCase();
   }
 
-  // Size configurations (enhanced to be clearly visible and prominent)
+  // Display user's exact custom text (e.g. 'Extra son' -> 'EXTRA SON')
+  const displayText = rawTag.toUpperCase();
+
+  // Size configurations
   let sizeClasses = 'text-[11px] sm:text-xs px-2.5 py-1 rounded-lg font-black tracking-wider gap-1.5 shadow-sm';
   let iconSize = 13;
-
   if (size === 'xs') {
     sizeClasses = 'text-[10px] sm:text-[11px] px-2 py-0.5 rounded-md font-extrabold tracking-wide gap-1 shadow-sm';
     iconSize = 11;

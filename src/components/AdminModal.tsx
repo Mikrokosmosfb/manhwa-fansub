@@ -2325,12 +2325,18 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
-                placeholder="Özel etiket yazın veya aşağıdaki hızlı butonlara tıklayın..."
+                placeholder="Özel etiket yazın (Örn: Extra son, Final 2, Yılbaşı Özel) veya aşağıdaki butonlara tıklayın..."
                 value={chapterSpecialTag}
                 onChange={e => setChapterSpecialTag(e.target.value)}
-                className="flex-1 bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-3 focus:outline-none"
+                className="flex-1 bg-gray-950 border border-purple-500/30 focus:border-purple-400 text-white text-xs rounded-xl p-3 focus:outline-none"
               />
             </div>
+            {chapterSpecialTag.trim() && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-[11px] text-purple-300 font-semibold">Canlı Etiket Önizleme:</span>
+                <ChapterSpecialBadge tag={chapterSpecialTag} size="sm" />
+              </div>
+            )}
             <div className="flex flex-wrap gap-1.5 pt-1">
               <span className="text-[10px] text-gray-400 self-center">Hızlı Seç:</span>
               {['Sezon Finali', 'Final', 'Ekstra', 'Yan Bölüm', 'Özel'].map(tag => (
@@ -2746,16 +2752,33 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 <div>
-                  <label className="block text-purple-300 font-bold text-xs mb-1">
-                    Özel Bölüm Etiketi (Sezon Finali, Final, Ekstra, Yan Bölüm, Özel)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-purple-300 font-bold text-xs">
+                      Özel Bölüm Etiketi (Sezon Finali, Final, Ekstra, Yan Bölüm, Özel vb.)
+                    </label>
+                    {editingChapter.specialTag && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingChapter({ ...editingChapter, specialTag: '' })}
+                        className="text-[10px] text-rose-400 hover:text-rose-300 underline font-bold"
+                      >
+                        Etiketi Kaldır ✕
+                      </button>
+                    )}
+                  </div>
                   <input
                     type="text"
-                    placeholder="Örn: Sezon Finali, Final, Ekstra, Yan Bölüm"
+                    placeholder="Örn: Extra son, Final 2, Sezon Finali, Yan Bölüm"
                     value={editingChapter.specialTag || ''}
                     onChange={e => setEditingChapter({ ...editingChapter, specialTag: e.target.value })}
-                    className="w-full bg-gray-950 border border-purple-500/30 text-white text-xs rounded-xl p-2.5 focus:outline-none"
+                    className="w-full bg-gray-950 border border-purple-500/30 focus:border-purple-400 text-white text-xs rounded-xl p-2.5 focus:outline-none"
                   />
+                  {editingChapter.specialTag && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-[11px] text-purple-300 font-semibold">Canlı Etiket Önizleme:</span>
+                      <ChapterSpecialBadge tag={editingChapter.specialTag} size="sm" />
+                    </div>
+                  )}
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {['Sezon Finali', 'Final', 'Ekstra', 'Yan Bölüm', 'Özel'].map(tag => (
                       <button
