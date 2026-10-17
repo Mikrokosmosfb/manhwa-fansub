@@ -808,9 +808,6 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
           const isExtra = isExtraChapter({ title: post.title });
           let chNum = post.chapterNumber || (cIdx + 1);
-          if (isExtra) {
-            chNum = Number((chNum + 0.5).toFixed(1));
-          }
           let parsedSpecialTag = undefined;
           const tLower = post.title.toLowerCase();
           if (tLower.includes('sezon final')) parsedSpecialTag = 'Sezon Finali';
