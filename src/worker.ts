@@ -2447,7 +2447,7 @@ ${seriesXml}
         }
 
         // Reset Claimed Donation (for unblocking test donations)
-        if (path === '/api/donationalerts/reset-claimed') {
+        if (path.startsWith('/api/donationalerts/reset-claimed')) {
           const activeDb = usersDb || db;
           if (activeDb) {
             await activeDb.prepare("DELETE FROM donationalerts_claimed WHERE donation_id = '192716404'").run().catch(() => {});
@@ -2622,12 +2622,17 @@ ${seriesXml}
               nowIso
             ).run().catch(() => {});
 
-            // Update user_library cosmo_points in Cloudflare D1 SQL
-            await activeDb.prepare(`
-              UPDATE user_library 
-              SET cosmo_points = COALESCE(cosmo_points, 0) + ? 
-              WHERE uid = (SELECT uid FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1)
-            `).bind(matchedPkg.cp, cleanEmail).run().catch(() => {});
+            // Upsert user_library cosmo_points in Cloudflare D1 SQL
+            try {
+              const uRow: any = await activeDb.prepare("SELECT uid FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1").bind(cleanEmail).first().catch(() => null);
+              if (uRow && uRow.uid) {
+                await activeDb.prepare(`
+                  INSERT INTO user_library (uid, cosmo_points)
+                  VALUES (?, ?)
+                  ON CONFLICT(uid) DO UPDATE SET cosmo_points = COALESCE(user_library.cosmo_points, 0) + excluded.cosmo_points
+                `).bind(uRow.uid, matchedPkg.cp).run();
+              }
+            } catch(e) {}
 
             // Read the updated balance
             const balRow: any = await activeDb.prepare(`
