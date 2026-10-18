@@ -1601,154 +1601,160 @@ export const ShopContent: React.FC = () => {
         );
       })()}
 
-      {/* ÖDEME ÖNCESİ AÇIKLAMA REHBERİ MODALI */}
+      {/* ÖDEME ÖNCESİ AÇIKLAMA REHBERİ MODALI - %100 MOBİL VE MASAÜSTÜ UYUMLU */}
       {selectedGuidePkg && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-lg bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/95 border-2 border-amber-400/80 rounded-3xl p-5 sm:p-7 shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp space-y-4">
-            <button
-              type="button"
-              onClick={() => setSelectedGuidePkg(null)}
-              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-white bg-gray-900/80 hover:bg-gray-800 rounded-full border border-gray-700 transition cursor-pointer"
-              title="Kapat"
-            >
-              <X size={18} />
-            </button>
-
-            {/* Header */}
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-2xl shrink-0">
-                {selectedGuidePkg.iconEmoji}
-              </div>
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2.5 py-0.5 rounded-full">
-                  Ödeme Açıklaması & Yönlendirme
-                </span>
-                <h3 className="text-lg font-black text-white mt-0.5">
-                  {selectedGuidePkg.name}
-                </h3>
-              </div>
-            </div>
-
-            {/* Fiyatlar Kartı - Dolar, TL, Manat */}
-            <div className="bg-black/60 border border-amber-500/30 rounded-2xl p-3.5 space-y-2">
-              <span className="text-[10px] font-extrabold uppercase text-gray-400 tracking-wider block">
-                Kabul Edilen Ödeme Tutarları:
-              </span>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
-                  <span className="text-[10px] text-gray-400 block font-bold">Dolar ($)</span>
-                  <span className="text-base font-black text-amber-300">${selectedGuidePkg.priceUSD} USD</span>
+        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-lg max-h-[92dvh] sm:max-h-[88vh] flex flex-col bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950 border-t-2 sm:border-2 border-amber-400 rounded-t-3xl sm:rounded-3xl shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp overflow-hidden">
+            
+            {/* 1. SABİT BAŞLIK (HEADER) - Asla Kaybolmaz */}
+            <div className="p-4 sm:p-5 border-b border-gray-800/80 bg-gray-950/80 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/20 border border-amber-400/50 flex items-center justify-center text-xl sm:text-2xl shrink-0">
+                  {selectedGuidePkg.iconEmoji}
                 </div>
-                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
-                  <span className="text-[10px] text-gray-400 block font-bold">Türk Lirası (₺)</span>
-                  <span className="text-base font-black text-amber-400">{selectedGuidePkg.priceTRY} ₺ TL</span>
-                </div>
-                <div className="bg-purple-950/40 border border-purple-500/30 p-2 rounded-xl">
-                  <span className="text-[10px] text-gray-400 block font-bold">Manat (₼)</span>
-                  <span className="text-base font-black text-cyan-400">{selectedGuidePkg.priceAZN} ₼ AZN</span>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-full">
+                      Ödeme & Puan Yükleme
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-extrabold">
+                      +{(selectedGuidePkg.coins + selectedGuidePkg.bonusCoins).toLocaleString('tr-TR')} CP
+                    </span>
+                  </div>
+                  <h3 className="text-base sm:text-lg font-black text-white mt-0.5 truncate">
+                    {selectedGuidePkg.name}
+                  </h3>
                 </div>
               </div>
-              <div className="text-center pt-1 text-emerald-400 text-xs font-bold flex items-center justify-center gap-1">
-                <Coins size={14} />
-                <span>Kazanılacak: +{(selectedGuidePkg.coins + selectedGuidePkg.bonusCoins).toLocaleString('tr-TR')} CP</span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedGuidePkg(null)}
+                className="p-2 text-gray-400 hover:text-white bg-gray-900/90 hover:bg-gray-800 rounded-full border border-gray-700 transition cursor-pointer shrink-0"
+                title="Kapat"
+              >
+                <X size={18} />
+              </button>
             </div>
 
-            {/* Kullanıcı Adı & DonationAlerts'te Yazılan İsim */}
-            <div className="space-y-3 bg-purple-950/40 border border-purple-500/40 rounded-2xl p-3.5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="overflow-hidden">
-                  <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız:</span>
-                  <span className="text-sm font-black text-white truncate block">
-                    {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
-                  </span>
+            {/* 2. KAYDIRILABİLİR İÇERİK (SCROLLABLE BODY) */}
+            <div className="overflow-y-auto overscroll-contain flex-1 p-4 sm:p-6 space-y-3.5">
+              
+              {/* Fiyat Şeridi - Dolar, TL, Manat */}
+              <div className="bg-black/60 border border-amber-500/30 rounded-2xl p-3 space-y-1.5">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-purple-950/50 border border-purple-500/30 p-1.5 sm:p-2 rounded-xl">
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 block font-bold">Dolar ($)</span>
+                    <span className="text-sm sm:text-base font-black text-amber-300">${selectedGuidePkg.priceUSD} USD</span>
+                  </div>
+                  <div className="bg-purple-950/50 border border-purple-500/30 p-1.5 sm:p-2 rounded-xl">
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 block font-bold">Türk Lirası (₺)</span>
+                    <span className="text-sm sm:text-base font-black text-amber-400">{selectedGuidePkg.priceTRY} ₺ TL</span>
+                  </div>
+                  <div className="bg-purple-950/50 border border-purple-500/30 p-1.5 sm:p-2 rounded-xl">
+                    <span className="text-[9px] sm:text-[10px] text-gray-400 block font-bold">Manat (₼)</span>
+                    <span className="text-sm sm:text-base font-black text-cyan-400">{selectedGuidePkg.priceAZN} ₼ AZN</span>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
-                    try {
-                      await navigator.clipboard.writeText(uname);
-                      setCopiedUname(true);
-                      setTimeout(() => setCopiedUname(false), 2500);
-                    } catch (e) {}
-                  }}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
-                    copiedUname
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
-                  }`}
-                >
-                  {copiedUname ? (
-                    <>
-                      <Check size={14} />
-                      <span>Kopyalandı!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={14} />
-                      <span>Kullanıcı Adını Kopyala</span>
-                    </>
-                  )}
-                </button>
               </div>
 
-              {/* DonationAlerts'te Yazılan Gönderen İsmi (KOSMOS vb. yazdıysa eşleşmesi için) */}
-              <div className="pt-2 border-t border-purple-500/20">
-                <label className="text-[11px] text-amber-300 font-extrabold flex items-center justify-between mb-1">
-                  <span>DonationAlerts'te Yazdığınız İsim:</span>
-                  <span className="text-[10px] text-gray-400 font-normal">Farklı bir şey yazdıysanız değiştirin</span>
-                </label>
-                <input
-                  type="text"
-                  value={modalDonorName}
-                  onChange={e => setModalDonorName(e.target.value)}
-                  placeholder="Örn: Sitedeki adınız veya DonationAlerts'te yazdığınız isim"
-                  className="w-full bg-gray-950 border border-amber-500/40 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400 font-bold placeholder:text-gray-500"
-                />
+              {/* Kullanıcı Adı & DonationAlerts'te Yazılan İsim */}
+              <div className="space-y-2.5 bg-purple-950/40 border border-purple-500/40 rounded-2xl p-3.5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="overflow-hidden">
+                    <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız:</span>
+                    <span className="text-sm font-black text-white truncate block">
+                      {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
+                      try {
+                        await navigator.clipboard.writeText(uname);
+                        setCopiedUname(true);
+                        setTimeout(() => setCopiedUname(false), 2500);
+                      } catch (e) {}
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                      copiedUname
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
+                    }`}
+                  >
+                    {copiedUname ? (
+                      <>
+                        <Check size={14} />
+                        <span>Kopyalandı!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={14} />
+                        <span>Kullanıcı Adını Kopyala</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* DonationAlerts'te Yazılan Gönderen İsmi */}
+                <div className="pt-2 border-t border-purple-500/20">
+                  <label className="text-[11px] text-amber-300 font-extrabold flex items-center justify-between mb-1">
+                    <span>DonationAlerts'te Yazdığınız İsim:</span>
+                    <span className="text-[10px] text-gray-400 font-normal">Farklı bir şey yazdıysanız değiştirin</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={modalDonorName}
+                    onChange={e => setModalDonorName(e.target.value)}
+                    placeholder="Örn: Sitedeki adınız veya DonationAlerts'te yazdığınız isim"
+                    className="w-full bg-gray-950 border border-amber-500/40 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400 font-bold placeholder:text-gray-500"
+                  />
+                </div>
               </div>
+
+              {/* Nasıl Ödenir Adımları (Kompakt ve Okunaklı) */}
+              <div className="space-y-2 text-xs bg-gray-900/90 p-3.5 rounded-2xl border border-amber-500/30">
+                <div className="font-extrabold text-amber-300 text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <Zap size={14} className="text-amber-400" /> DonationAlerts'te Neler Yapacaksınız?
+                </div>
+                <ul className="space-y-2 text-gray-200 text-[11px] sm:text-xs leading-relaxed">
+                  <li className="flex items-start gap-2 bg-purple-950/30 p-2 rounded-xl border border-purple-500/20">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[10px] mt-0.5">1</span>
+                    <span>Aşağıdaki <strong className="text-amber-300">"1. Ödeme Sayfasına Git"</strong> butonuna basarak DonationAlerts'i açın.</span>
+                  </li>
+                  <li className="flex items-start gap-2 bg-purple-950/30 p-2 rounded-xl border border-purple-500/20">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[10px] mt-0.5">2</span>
+                    <span>DonationAlerts'te <strong className="text-white underline">"Anonim olarak gönder ✏️"</strong> yerine kopyaladığınız <strong className="text-amber-300">Kullanıcı Adınızı</strong> yazın.</span>
+                  </li>
+                  <li className="flex items-start gap-2 bg-purple-950/30 p-2 rounded-xl border border-purple-500/20">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[10px] mt-0.5">3</span>
+                    <span>Tutar alanına paket fiyatını girip (<strong className="text-amber-300">${selectedGuidePkg.priceUSD} USD</strong> / <strong className="text-amber-400">{selectedGuidePkg.priceTRY} ₺</strong> / <strong className="text-cyan-300">{selectedGuidePkg.priceAZN} ₼</strong>) kartınızla ödeyin.</span>
+                  </li>
+                  <li className="flex items-start gap-2 bg-purple-950/30 p-2 rounded-xl border border-purple-500/20">
+                    <span className="w-4 h-4 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[10px] mt-0.5">4</span>
+                    <span>Ödemeyi bitirince geri dönüp aşağıdaki <strong className="text-emerald-400">"2. Puanımı Yükle"</strong> butonuna basın.</span>
+                  </li>
+                </ul>
+              </div>
+
             </div>
 
-            {/* Nasıl Ödenir Adımları */}
-            <div className="space-y-2.5 text-xs bg-gray-900/90 p-4 rounded-2xl border border-amber-500/30">
-              <div className="font-extrabold text-amber-300 text-xs uppercase tracking-wider flex items-center gap-2">
-                <Zap size={15} className="text-amber-400" /> DonationAlerts Sayfasında Neler Yapacaksınız?
-              </div>
-              <ul className="space-y-2.5 text-gray-200 text-xs leading-relaxed">
-                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">1</span>
-                  <span>Aşağıdaki <strong className="text-amber-300">"Ödeme Sayfasına Git (DonationAlerts)"</strong> butonuna tıklayarak ödeme penceresini açın.</span>
-                </li>
-                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">2</span>
-                  <span>DonationAlerts'te <strong className="text-white underline">"Anonim olarak gönder"</strong> yazan yerdeki kalem ikonuna basıp yukarıda kopyaladığınız <strong className="text-amber-300">Kullanıcı Adınızı</strong> yazın.</span>
-                </li>
-                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">3</span>
-                  <span>Tutar alanına paketinizin fiyatını girin: <strong className="text-amber-300">${selectedGuidePkg.priceUSD} USD</strong> veya <strong className="text-amber-400">{selectedGuidePkg.priceTRY} ₺ TL</strong> veya <strong className="text-cyan-300">{selectedGuidePkg.priceAZN} ₼ AZN</strong>.</span>
-                </li>
-                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
-                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">4</span>
-                  <span>Mesaj kutusuna <strong className="text-purple-200">"{selectedGuidePkg.name}"</strong> veya kullanıcı adınızı yazıp banka/kredi kartınızla ödemenizi güvenle tamamlayın.</span>
-                </li>
-              </ul>
-            </div>
-
-            {/* Butonlar */}
-            <div className="flex flex-col sm:flex-row gap-2 pt-1">
+            {/* 3. SABİT ALT BUTONLAR (FOOTER) - Ekrana Yapışık, Asla Kesilmez */}
+            <div className="p-3.5 sm:p-5 border-t border-gray-800/90 bg-gray-950/95 flex flex-col sm:flex-row gap-2 shrink-0">
               <button
                 type="button"
                 onClick={() => handleProceedToDonationAlerts(selectedGuidePkg)}
-                className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
               >
-                <ExternalLink size={16} />
-                <span>Ödeme Yap (DonationAlerts Sayfasına Git)</span>
+                <ExternalLink size={15} />
+                <span>1. Ödeme Sayfasına Git</span>
               </button>
+              
               <button
                 type="button"
                 disabled={isCheckingAutoDonation}
                 onClick={() => handleAutoCheckDonation(selectedGuidePkg)}
-                className="py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
               >
                 {isCheckingAutoDonation ? (
                   <>
@@ -1758,18 +1764,20 @@ export const ShopContent: React.FC = () => {
                 ) : (
                   <>
                     <Zap size={15} className="text-yellow-300" />
-                    <span>Ödememi Yaptım, Puanımı Yükle 🚀</span>
+                    <span>2. Puanımı Yükle 🚀</span>
                   </>
                 )}
               </button>
+
               <button
                 type="button"
                 onClick={() => setSelectedGuidePkg(null)}
-                className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-extrabold text-xs rounded-xl border border-gray-700 transition cursor-pointer"
+                className="py-2.5 px-3 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white font-bold text-xs rounded-xl border border-gray-700 transition cursor-pointer shrink-0"
               >
                 Kapat
               </button>
             </div>
+
           </div>
         </div>
       )}
@@ -1777,7 +1785,7 @@ export const ShopContent: React.FC = () => {
       {/* CELEBRATION MODAL ON PAYMENT SUCCESS */}
       {celebrationPurchase && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
-          <div className="relative w-full max-w-md bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/90 border-2 border-amber-400 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp">
+          <div className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-gradient-to-b from-gray-900 via-gray-950 to-purple-950/90 border-2 border-amber-400 rounded-3xl p-6 sm:p-8 text-center shadow-[0_0_60px_rgba(245,158,11,0.3)] animate-scaleUp">
             <button
               type="button"
               onClick={() => setCelebrationPurchase(null)}
