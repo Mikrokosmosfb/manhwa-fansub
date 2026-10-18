@@ -37,7 +37,7 @@ import { NovelReader } from './components/NovelReader';
 const LibraryView = React.lazy(() => import('./components/LibraryView').then(m => ({ default: m.LibraryView })));
 const AdvancedSearchView = React.lazy(() => import('./components/AdvancedSearchView').then(m => ({ default: m.AdvancedSearchView })));
 const LeaderboardView = React.lazy(() => import('./components/LeaderboardView').then(m => ({ default: m.LeaderboardView })));
-const CategoriesView = React.lazy(() => import('./components/CategoriesView').then(m => ({ default: m.CategoriesView })));
+import { CategoriesView } from './components/CategoriesView';
 const SeriesListView = React.lazy(() => import('./components/SeriesListView').then(m => ({ default: m.SeriesListView })));
 const AZListView = React.lazy(() => import('./components/AZListView').then(m => ({ default: m.AZListView })));
 const HistoryView = React.lazy(() => import('./components/HistoryView').then(m => ({ default: m.HistoryView })));

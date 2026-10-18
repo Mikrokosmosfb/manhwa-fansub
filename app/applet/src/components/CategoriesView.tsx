@@ -168,7 +168,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
             )}
           </div>
 
-          {/* Type Filter Tabs (Format Pills) */}
+          {/* Type Filter Tabs (Format Pills - NOT DROPDOWN) */}
           <div className="flex items-center gap-1.5 bg-gray-950 p-1 rounded-2xl border border-gray-800 w-full sm:w-auto overflow-x-auto no-scrollbar">
             <button
               type="button"
