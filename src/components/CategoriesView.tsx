@@ -156,155 +156,160 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
           )}
         </div>
 
-        {/* Format / Type */}
-        <div>
-          <label className="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-2">
-            Format / Tür
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {['Tümü', 'Manhwa', 'Web Novel', 'Webtoon', 'Manga', 'Manhua'].map(t => (
-              <button
-                key={t}
-                onClick={() => setSelectedType(t)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  selectedType === t
-                    ? 'bg-purple-600 text-white shadow'
-                    : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                }`}
+        {/* Dropdown Filters Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* 1. Format / Tür Dropdown */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider block">
+              Format / Tür
+            </label>
+            <div className="relative">
+              <select
+                value={selectedType}
+                onChange={e => setSelectedType(e.target.value)}
+                className="w-full bg-gray-950 border border-purple-500/40 text-white font-extrabold text-xs rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:border-purple-400 cursor-pointer pr-8"
               >
-                {t}
-              </button>
-            ))}
+                {['Tümü', 'Manhwa', 'Web Novel', 'Webtoon', 'Manga', 'Manhua'].map(t => (
+                  <option key={t} value={t} className="bg-gray-950 text-white font-bold">
+                    {t === 'Tümü' ? 'Tüm Formatlar' : t}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+            </div>
           </div>
-        </div>
 
-        {/* Status */}
-        <div>
-          <label className="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-2">
-            Yayın Durumu
-          </label>
-          <div className="flex flex-wrap gap-2">
-            {['Tümü', 'Devam Ediyor', 'Tamamlandı', 'Güncel', 'Yakında'].map(st => (
-              <button
-                key={st}
-                onClick={() => setSelectedStatus(st)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  selectedStatus === st
-                    ? 'bg-indigo-600 text-white shadow'
-                    : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                }`}
+          {/* 2. Yayın Durumu Dropdown */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider block">
+              Yayın Durumu
+            </label>
+            <div className="relative">
+              <select
+                value={selectedStatus}
+                onChange={e => setSelectedStatus(e.target.value)}
+                className="w-full bg-gray-950 border border-purple-500/40 text-white font-extrabold text-xs rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:border-purple-400 cursor-pointer pr-8"
               >
-                {st}
-              </button>
-            ))}
+                {['Tümü', 'Devam Ediyor', 'Tamamlandı', 'Güncel', 'Yakında'].map(st => (
+                  <option key={st} value={st} className="bg-gray-950 text-white font-bold">
+                    {st === 'Tümü' ? 'Tüm Durumlar' : st}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+            </div>
           </div>
-        </div>
 
-        {/* Extra Custom Badges Section (Manuel Eklenen Etiketler & Rozetler) */}
-        {allCustomBadges.length > 0 && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Sparkles size={14} className="text-amber-400" />
+          {/* 3. Özel Etiketler Dropdown */}
+          {allCustomBadges.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-[11px] font-black text-amber-300 uppercase tracking-wider block flex items-center gap-1">
+                <Sparkles size={12} className="text-amber-400" />
                 Özel Etiketler ({allCustomBadges.length})
               </label>
-              <span className="text-[11px] text-gray-500 hidden sm:inline">
-                Manuel eklenen rozetler ve özel tematik etiketler
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2 max-h-44 overflow-y-auto pr-1">
-              <button
-                onClick={() => setSelectedBadge('Tümü')}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  selectedBadge === 'Tümü'
-                    ? 'bg-purple-600 text-white shadow'
-                    : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                }`}
-              >
-                Tüm Etiketler
-              </button>
-              {allCustomBadges.map(badge => {
-                const is18 = badge === '18+' || badge === '+18';
-                const isActive = selectedBadge.toLowerCase().trim() === badge.toLowerCase().trim();
-                const count = visibleSeriesList.filter(s => matchTag(s, badge)).length;
-
-                return (
-                  <button
-                    key={badge}
-                    onClick={() => setSelectedBadge(isActive ? 'Tümü' : badge)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                      isActive
-                        ? is18
-                          ? 'bg-rose-600 text-white shadow ring-2 ring-rose-400/50'
-                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow ring-2 ring-purple-400/50'
-                        : is18
-                        ? 'bg-rose-950/60 text-rose-300 border border-rose-800/60 hover:bg-rose-900/60'
-                        : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-purple-500/20'
-                    }`}
-                  >
-                    {is18 ? (
-                      <ShieldAlert size={13} className="text-rose-400" />
-                    ) : (
-                      <Sparkles size={12} className={isActive ? 'text-amber-300' : 'text-purple-400'} />
-                    )}
-                    <span>{badge}</span>
-                    {count > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                        isActive ? 'bg-white/20 text-white' : 'bg-purple-950/80 text-purple-300 border border-purple-500/30'
-                      }`}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Genres Grid */}
-        <div>
-          <label className="text-xs font-bold text-purple-300 uppercase tracking-wider block mb-2">
-            Konu Türleri & Kategoriler ({allCategoryGenres.length})
-          </label>
-          <div className="flex flex-wrap gap-1.5 max-h-52 overflow-y-auto pr-1">
-            <button
-              onClick={() => setSelectedGenre('Tümü')}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                selectedGenre === 'Tümü'
-                  ? 'bg-purple-600 text-white shadow'
-                  : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-              }`}
-            >
-              Tümü
-            </button>
-            {allCategoryGenres.map(g => {
-              const isActive = selectedGenre.toLowerCase().trim() === g.toLowerCase().trim();
-              const count = visibleSeriesList.filter(s => matchTag(s, g)).length;
-
-              return (
-                <button
-                  key={g}
-                  onClick={() => setSelectedGenre(isActive ? 'Tümü' : g)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                    isActive
-                      ? 'bg-purple-600 text-white shadow ring-2 ring-purple-400/40'
-                      : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                  }`}
+              <div className="relative">
+                <select
+                  value={selectedBadge}
+                  onChange={e => setSelectedBadge(e.target.value)}
+                  className="w-full bg-gray-950 border border-amber-500/40 text-amber-300 font-extrabold text-xs rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:border-amber-400 cursor-pointer pr-8"
                 >
-                  <span>{g}</span>
-                  {count > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
-                      isActive ? 'bg-white/20 text-white' : 'bg-gray-900 text-gray-400 border border-gray-800'
-                    }`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+                  <option value="Tümü" className="bg-gray-950 text-white font-bold">
+                    ✨ Tüm Özel Etiketler ({allCustomBadges.length})
+                  </option>
+                  {allCustomBadges.map(badge => {
+                    const count = visibleSeriesList.filter(s => matchTag(s, badge)).length;
+                    return (
+                      <option key={badge} value={badge} className="bg-gray-950 text-white font-bold">
+                        {badge} {count > 0 ? `(${count} Seri)` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-amber-400 font-bold text-xs">▼</div>
+              </div>
+            </div>
+          )}
+
+          {/* 4. Konu Türleri & Kategoriler Dropdown */}
+          <div className="space-y-1">
+            <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider block flex items-center gap-1">
+              <Tags size={12} className="text-purple-400" />
+              Kategoriler ({allCategoryGenres.length})
+            </label>
+            <div className="relative">
+              <select
+                value={selectedGenre}
+                onChange={e => setSelectedGenre(e.target.value)}
+                className="w-full bg-gray-950 border border-purple-500/40 text-purple-200 font-extrabold text-xs rounded-xl px-3 py-2.5 appearance-none focus:outline-none focus:border-purple-400 cursor-pointer pr-8"
+              >
+                <option value="Tümü" className="bg-gray-950 text-white font-bold">
+                  🏷️ Tüm Kategoriler ({allCategoryGenres.length})
+                </option>
+                {allCategoryGenres.map(g => {
+                  const count = visibleSeriesList.filter(s => matchTag(s, g)).length;
+                  return (
+                    <option key={g} value={g} className="bg-gray-950 text-white font-bold">
+                      {g} {count > 0 ? `(${count} Seri)` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+            </div>
           </div>
         </div>
+
+        {/* Active Filters Bar / Reset Button */}
+        {(selectedType !== 'Tümü' || selectedStatus !== 'Tümü' || selectedBadge !== 'Tümü' || selectedGenre !== 'Tümü' || searchQuery) && (
+          <div className="pt-2 border-t border-gray-800/80 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-gray-400 font-bold">Aktif Filtreler:</span>
+              {selectedType !== 'Tümü' && (
+                <span className="bg-purple-950 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                  Format: {selectedType}
+                  <X size={12} className="cursor-pointer hover:text-white" onClick={() => setSelectedType('Tümü')} />
+                </span>
+              )}
+              {selectedStatus !== 'Tümü' && (
+                <span className="bg-indigo-950 text-indigo-300 border border-indigo-500/40 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                  Durum: {selectedStatus}
+                  <X size={12} className="cursor-pointer hover:text-white" onClick={() => setSelectedStatus('Tümü')} />
+                </span>
+              )}
+              {selectedBadge !== 'Tümü' && (
+                <span className="bg-amber-950 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                  Etiket: {selectedBadge}
+                  <X size={12} className="cursor-pointer hover:text-white" onClick={() => setSelectedBadge('Tümü')} />
+                </span>
+              )}
+              {selectedGenre !== 'Tümü' && (
+                <span className="bg-purple-950 text-purple-300 border border-purple-500/40 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                  Kategori: {selectedGenre}
+                  <X size={12} className="cursor-pointer hover:text-white" onClick={() => setSelectedGenre('Tümü')} />
+                </span>
+              )}
+              {searchQuery && (
+                <span className="bg-cyan-950 text-cyan-300 border border-cyan-500/40 px-2 py-0.5 rounded-lg font-bold flex items-center gap-1">
+                  Arama: {searchQuery}
+                  <X size={12} className="cursor-pointer hover:text-white" onClick={() => setSearchQuery('')} />
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => {
+                setSelectedType('Tümü');
+                setSelectedStatus('Tümü');
+                setSelectedBadge('Tümü');
+                setSelectedGenre('Tümü');
+                setSearchQuery('');
+              }}
+              className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/40 px-2.5 py-1 rounded-xl transition flex items-center gap-1 cursor-pointer ml-auto"
+            >
+              <RotateCcw size={12} />
+              <span>Tüm Filtreleri Temizle</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Results Header */}

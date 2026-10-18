@@ -248,41 +248,39 @@ export const SeriesListView: React.FC = () => {
 
         </div>
 
-        {/* Row 2: Genre Quick Filter Chips */}
+        {/* Row 2: Genre Dropdown Select */}
         {genreCounts.length > 0 && (
-          <div className="pt-2 border-t border-gray-800/80">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter size={13} className="text-purple-400" />
-              <span className="text-xs font-extrabold text-gray-300">Tür & Etiket Filtresi:</span>
+          <div className="pt-2.5 border-t border-gray-800/80 flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Filter size={14} className="text-purple-400" />
+              <span className="text-xs font-black text-purple-300">Tür & Etiket Filtresi:</span>
             </div>
-            <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto no-scrollbar">
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <select
+                value={selectedGenre}
+                onChange={e => setSelectedGenre(e.target.value)}
+                className="w-full bg-gray-950 border-2 border-purple-500/40 text-amber-300 font-black text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-amber-400 cursor-pointer shadow-lg appearance-none pr-8"
+              >
+                <option value="Tümü" className="bg-gray-950 text-white font-bold">
+                  🎯 Tüm Türler ({visibleSeriesList.length} Seri)
+                </option>
+                {genreCounts.map(g => (
+                  <option key={g.name} value={g.name} className="bg-gray-950 text-white font-bold">
+                    {g.name} ({g.count} Seri)
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+            </div>
+            {selectedGenre !== 'Tümü' && (
               <button
                 onClick={() => setSelectedGenre('Tümü')}
-                className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition cursor-pointer ${
-                  selectedGenre === 'Tümü'
-                    ? 'bg-purple-600 border-purple-400 text-white shadow'
-                    : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-white hover:border-purple-500/40'
-                }`}
+                className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/40 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
               >
-                Tüm Türler ({visibleSeriesList.length})
+                <X size={13} />
+                <span>Filtreyi Temizle ({selectedGenre})</span>
               </button>
-              {genreCounts.map(g => (
-                <button
-                  key={g.name}
-                  onClick={() => setSelectedGenre(selectedGenre === g.name ? 'Tümü' : g.name)}
-                  className={`text-xs font-bold px-2.5 py-1 rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
-                    selectedGenre === g.name
-                      ? 'bg-purple-600 border-purple-400 text-white shadow'
-                      : 'bg-gray-950 border-gray-800/80 text-purple-200/90 hover:text-white hover:border-purple-500/40'
-                  }`}
-                >
-                  <span>{g.name}</span>
-                  <span className="text-[10px] opacity-70 bg-black/40 px-1.5 py-0.2 rounded-full">
-                    {g.count}
-                  </span>
-                </button>
-              ))}
-            </div>
+            )}
           </div>
         )}
 
