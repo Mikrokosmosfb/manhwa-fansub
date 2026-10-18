@@ -122,7 +122,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
             Kategoriler & Özel Etiketler
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
-            İstediğiniz kategori, özel etiket ve yayın türünü seçerek serileri anında listeleyin.
+            İstediğiniz kategori, özel etiket ve yayın türünü seçerek serileri anında filtreleyin.
           </p>
         </div>
 
@@ -142,10 +142,10 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
         </div>
       </div>
 
-      {/* Main Filter Control Box */}
+      {/* Main Filter Control Box (Identical to SeriesListView style) */}
       <div className="p-4 sm:p-5 rounded-3xl bg-gray-900/90 border border-purple-500/20 shadow-xl space-y-4">
         
-        {/* Row 1: Search, Type Tabs & Status Select */}
+        {/* Row 1: Search, Type Pills & Status Pills (NO DROPDOWNS!) */}
         <div className="flex flex-col lg:flex-row items-center justify-between gap-4">
           
           {/* Search box */}
@@ -169,7 +169,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
           </div>
 
           {/* Type Filter Tabs (Format Pills - NOT DROPDOWN) */}
-          <div className="flex items-center gap-1.5 bg-gray-950 p-1 rounded-2xl border border-gray-800 w-full sm:w-auto overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-1.5 bg-gray-950 p-1 rounded-2xl border border-gray-800 w-full lg:w-auto overflow-x-auto no-scrollbar">
             <button
               type="button"
               onClick={() => setSelectedTypes([])}
@@ -205,20 +205,26 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
             })}
           </div>
 
-          {/* Status Select */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <span className="text-xs font-bold text-gray-400 hidden sm:inline">Durum:</span>
-            <select
-              value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
-              className="w-full sm:w-auto bg-gray-950 border border-purple-500/30 text-xs text-purple-200 font-bold rounded-xl px-3 py-2 focus:outline-none cursor-pointer"
-            >
-              <option value="Tümü">Tüm Durumlar</option>
-              <option value="Devam Ediyor">Devam Ediyor</option>
-              <option value="Güncel">Güncel</option>
-              <option value="Tamamlandı">Tamamlandı</option>
-              <option value="Yakında">Yakında</option>
-            </select>
+          {/* Status Filter Pills (NOT DROPDOWN) */}
+          <div className="flex items-center gap-1.5 bg-gray-950 p-1 rounded-2xl border border-gray-800 w-full lg:w-auto overflow-x-auto no-scrollbar">
+            <span className="text-[11px] font-extrabold text-gray-500 px-2 hidden sm:inline">Durum:</span>
+            {['Tümü', 'Devam Ediyor', 'Güncel', 'Tamamlandı', 'Yakında'].map(st => {
+              const isSelected = selectedStatus === st;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setSelectedStatus(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow shadow-indigo-900/40 font-black'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  {st}
+                </button>
+              );
+            })}
           </div>
 
         </div>
@@ -255,13 +261,13 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
                   className="text-xs font-extrabold text-rose-400 hover:text-rose-300 bg-rose-950/50 border border-rose-800/50 px-3 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
                 >
                   <RotateCcw size={13} />
-                  <span>Sıfırla</span>
+                  <span>Tümünü Sıfırla</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Custom Dropdown Expanded Panel */}
+          {/* Custom Dropdown Expanded Panel (Identical to SeriesListView style) */}
           {isFilterPanelOpen && (
             <div className="p-4 bg-gray-950/95 border-2 border-purple-500/40 rounded-2xl shadow-2xl space-y-4 animate-fadeIn">
               
@@ -299,7 +305,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
                       <button
                         type="button"
                         onClick={() => setSelectedBadges([])}
-                        className="text-[10px] text-amber-400 hover:underline font-bold"
+                        className="text-[10px] text-amber-400 hover:underline font-bold cursor-pointer"
                       >
                         Etiketleri Temizle
                       </button>
@@ -358,7 +364,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
                     <button
                       type="button"
                       onClick={() => setSelectedGenres([])}
-                      className="text-[10px] text-purple-400 hover:underline font-bold"
+                      className="text-[10px] text-purple-400 hover:underline font-bold cursor-pointer"
                     >
                       Kategorileri Temizle
                     </button>
@@ -469,7 +475,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
           </div>
           <button
             onClick={resetFilters}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow transition"
+            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow transition cursor-pointer"
           >
             Filtreleri Temizle
           </button>
