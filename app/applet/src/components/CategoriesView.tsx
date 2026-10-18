@@ -48,7 +48,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
     return isInitialBadge ? [initialGenre] : [];
   });
   const [searchQuery, setSearchQuery] = useState('');
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(true);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [categorySearch, setCategorySearch] = useState('');
 
   // Helper to match either custom badges or genres
@@ -110,11 +110,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
     selectedBadges.length > 0 ||
     Boolean(searchQuery);
 
-  const totalActiveCount =
-    selectedTypes.length +
-    selectedGenres.length +
-    selectedBadges.length +
-    (selectedStatus !== 'Tümü' ? 1 : 0);
+  const totalTagCount = selectedGenres.length + selectedBadges.length;
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-6 animate-fadeIn">
@@ -126,7 +122,7 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
             Kategoriler & Özel Etiketler
           </h1>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">
-            İstediğiniz kategori, özel etiket ve yayın türlerini seçerek serileri anında listeleyin.
+            İstediğiniz kategori, özel etiket ve yayın türünü seçerek serileri anında listeleyin.
           </p>
         </div>
 
@@ -147,45 +143,113 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
       </div>
 
       {/* Main Filter Control Box */}
-      <div className="p-4 sm:p-6 rounded-3xl bg-gray-900/90 border border-purple-500/30 shadow-xl space-y-4">
-        {/* Top Search & Toggle Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Quick Search */}
-          <div className="relative flex-1 w-full">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Seri adı, kategori veya etiket ara..."
-              className="w-full bg-gray-950 border border-purple-500/30 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
-              >
-                <X size={15} />
-              </button>
-            )}
-          </div>
+      <div className="p-4 sm:p-6 rounded-3xl bg-gray-900/90 border border-purple-500/30 shadow-xl space-y-5">
+        
+        {/* Search Input Bar */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Seri adı, kategori veya etiket ara..."
+            className="w-full bg-gray-950 border border-purple-500/30 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+          )}
+        </div>
 
-          {/* Toggle Panel Button */}
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+        {/* Format / Tür (PILL BUTTONS - NOT DROPDOWN) */}
+        <div>
+          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block mb-2">
+            Format / Tür
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedTypes([])}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                selectedTypes.length === 0
+                  ? 'bg-purple-600 text-white shadow font-black ring-2 ring-purple-400/40'
+                  : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
+              }`}
+            >
+              Tüm Formatlar
+            </button>
+            {['Manhwa', 'Web Novel', 'Webtoon', 'Manga', 'Manhua'].map(t => {
+              const isSelected = selectedTypes.includes(t);
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTypes(prev =>
+                      prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+                    );
+                  }}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black shadow ring-2 ring-purple-400/40'
+                      : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
+                  }`}
+                >
+                  {isSelected && <Check size={13} className="stroke-[3]" />}
+                  <span>{t}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Yayın Durumu (PILL BUTTONS - NOT DROPDOWN) */}
+        <div>
+          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block mb-2">
+            Yayın Durumu
+          </label>
+          <div className="flex flex-wrap gap-1.5">
+            {['Tümü', 'Devam Ediyor', 'Tamamlandı', 'Güncel', 'Yakında'].map(st => {
+              const isSelected = selectedStatus === st;
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setSelectedStatus(st)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isSelected
+                      ? 'bg-indigo-600 text-white shadow font-black ring-2 ring-indigo-400/40'
+                      : 'bg-gray-950 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
+                  }`}
+                >
+                  {st === 'Tümü' ? 'Tüm Durumlar' : st}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Custom Expandable Filter Panel Button for Categories & Custom Badges */}
+        <div className="pt-2 border-t border-gray-800/80 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <button
               type="button"
               onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-              className={`flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 border cursor-pointer shadow-md active:scale-95 ${
-                totalActiveCount > 0
+              className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 border cursor-pointer shadow-lg active:scale-95 ${
+                totalTagCount > 0
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 ring-2 ring-purple-400/30'
                   : 'bg-gray-950 text-purple-200 border-purple-500/40 hover:bg-purple-950/60'
               }`}
             >
               <Filter size={15} className="text-amber-400" />
               <span>
-                {totalActiveCount === 0
-                  ? 'Filtre Paneli'
-                  : `Filtre Paneli (${totalActiveCount} Seçili)`}
+                {totalTagCount === 0
+                  ? '🎨 Tür & Etiket Filtresi Aç'
+                  : `🎨 Tür Filtresi (${totalTagCount} Seçili)`}
               </span>
               <ChevronDown
                 size={16}
@@ -197,159 +261,143 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
               <button
                 type="button"
                 onClick={resetFilters}
-                className="px-3 py-2.5 bg-rose-950/50 hover:bg-rose-900 border border-rose-800/50 text-rose-300 hover:text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1 cursor-pointer shrink-0"
+                className="px-3 py-2 bg-rose-950/50 hover:bg-rose-900 border border-rose-800/50 text-rose-300 hover:text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1 cursor-pointer shrink-0"
               >
                 <RotateCcw size={13} />
-                <span>Sıfırla</span>
+                <span>Tüm Filtreleri Temizle</span>
               </button>
             )}
           </div>
-        </div>
 
-        {/* Expandable Filter Panel */}
-        {isFilterPanelOpen && (
-          <div className="p-4 bg-gray-950/90 border border-purple-500/30 rounded-2xl space-y-4 animate-fadeIn">
-            
-            {/* 1. Format / Tür Pills */}
-            <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider block">
-                Format / Tür
-              </label>
-              <div className="flex flex-wrap gap-1.5">
+          {/* Expanded Panel for Custom Badges and Genres */}
+          {isFilterPanelOpen && (
+            <div className="p-4 bg-gray-950/95 border-2 border-purple-500/40 rounded-2xl shadow-2xl space-y-4 animate-fadeIn">
+              
+              {/* Internal Filter Search Input */}
+              <div className="flex items-center justify-between gap-2 border-b border-gray-800 pb-2.5">
+                <div className="relative flex-1">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Tür veya etiket ara..."
+                    value={categorySearch}
+                    onChange={e => setCategorySearch(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
+                  />
+                </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedTypes([])}
-                  className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                    selectedTypes.length === 0
-                      ? 'bg-purple-600 text-white shadow font-black'
-                      : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-800'
-                  }`}
+                  onClick={() => setIsFilterPanelOpen(false)}
+                  className="p-1.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-700 transition cursor-pointer shrink-0"
+                  title="Kapat"
                 >
-                  Tüm Formatlar
+                  <X size={16} />
                 </button>
-                {['Manhwa', 'Web Novel', 'Webtoon', 'Manga', 'Manhua'].map(t => {
-                  const isSelected = selectedTypes.includes(t);
-                  return (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => {
-                        setSelectedTypes(prev =>
-                          prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]
+              </div>
+
+              {/* Özel Etiketler Section */}
+              {allCustomBadges.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                      <Sparkles size={12} className="text-amber-400" />
+                      Özel Etiketler ({allCustomBadges.length})
+                    </label>
+                    {selectedBadges.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBadges([])}
+                        className="text-[10px] text-amber-400 hover:underline font-bold"
+                      >
+                        Etiketleri Temizle
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                    {allCustomBadges
+                      .filter(b => b.toLowerCase().includes(categorySearch.toLowerCase().trim()))
+                      .map(badge => {
+                        const is18 = badge === '18+' || badge === '+18';
+                        const isSelected = selectedBadges.includes(badge);
+                        const count = visibleSeriesList.filter(s => matchTag(s, badge)).length;
+                        return (
+                          <button
+                            key={badge}
+                            type="button"
+                            onClick={() => {
+                              setSelectedBadges(prev =>
+                                prev.includes(badge) ? prev.filter(x => x !== badge) : [...prev, badge]
+                              );
+                            }}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                              isSelected
+                                ? is18
+                                  ? 'bg-rose-600 text-white font-black shadow ring-2 ring-rose-400/50'
+                                  : 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black border border-amber-300 shadow ring-2 ring-amber-400/50'
+                                : is18
+                                ? 'bg-rose-950/60 text-rose-300 border border-rose-800/60 hover:bg-rose-900/60'
+                                : 'bg-gray-900 text-gray-300 hover:bg-purple-950/60 border border-purple-500/20'
+                            }`}
+                          >
+                            {isSelected && <Check size={13} className="stroke-[3]" />}
+                            <span>{badge}</span>
+                            {count > 0 && (
+                              <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                                isSelected ? 'bg-black/30 text-black font-black' : 'bg-black/40 text-purple-300'
+                              }`}>
+                                {count}
+                              </span>
+                            )}
+                          </button>
                         );
-                      }}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1 ${
-                        isSelected
-                          ? 'bg-purple-600 text-white shadow ring-2 ring-purple-400/40 font-black'
-                          : 'bg-gray-900 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                      }`}
-                    >
-                      {isSelected && <Check size={13} className="stroke-[3]" />}
-                      <span>{t}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* 2. Yayın Durumu Pills */}
-            <div className="space-y-1.5 pt-2 border-t border-gray-800/80">
-              <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider block">
-                Yayın Durumu
-              </label>
-              <div className="flex flex-wrap gap-1.5">
-                {['Tümü', 'Devam Ediyor', 'Tamamlandı', 'Güncel', 'Yakında'].map(st => {
-                  const isSelected = selectedStatus === st;
-                  return (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => setSelectedStatus(st)}
-                      className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                        isSelected
-                          ? 'bg-indigo-600 text-white shadow font-black'
-                          : 'bg-gray-900 text-gray-300 hover:bg-purple-950/60 border border-gray-800'
-                      }`}
-                    >
-                      {st === 'Tümü' ? 'Tüm Durumlar' : st}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Internal Filter Search Input for 100+ tags */}
-            <div className="pt-2 border-t border-gray-800/80 flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Kategori veya özel etiket filtrele..."
-                  value={categorySearch}
-                  onChange={e => setCategorySearch(e.target.value)}
-                  className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
-                />
-              </div>
-              {categorySearch && (
-                <button
-                  type="button"
-                  onClick={() => setCategorySearch('')}
-                  className="text-xs text-gray-400 hover:text-white"
-                >
-                  <X size={15} />
-                </button>
+                      })}
+                  </div>
+                </div>
               )}
-            </div>
 
-            {/* 3. Özel Etiketler Section */}
-            {allCustomBadges.length > 0 && (
-              <div className="space-y-1.5">
+              {/* Konu Türleri & Kategoriler Section */}
+              <div className="space-y-1.5 pt-2 border-t border-gray-800/80">
                 <div className="flex items-center justify-between">
-                  <label className="text-[11px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles size={12} className="text-amber-400" />
-                    Özel Etiketler ({allCustomBadges.length})
+                  <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider flex items-center gap-1">
+                    <Tags size={12} className="text-purple-400" />
+                    Konu Türleri & Kategoriler ({allCategoryGenres.length})
                   </label>
-                  {selectedBadges.length > 0 && (
+                  {selectedGenres.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => setSelectedBadges([])}
-                      className="text-[10px] text-amber-400 hover:underline font-bold"
+                      onClick={() => setSelectedGenres([])}
+                      className="text-[10px] text-purple-400 hover:underline font-bold"
                     >
-                      Etiketleri Temizle
+                      Kategorileri Temizle
                     </button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
-                  {allCustomBadges
-                    .filter(b => b.toLowerCase().includes(categorySearch.toLowerCase().trim()))
-                    .map(badge => {
-                      const is18 = badge === '18+' || badge === '+18';
-                      const isSelected = selectedBadges.includes(badge);
-                      const count = visibleSeriesList.filter(s => matchTag(s, badge)).length;
+                <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto pr-1">
+                  {allCategoryGenres
+                    .filter(g => g.toLowerCase().includes(categorySearch.toLowerCase().trim()))
+                    .map(g => {
+                      const isSelected = selectedGenres.includes(g);
+                      const count = visibleSeriesList.filter(s => matchTag(s, g)).length;
                       return (
                         <button
-                          key={badge}
+                          key={g}
                           type="button"
                           onClick={() => {
-                            setSelectedBadges(prev =>
-                              prev.includes(badge) ? prev.filter(x => x !== badge) : [...prev, badge]
+                            setSelectedGenres(prev =>
+                              prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
                             );
                           }}
-                          className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-sm ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
                             isSelected
-                              ? is18
-                                ? 'bg-rose-600 text-white font-black shadow ring-2 ring-rose-400/50'
-                                : 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black border border-amber-300 shadow ring-2 ring-amber-400/50'
-                              : is18
-                              ? 'bg-rose-950/60 text-rose-300 border border-rose-800/60 hover:bg-rose-900/60'
+                              ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black shadow ring-2 ring-purple-400/50'
                               : 'bg-gray-900 text-gray-300 hover:bg-purple-950/60 border border-purple-500/20'
                           }`}
                         >
-                          {isSelected && <Check size={12} className="stroke-[3]" />}
-                          <span>{badge}</span>
+                          {isSelected && <Check size={13} className="stroke-[3]" />}
+                          <span>{g}</span>
                           {count > 0 && (
-                            <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${
-                              isSelected ? 'bg-black/30 text-black font-black' : 'bg-black/40 text-purple-300'
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                              isSelected ? 'bg-white/20 text-white font-black' : 'bg-black/40 text-purple-300'
                             }`}>
                               {count}
                             </span>
@@ -359,63 +407,10 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
                     })}
                 </div>
               </div>
-            )}
 
-            {/* 4. Konu Türleri & Kategoriler Section */}
-            <div className="space-y-1.5 pt-2 border-t border-gray-800/80">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-purple-300 uppercase tracking-wider flex items-center gap-1">
-                  <Tags size={12} className="text-purple-400" />
-                  Konu Türleri & Kategoriler ({allCategoryGenres.length})
-                </label>
-                {selectedGenres.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedGenres([])}
-                    className="text-[10px] text-purple-400 hover:underline font-bold"
-                  >
-                    Kategorileri Temizle
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5 max-h-44 overflow-y-auto pr-1">
-                {allCategoryGenres
-                  .filter(g => g.toLowerCase().includes(categorySearch.toLowerCase().trim()))
-                  .map(g => {
-                    const isSelected = selectedGenres.includes(g);
-                    const count = visibleSeriesList.filter(s => matchTag(s, g)).length;
-                    return (
-                      <button
-                        key={g}
-                        type="button"
-                        onClick={() => {
-                          setSelectedGenres(prev =>
-                            prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
-                          );
-                        }}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-sm ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-black shadow ring-2 ring-purple-400/50'
-                            : 'bg-gray-900 text-gray-300 hover:bg-purple-950/60 border border-purple-500/20'
-                        }`}
-                      >
-                        {isSelected && <Check size={12} className="stroke-[3]" />}
-                        <span>{g}</span>
-                        {count > 0 && (
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${
-                            isSelected ? 'bg-white/20 text-white font-black' : 'bg-black/40 text-purple-300'
-                          }`}>
-                            {count}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-              </div>
             </div>
-
-          </div>
-        )}
+          )}
+        </div>
 
         {/* Active Filter Badges Bar */}
         {hasActiveFilters && (
