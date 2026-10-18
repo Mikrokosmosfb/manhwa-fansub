@@ -91,7 +91,26 @@ export const AdminPointsManager: React.FC = () => {
     return paymentNotifications.filter(n => n.status === 'pending').length;
   }, [paymentNotifications]);
 
+  const duplicateRefCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of paymentNotifications) {
+      const key = (n.reference_code || '').trim().toLowerCase();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [paymentNotifications]);
+
   const handleReviewNotification = async (notif: any, status: 'approved' | 'rejected') => {
+    if (status === 'approved') {
+      const key = (notif.reference_code || '').trim().toLowerCase();
+      const isDup = (duplicateRefCounts[key] || 0) > 1;
+      if (isDup) {
+        const confirmed = window.confirm(
+          `⚠️ DİKKAT: "${notif.reference_code}" adına birden fazla bildirim bulunuyor!\n\nBu kullanıcının ödemesi zaten daha önce onaylanmış olabilir.\n\nBu bildirimi onaylayıp hesaba +${notif.amount_cp} CP daha yüklemek istediğinize emin misiniz?`
+        );
+        if (!confirmed) return;
+      }
+    }
     setProcessingNotifId(notif.id);
     try {
       if (status === 'approved') {
@@ -494,6 +513,13 @@ export const AdminPointsManager: React.FC = () => {
                             <div className="bg-black/50 border border-gray-800 px-2.5 py-1 rounded-lg text-white font-mono text-[11px] inline-block max-w-xs break-all">
                               {notif.reference_code}
                             </div>
+                            {(duplicateRefCounts[(notif.reference_code || '').trim().toLowerCase()] || 0) > 1 && (
+                              <div className="mt-1">
+                                <span className="text-[10px] text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-extrabold">
+                                  ⚠️ Mükerrer Bildirim!
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
                             {isPending && (

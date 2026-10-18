@@ -2691,6 +2691,13 @@ ${seriesXml}
                 if (!id || !status) {
                   return new Response(JSON.stringify({ success: false, error: 'Eksik parametre' }), { headers });
                 }
+
+                // Check if already approved (Prevent double approval!)
+                const currentNotif: any = await activeDb.prepare("SELECT status FROM payment_notifications WHERE id = ?").bind(id).first().catch(() => null);
+                if (currentNotif && currentNotif.status === 'approved' && status === 'approved') {
+                  return new Response(JSON.stringify({ success: false, error: 'Bu bildirim zaten daha önce onaylanmış! Mükerrer puan yüklenemez.' }), { headers });
+                }
+
                 const now = new Date().toISOString();
                 await activeDb.prepare(`
                   UPDATE payment_notifications 
@@ -2706,6 +2713,28 @@ ${seriesXml}
               if (!user_email || !package_name || !reference_code) {
                 return new Response(JSON.stringify({ success: false, error: 'Lütfen tüm alanları doldurun.' }), { headers });
               }
+
+              const cleanRef = reference_code.trim().toLowerCase();
+              const cleanUserEmail = user_email.toLowerCase().trim();
+
+              // 1. Prevent duplicate pending notification from the same user
+              const pendingCheck: any = await activeDb.prepare("SELECT id FROM payment_notifications WHERE user_email = ? AND status = 'pending' LIMIT 1").bind(cleanUserEmail).first().catch(() => null);
+              if (pendingCheck && pendingCheck.id) {
+                return new Response(JSON.stringify({ 
+                  success: false, 
+                  error: 'Zaten incelenmekte olan bekleyen bir ödeme bildiriminiz bulunmaktadır. Lütfen yöneticimiz onaylayana kadar bekleyiniz.' 
+                }), { headers });
+              }
+
+              // 2. Prevent duplicate reference code (dekont / isim) if already approved
+              const refCheck: any = await activeDb.prepare("SELECT id, status FROM payment_notifications WHERE LOWER(reference_code) = ? AND status = 'approved' LIMIT 1").bind(cleanRef).first().catch(() => null);
+              if (refCheck && refCheck.id) {
+                return new Response(JSON.stringify({ 
+                  success: false, 
+                  error: 'Bu dekont / işlem kodu ile daha önce onaylanmış bir ödeme bulunmaktadır. Aynı dekontla tekrar bildirim yapılamaz.' 
+                }), { headers });
+              }
+
               const newId = `pn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
               const now = new Date().toISOString();
               await activeDb.prepare(`
@@ -2714,7 +2743,7 @@ ${seriesXml}
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
               `).bind(
                 newId,
-                user_email.toLowerCase().trim(),
+                cleanUserEmail,
                 user_name || '',
                 package_id || '',
                 package_name,
