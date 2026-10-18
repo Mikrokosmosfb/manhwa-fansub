@@ -2726,13 +2726,16 @@ ${seriesXml}
                 }), { headers });
               }
 
-              // 2. Prevent duplicate reference code (dekont / isim) if already approved
-              const refCheck: any = await activeDb.prepare("SELECT id, status FROM payment_notifications WHERE LOWER(reference_code) = ? AND status = 'approved' LIMIT 1").bind(cleanRef).first().catch(() => null);
-              if (refCheck && refCheck.id) {
-                return new Response(JSON.stringify({ 
-                  success: false, 
-                  error: 'Bu dekont / işlem kodu ile daha önce onaylanmış bir ödeme bulunmaktadır. Aynı dekontla tekrar bildirim yapılamaz.' 
-                }), { headers });
+              // 2. Prevent accidental spam within 3 minutes with exact same text
+              const recentSpam: any = await activeDb.prepare("SELECT created_at FROM payment_notifications WHERE user_email = ? AND LOWER(reference_code) = ? ORDER BY created_at DESC LIMIT 1").bind(cleanUserEmail, cleanRef).first().catch(() => null);
+              if (recentSpam && recentSpam.created_at) {
+                const diffMs = Date.now() - new Date(recentSpam.created_at).getTime();
+                if (diffMs < 3 * 60 * 1000) {
+                  return new Response(JSON.stringify({ 
+                    success: false, 
+                    error: 'Aynı isim/dekont ile az önce bir bildirim gönderdiniz. Mükerrer olmaması için lütfen birkaç dakika bekleyin.' 
+                  }), { headers });
+                }
               }
 
               const newId = `pn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
