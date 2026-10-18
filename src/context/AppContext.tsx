@@ -2989,18 +2989,47 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     // 2. Periodic background notification fetcher
     const fetchLatestNotifications = () => {
-      // Fetch global notifications
+      // Fetch global notifications from Cloudflare D1
       safeFetchJson<{ success: boolean; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
         .then(data => {
           if (data && data.success && Array.isArray(data.globalNotifications)) {
-            setNotifications(prev => {
-              const deletedIdsStr = localStorage.getItem('mk_deleted_notifs') || '[]';
-              let deletedIds: string[] = [];
-              try { deletedIds = JSON.parse(deletedIdsStr); } catch(e){}
-              const existingIds = new Set(prev.map(p => p.id));
-              const deletedSet = new Set(deletedIds);
-              const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
+            const deletedIdsStr = localStorage.getItem('mk_deleted_notifs') || '[]';
+            let deletedIds: string[] = [];
+            try { deletedIds = JSON.parse(deletedIdsStr); } catch(e){}
+            const deletedSet = new Set(deletedIds);
+            const userCreatedTime = user?.createdAt ? new Date(user.createdAt).getTime() : 0;
 
+            // Direct device push check: Has this physical device received this notification banner?
+            const unpushedGlobals = data.globalNotifications.filter((n: any) => {
+              if (deletedSet.has(n.id)) return false;
+              if (n.targetUserId && (!user || user.uid !== n.targetUserId)) return false;
+              if (userCreatedTime > 0 && n.createdAt) {
+                const notifTime = new Date(n.createdAt).getTime();
+                if (!isNaN(notifTime) && notifTime < userCreatedTime) return false;
+              }
+              return !isNotificationAlreadyPushed(n.id);
+            });
+
+            if (unpushedGlobals.length > 0) {
+              unpushedGlobals.forEach((n: any) => {
+                const shouldSend = n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId);
+                if (shouldSend) {
+                  showToast({
+                    title: n.title || '🔔 Yeni Bildirim',
+                    message: n.message || '',
+                    type: n.type === 'comment-reply' ? 'info' : 'bell',
+                    seriesId: n.seriesId,
+                    coverImage: n.coverImage
+                  });
+                  sendDeviceNotification(n.title || 'Mikrokosmos Bildirimi', n.message || '', n.coverImage, undefined, n.id);
+                }
+                markNotificationAsPushed(n.id);
+              });
+            }
+
+            // Sync into React notifications list
+            setNotifications(prev => {
+              const existingIds = new Set(prev.map(p => p.id));
               const newGlobals = data.globalNotifications.filter((n: any) => {
                 if (existingIds.has(n.id) || deletedSet.has(n.id)) return false;
                 if (n.targetUserId && (!user || user.uid !== n.targetUserId)) return false;
@@ -3011,50 +3040,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
                 return true;
               });
 
-                            if (newGlobals.length > 0) {
-                // Filter items that have not yet triggered a push/toast on this device
-                const unpushedGlobals = newGlobals.filter((n: any) => !isNotificationAlreadyPushed(n.id));
-
-                if (unpushedGlobals.length > 0) {
-                  // 1-2 new releases: notify individually with direct title & cover
-                  if (unpushedGlobals.length <= 2) {
-                    unpushedGlobals.forEach((n: any) => {
-                      const shouldSend = n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId);
-                      if (shouldSend) {
-                        showToast({
-                          title: n.title || '🎉 Yeni Bildirim',
-                          message: n.message || '',
-                          type: n.type === 'comment-reply' ? 'info' : 'bell',
-                          seriesId: n.seriesId,
-                          coverImage: n.coverImage
-                        });
-                        sendDeviceNotification(n.title || 'Yeni Bildirim', n.message || '', n.coverImage, undefined, n.id);
-                      }
-                      markNotificationAsPushed(n.id);
-                    });
-                  } else {
-                    // Multiple new releases (e.g. user was away for days):
-                    // Group into one clean catch-up alert instead of freezing Windows with 20 chime popups!
-                    const relevantCount = unpushedGlobals.filter((n: any) => n.type !== 'chapter' || !n.seriesId || followedSeriesIds.includes(n.seriesId)).length;
-                    if (relevantCount > 0) {
-                      showToast({
-                        title: 'Hoş Geldiniz! 🔔',
-                        message: `Siz yokken takip ettiğiniz serilere ${relevantCount} yeni bölüm/içerik eklendi! Bildirimlerinizden inceleyebilirsiniz.`,
-                        type: 'bell',
-                        duration: 8000
-                      });
-                      sendDeviceNotification(
-                        'Mikrokosmos - Yeni Bölümler Yayında! 🔔',
-                        `Siz yokken takip ettiğiniz serilere ${relevantCount} yeni bölüm eklendi. Keyifli okumalar!`,
-                        '/pwa-192x192.png',
-                        undefined,
-                        'summary-catchup-alert'
-                      );
-                    }
-                    unpushedGlobals.forEach((n: any) => markNotificationAsPushed(n.id));
-                  }
-                }
-
+              if (newGlobals.length > 0) {
                 const combined = [...newGlobals, ...prev].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
                 return combined.slice(0, 100);
               }
@@ -3063,7 +3049,6 @@ const deleteShopItemAndStyle = (itemId: string) => {
           }
         })
         .catch(() => {});
-
       // If user is logged in, also fetch user_library notifications directly
       if (user && user.uid) {
         safeFetchJson<{ success: boolean; notifications?: any }>('/api/auth/library?uid=' + encodeURIComponent(user.uid), { cache: 'no-store' })
@@ -3105,15 +3090,25 @@ const deleteShopItemAndStyle = (itemId: string) => {
       }
     };
 
-    // Poll for notifications every 60 seconds and ONLY if tab is active (saves 92% Cloudflare Worker CPU)
-    const interval = setInterval(() => {
+    // Immediate fetch on mount
+    fetchLatestNotifications();
+
+    // Instant trigger when user unlocks phone or switches back to app tab
+    const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
         fetchLatestNotifications();
       }
-    }, 60000);
+    };
+    window.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+
+    // Periodic poll every 30 seconds
+    const interval = setInterval(handleVisibilityOrFocus, 30000);
 
     return () => {
       window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
       clearInterval(interval);
     };
   }, [user?.uid]);
