@@ -2348,6 +2348,88 @@ ${seriesXml}
           return new Response(JSON.stringify({ success: false }), { headers });
         }
 
+        // PAYMENT NOTIFICATIONS API (DonationAlerts Ödeme Bildirimleri)
+        if (path.startsWith('/api/payment-notifications')) {
+          const activeDb = usersDb || db;
+          if (activeDb) {
+            await activeDb.prepare(`
+              CREATE TABLE IF NOT EXISTS payment_notifications (
+                id TEXT PRIMARY KEY,
+                user_email TEXT NOT NULL,
+                user_name TEXT,
+                package_id TEXT NOT NULL,
+                package_name TEXT NOT NULL,
+                amount_cp INTEGER NOT NULL,
+                price_text TEXT,
+                reference_code TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                admin_note TEXT,
+                created_at TEXT NOT NULL,
+                reviewed_at TEXT,
+                reviewed_by TEXT
+              );
+            `).run().catch(() => {});
+
+            if (request.method === 'POST') {
+              const body = await request.json().catch(() => ({}));
+              const { action } = body;
+
+              // Action: review (approve / reject)
+              if (action === 'review') {
+                const { id, status, admin_email, admin_note } = body;
+                if (!id || !status) {
+                  return new Response(JSON.stringify({ success: false, error: 'Eksik parametre' }), { headers });
+                }
+                const now = new Date().toISOString();
+                await activeDb.prepare(`
+                  UPDATE payment_notifications 
+                  SET status = ?, admin_note = ?, reviewed_at = ?, reviewed_by = ? 
+                  WHERE id = ?
+                `).bind(status, admin_note || '', now, admin_email || '', id).run();
+
+                return new Response(JSON.stringify({ success: true, status }), { headers });
+              }
+
+              // Action: Submit new notification
+              const { user_email, user_name, package_id, package_name, amount_cp, price_text, reference_code } = body;
+              if (!user_email || !package_name || !reference_code) {
+                return new Response(JSON.stringify({ success: false, error: 'Lütfen tüm alanları doldurun.' }), { headers });
+              }
+              const newId = `pn-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+              const now = new Date().toISOString();
+              await activeDb.prepare(`
+                INSERT INTO payment_notifications (
+                  id, user_email, user_name, package_id, package_name, amount_cp, price_text, reference_code, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?)
+              `).bind(
+                newId,
+                user_email.toLowerCase().trim(),
+                user_name || '',
+                package_id || '',
+                package_name,
+                Number(amount_cp) || 0,
+                price_text || '',
+                reference_code.trim(),
+                now
+              ).run();
+
+              return new Response(JSON.stringify({ success: true, id: newId }), { headers });
+            }
+
+            if (request.method === 'GET') {
+              const targetEmail = url.searchParams.get('email');
+              let res;
+              if (targetEmail) {
+                res = await activeDb.prepare("SELECT * FROM payment_notifications WHERE user_email = ? ORDER BY created_at DESC LIMIT 50").bind(targetEmail.toLowerCase().trim()).all();
+              } else {
+                res = await activeDb.prepare("SELECT * FROM payment_notifications ORDER BY created_at DESC LIMIT 100").all();
+              }
+              return new Response(JSON.stringify({ success: true, notifications: res?.results || [] }), { headers });
+            }
+          }
+          return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
         // WALLPAPERS API
         if (path.startsWith('/api/wallpapers')) {
           const activeDb = db || usersDb;

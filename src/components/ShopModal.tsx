@@ -97,10 +97,14 @@ export const ShopContent: React.FC = () => {
   // DonationAlerts & Payment Store link settings & Order Verification
   const [showLemonGuide, setShowLemonGuide] = useState(false);
   const [showLemonSettings, setShowLemonSettings] = useState(false);
-  const [orderCodeInput, setOrderCodeInput] = useState('');
+  const [verifyTab, setVerifyTab] = useState<'notification' | 'promo'>('notification');
+  const [selectedNotifyPkgId, setSelectedNotifyPkgId] = useState<string>('cp_starter');
+  const [donorReferenceInput, setDonorReferenceInput] = useState('');
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [isSubmittingNotification, setIsSubmittingNotification] = useState(false);
+  const [isRedeemingPromo, setIsRedeemingPromo] = useState(false);
   const [selectedGuidePkg, setSelectedGuidePkg] = useState<CoinPackage | null>(null);
   const [copiedUname, setCopiedUname] = useState(false);
-  const [isVerifyingOrder, setIsVerifyingOrder] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
     pkgName: string;
     coinsEarned: number;
@@ -361,44 +365,82 @@ export const ShopContent: React.FC = () => {
     });
   };
 
-  const handleVerifyOrderCode = (e: React.FormEvent) => {
+    // 1. DonationAlerts Ödeme Bildirimi Gönderme (Yönetici Kontrolüne Gider)
+  const handleSubmitPaymentNotification = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderCodeInput.trim()) return;
-    setIsVerifyingOrder(true);
+    if (!user) {
+      openAuthModal('login');
+      setStatusMessage({ type: 'error', text: 'Ödeme bildirimi gönderebilmek için lütfen önce giriş yapın.' });
+      return;
+    }
+    if (!donorReferenceInput.trim()) {
+      setStatusMessage({ type: 'error', text: 'Lütfen DonationAlerts üzerinde yazdığınız İsim veya Dekont No bilgisini girin.' });
+      return;
+    }
 
-    setTimeout(() => {
-      setIsVerifyingOrder(false);
-      const code = orderCodeInput.trim().toUpperCase();
-      
-      // Determine package based on code length, keywords or fallback
-      let matchedPkg = COIN_PACKAGES[1]; // default 1,000 + 250 CP ($3 USD)
-      if (code.includes('VIP') || code.includes('10000') || code.includes('14000') || code.includes('20') || code.includes('700')) {
-        matchedPkg = COIN_PACKAGES[3];
-      } else if (code.includes('GIGA') || code.includes('SILVER') || code.includes('3000') || code.includes('4000') || code.includes('8') || code.includes('280')) {
-        matchedPkg = COIN_PACKAGES[2];
-      } else if (code.includes('STARTER') || code.includes('BASLANGIC') || code.includes('250') || code.includes('300') || code.includes('1') || code.includes('35')) {
-        matchedPkg = COIN_PACKAGES[0];
+    const targetPkg = COIN_PACKAGES.find(p => p.id === selectedNotifyPkgId) || COIN_PACKAGES[0];
+    const totalCp = targetPkg.coins + targetPkg.bonusCoins;
+
+    setIsSubmittingNotification(true);
+    try {
+      const res = await fetch('/api/payment-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_email: user.email,
+          user_name: user.name || (user as any).displayName || '',
+          package_id: targetPkg.id,
+          package_name: targetPkg.name,
+          amount_cp: totalCp,
+          price_text: `$${targetPkg.priceUSD} USD / ${targetPkg.priceTRY} ₺ / ${targetPkg.priceAZN} ₼`,
+          reference_code: donorReferenceInput.trim()
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      setIsSubmittingNotification(false);
+
+      if (data && data.success) {
+        setStatusMessage({
+          type: 'success',
+          text: `✅ Ödeme bildiriminiz başarıyla iletildi! Yöneticimiz DonationAlerts üzerinden teyit ettikten sonra "${targetPkg.name}" karşılığı olan +${totalCp.toLocaleString('tr-TR')} CP hesabınıza eklenecektir.`
+        });
+        setDonorReferenceInput('');
+      } else {
+        setStatusMessage({
+          type: 'error',
+          text: data.error || 'Bildirim gönderilirken bir hata oluştu. Lütfen tekrar deneyin.'
+        });
       }
-
-      const totalAdded = matchedPkg.coins + matchedPkg.bonusCoins;
-      earnPoints(totalAdded, `DonationAlerts / Ödeme Fişi (#${code})`);
-
-      triggerPurchaseConfetti();
-
-      setCelebrationPurchase({
-        pkgName: matchedPkg.name,
-        coinsEarned: totalAdded,
-        priceUSD: matchedPkg.priceUSD,
-        orderId: code
-      });
-
+    } catch (err) {
+      setIsSubmittingNotification(false);
       setStatusMessage({
-        type: 'success',
-        text: `🎉 TEBRİKLER! Fiş/İşlem Kodu (#${code}) Doğrulandı! +${totalAdded.toLocaleString('tr-TR')} Cosmo-Puan (${matchedPkg.name}) hesabınıza başarıyla tanımlandı!`
+        type: 'error',
+        text: 'Bağlantı hatası oluştu. Lütfen internetinizi kontrol edin.'
       });
-      setOrderCodeInput('');
-      setDonationGuideModalPkg(null);
-    }, 900);
+    }
+  };
+
+  // 2. Resmi Promosyon / Hediye Kodu Kullanımı
+  const handleRedeemPromo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoCodeInput.trim()) return;
+    if (!user) {
+      openAuthModal('login');
+      setStatusMessage({ type: 'error', text: 'Kupon kodu kullanmak için lütfen önce giriş yapın.' });
+      return;
+    }
+    setIsRedeemingPromo(true);
+    setTimeout(() => {
+      setIsRedeemingPromo(false);
+      const res = redeemPromoCode(promoCodeInput.trim());
+      if (res.success) {
+        triggerPurchaseConfetti();
+        setStatusMessage({ type: 'success', text: res.message });
+        setPromoCodeInput('');
+      } else {
+        setStatusMessage({ type: 'error', text: res.message || 'Geçersiz veya süresi dolmuş kod!' });
+      }
+    }, 600);
   };
 
   const handleSaveLemonUrl = (e: React.FormEvent) => {
@@ -926,43 +968,144 @@ export const ShopContent: React.FC = () => {
             </button>
           </div>
 
-          {/* SİPARİŞ / FİŞ KODU DOĞRULAMA KUTUSU */}
-          <div className="bg-gray-900/90 border border-purple-500/30 p-4 rounded-2xl space-y-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h4 className="text-xs font-black text-amber-300 flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-400" /> Sipariş / Fiş Kodu İle Cosmo-Puan Yükleme
-              </h4>
-              <span className="text-[10px] text-gray-400 bg-black/40 px-2 py-0.5 rounded-md border border-gray-800">
-                DonationAlerts veya diğer yöntemle ödeme yaptınız mı? İşlem/dekont kodunuzu girerek anında yükleyin.
-              </span>
+          {/* GÜVENLİ ÖDEME BİLDİRİMİ VE KUPON ALANI */}
+          <div className="bg-gray-900/90 border border-purple-500/40 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl">
+            {/* Sekme Butonları */}
+            <div className="flex items-center gap-2 border-b border-gray-800 pb-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setVerifyTab('notification')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  verifyTab === 'notification'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                <CheckCircle2 size={14} className={verifyTab === 'notification' ? 'text-amber-400' : 'text-gray-400'} />
+                <span>DonationAlerts Ödeme Bildirimi Yap</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setVerifyTab('promo')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                  verifyTab === 'promo'
+                    ? 'bg-purple-600/30 text-purple-200 border border-purple-500/50 shadow-sm'
+                    : 'bg-gray-800 text-gray-400 hover:text-white'
+                }`}
+              >
+                <Sparkles size={14} className={verifyTab === 'promo' ? 'text-purple-300' : 'text-gray-400'} />
+                <span>Promosyon / Hediye Kodu</span>
+              </button>
             </div>
 
-            <form onSubmit={handleVerifyOrderCode} className="flex flex-col sm:flex-row items-center gap-2">
-              <input
-                type="text"
-                placeholder="DonationAlerts İşlem No veya Sipariş Fiş Kodu (örn: DA-105 veya kod)"
-                value={orderCodeInput}
-                onChange={e => setOrderCodeInput(e.target.value)}
-                className="w-full sm:flex-1 px-3.5 py-2 bg-gray-950 border border-purple-500/40 rounded-xl text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-amber-400 uppercase font-mono"
-              />
-              <button
-                type="submit"
-                disabled={isVerifyingOrder || !orderCodeInput.trim()}
-                className="w-full sm:w-auto px-5 py-2 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
-              >
-                {isVerifyingOrder ? (
-                  <>
-                    <RotateCw size={14} className="animate-spin" />
-                    <span>Doğrulanıyor...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap size={14} />
-                    <span>Doğrula & Yükle</span>
-                  </>
-                )}
-              </button>
-            </form>
+            {verifyTab === 'notification' ? (
+              /* ÖDEME BİLDİRİMİ FORMU */
+              <form onSubmit={handleSubmitPaymentNotification} className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-xs font-black text-amber-300">
+                    💳 DonationAlerts Bağış / Ödeme Bildirimi
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    Ödemenizi yaptıktan sonra bilgilerinizi iletin, onaylanınca puanınız yüklensin.
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] text-purple-300 font-bold mb-1">
+                      Satın Aldığınız Paket:
+                    </label>
+                    <select
+                      value={selectedNotifyPkgId}
+                      onChange={e => setSelectedNotifyPkgId(e.target.value)}
+                      className="w-full bg-gray-950 border border-purple-500/40 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400 cursor-pointer"
+                    >
+                      {COIN_PACKAGES.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.iconEmoji} {p.name} (+{(p.coins + p.bonusCoins).toLocaleString('tr-TR')} CP • ${p.priceUSD} USD • {p.priceTRY} ₺ • {p.priceAZN} ₼)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-purple-300 font-bold mb-1">
+                      DonationAlerts'te Yazdığınız İsim / Dekont No:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Örn: Sitedeki adınız veya işlem numarası"
+                      value={donorReferenceInput}
+                      onChange={e => setDonorReferenceInput(e.target.value)}
+                      className="w-full bg-gray-950 border border-purple-500/40 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400 placeholder:text-gray-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-1">
+                  <span className="text-[10px] text-gray-400 leading-tight">
+                    💡 Yönetici DonationAlerts panelinden ödemenizi teyit ettikten sonra puanınız anında hesabınıza yüklenecektir.
+                  </span>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingNotification || !donorReferenceInput.trim()}
+                    className="w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    {isSubmittingNotification ? (
+                      <>
+                        <RotateCw size={14} className="animate-spin" />
+                        <span>İletiliyor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send size={14} />
+                        <span>Ödeme Bildirimini Gönder</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* PROMOSYON KODU KULLANIM FORMU */
+              <form onSubmit={handleRedeemPromo} className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-1">
+                  <span className="text-xs font-black text-purple-300">
+                    🎁 Hediye / Promosyon Kodu Kullan
+                  </span>
+                  <span className="text-[10px] text-gray-400">
+                    Yöneticiden veya etkinlikten aldığınız geçerli kupon kodunu giriniz.
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Promosyon Kodu (örn: HOSGELDIN)"
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value)}
+                    className="w-full sm:flex-1 px-3.5 py-2.5 bg-gray-950 border border-purple-500/40 rounded-xl text-white text-xs placeholder:text-gray-500 focus:outline-none focus:border-purple-400 uppercase font-mono tracking-wider"
+                  />
+                  <button
+                    type="submit"
+                    disabled={isRedeemingPromo || !promoCodeInput.trim()}
+                    className="w-full sm:w-auto px-6 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl transition shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    {isRedeemingPromo ? (
+                      <>
+                        <RotateCw size={14} className="animate-spin" />
+                        <span>Kontrol Ediliyor...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={14} />
+                        <span>Kodu Kullan</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       ) : (() => {

@@ -49,6 +49,82 @@ export const AdminPointsManager: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [adminTab, setAdminTab] = useState<'grant' | 'notifications'>('grant');
+  const [paymentNotifications, setPaymentNotifications] = useState<any[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [processingNotifId, setProcessingNotifId] = useState<string | null>(null);
+
+  const fetchPaymentNotifications = () => {
+    setIsLoadingNotifications(true);
+    fetch('/api/payment-notifications')
+      .then(r => r.json())
+      .then(data => {
+        setIsLoadingNotifications(false);
+        if (data && data.success && Array.isArray(data.notifications)) {
+          setPaymentNotifications(data.notifications);
+        }
+      })
+      .catch(() => setIsLoadingNotifications(false));
+  };
+
+  React.useEffect(() => {
+    fetchPaymentNotifications();
+  }, []);
+
+  const pendingNotifCount = useMemo(() => {
+    return paymentNotifications.filter(n => n.status === 'pending').length;
+  }, [paymentNotifications]);
+
+  const handleReviewNotification = async (notif: any, status: 'approved' | 'rejected') => {
+    setProcessingNotifId(notif.id);
+    try {
+      if (status === 'approved') {
+        // Automatically grant the EXACT amount of Cosmo-Points for the package
+        await grantCosmoPoints(
+          notif.user_email,
+          notif.amount_cp,
+          'add',
+          `DonationAlerts: ${notif.package_name} (#${notif.reference_code})`,
+          true
+        );
+      }
+
+      await fetch('/api/payment-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'review',
+          id: notif.id,
+          status,
+          admin_email: user?.email || 'admin'
+        })
+      });
+
+      setProcessingNotifId(null);
+      fetchPaymentNotifications();
+
+      if (status === 'approved') {
+        showToast({
+          title: 'Ödeme Onaylandı! 🎉',
+          message: `${notif.user_email} kullanıcısına ${notif.amount_cp.toLocaleString('tr-TR')} CP başarıyla yüklendi!`,
+          type: 'success'
+        });
+      } else {
+        showToast({
+          title: 'Bildirim Reddedildi ❌',
+          message: 'Ödeme bildirimi reddedildi.',
+          type: 'warning'
+        });
+      }
+    } catch (err: any) {
+      setProcessingNotifId(null);
+      showToast({
+        title: 'Hata ⚠️',
+        message: 'İşlem sırasında bir hata oluştu.',
+        type: 'warning'
+      });
+    }
+  };
 
   // Selected user preview
   const selectedUser = useMemo(() => {
@@ -238,8 +314,176 @@ export const AdminPointsManager: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {/* Tab Switcher: Manuel Puan Yükleme vs DonationAlerts Bildirimleri */}
+        <div className="flex items-center gap-3 mt-6 pt-6 border-t border-purple-500/20 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setAdminTab('grant')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'grant'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black border border-amber-300'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Zap size={16} />
+            <span>Manuel Puan Yükleme</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('notifications');
+              fetchPaymentNotifications();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'notifications'
+                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white border border-purple-400'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Coins size={16} />
+            <span>DonationAlerts Ödeme Bildirimleri</span>
+            {pendingNotifCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black animate-pulse">
+                {pendingNotifCount} Bekliyor
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
+      {adminTab === 'notifications' ? (
+        /* ===================== DONATIONALERTS ÖDEME BİLDİRİMLERİ GÖRÜNÜMÜ ===================== */
+        <div className="space-y-6">
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-800 pb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <Coins className="text-amber-400" size={20} />
+                  <span>Kullanıcı DonationAlerts Ödeme Bildirimleri</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Kullanıcıların DonationAlerts üzerinden yaptıkları bağış/ödeme taleplerini buradan inceleyip tek tıkla onaylayabilirsiniz.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPaymentNotifications}
+                disabled={isLoadingNotifications}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <RotateCcw size={13} className={isLoadingNotifications ? 'animate-spin' : ''} />
+                <span>Yenile</span>
+              </button>
+            </div>
+
+            {paymentNotifications.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-xs sm:text-sm">
+                Henüz kayıtlı bir ödeme bildirimi bulunmuyor.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="text-[11px] uppercase bg-gray-950/80 text-gray-400 border-b border-gray-800">
+                    <tr>
+                      <th className="py-3 px-3">Tarih</th>
+                      <th className="py-3 px-3">Kullanıcı (E-posta)</th>
+                      <th className="py-3 px-3">Paket & Yüklenecek CP</th>
+                      <th className="py-3 px-3">DonationAlerts İsmi / Dekont</th>
+                      <th className="py-3 px-3">Durum</th>
+                      <th className="py-3 px-3 text-right">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800/60 font-medium">
+                    {paymentNotifications.map(notif => {
+                      const isPending = notif.status === 'pending';
+                      const isApproved = notif.status === 'approved';
+                      const isRejected = notif.status === 'rejected';
+
+                      return (
+                        <tr key={notif.id} className="hover:bg-purple-950/20 transition">
+                          <td className="py-3 px-3 text-gray-400 text-[11px] whitespace-nowrap">
+                            {new Date(notif.created_at).toLocaleString('tr-TR')}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-white whitespace-nowrap">
+                            <div>{notif.user_name || notif.user_email}</div>
+                            <div className="text-[10px] text-purple-300 font-mono font-normal">{notif.user_email}</div>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="font-extrabold text-amber-300 block">
+                              {notif.package_name}
+                            </span>
+                            <span className="text-[11px] text-emerald-400 font-black">
+                              +{Number(notif.amount_cp).toLocaleString('tr-TR')} CP
+                            </span>
+                            <span className="text-[10px] text-gray-500 block">
+                              ({notif.price_text})
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="bg-black/50 border border-gray-800 px-2.5 py-1 rounded-lg text-white font-mono text-[11px] inline-block max-w-xs break-all">
+                              {notif.reference_code}
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {isPending && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                                <Clock size={11} /> Bekliyor
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Onaylandı
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-500/20 text-red-300 border border-red-500/40 inline-flex items-center gap-1">
+                                <AlertCircle size={11} /> Reddedildi
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            {isPending ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={processingNotifId === notif.id}
+                                  onClick={() => handleReviewNotification(notif, 'approved')}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title="Ödemeyi Onayla ve Kullanıcıya CP Yükle"
+                                >
+                                  <CheckCircle2 size={14} />
+                                  <span>Onayla (+{notif.amount_cp} CP)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={processingNotifId === notif.id}
+                                  onClick={() => handleReviewNotification(notif, 'rejected')}
+                                  className="px-2.5 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
+                                  title="Bildirimi Reddet"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-500">
+                                {notif.reviewed_at ? new Date(notif.reviewed_at).toLocaleDateString('tr-TR') : 'Tamamlandı'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ===================== MANUEL PUAN YÜKLEME GÖRÜNÜMÜ ===================== */
+        <div className="space-y-8">
       {/* Main Grid: Form + User Quick Picker */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         
@@ -746,6 +990,8 @@ export const AdminPointsManager: React.FC = () => {
 
       </div>
 
+    </div>
+      )}
     </div>
   );
 };
