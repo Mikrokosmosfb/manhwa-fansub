@@ -2446,6 +2446,16 @@ ${seriesXml}
           }), { headers });
         }
 
+        // Reset Claimed Donation (for unblocking test donations)
+        if (path === '/api/donationalerts/reset-claimed') {
+          const activeDb = usersDb || db;
+          if (activeDb) {
+            await activeDb.prepare("DELETE FROM donationalerts_claimed WHERE donation_id = '192716404'").run().catch(() => {});
+            return new Response(JSON.stringify({ success: true, message: 'Test donation 192716404 unblocked for claim!' }), { headers });
+          }
+          return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
         // 4. Automatic Claim & Verification (Sıfır Hileli Gerçek Tutar Kontrolü)
         if (path === '/api/donationalerts/claim-points' && request.method === 'POST') {
           const activeDb = usersDb || db;
@@ -2612,10 +2622,24 @@ ${seriesXml}
               nowIso
             ).run().catch(() => {});
 
+            // Update user_library cosmo_points in Cloudflare D1 SQL
+            await activeDb.prepare(`
+              UPDATE user_library 
+              SET cosmo_points = COALESCE(cosmo_points, 0) + ? 
+              WHERE uid = (SELECT uid FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1)
+            `).bind(matchedPkg.cp, cleanEmail).run().catch(() => {});
+
+            // Read the updated balance
+            const balRow: any = await activeDb.prepare(`
+              SELECT cosmo_points FROM user_library WHERE uid = (SELECT uid FROM users WHERE LOWER(email) = LOWER(?) LIMIT 1)
+            `).bind(cleanEmail).first().catch(() => null);
+            const newBal = balRow && balRow.cosmo_points !== undefined && balRow.cosmo_points !== null ? Number(balRow.cosmo_points) : null;
+
             return new Response(JSON.stringify({
               success: true,
               claimed: true,
               cpGranted: matchedPkg.cp,
+              newBalance: newBal,
               packageName: matchedPkg.name,
               paidAmount: matchedDonation.amount,
               paidCurrency: matchedDonation.currency,

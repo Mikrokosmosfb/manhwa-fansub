@@ -1074,10 +1074,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
         return { ...prev, coins: 999999999 };
       }
       const currentCoins = prev.coins ?? 10;
-      return {
+      const updated = {
         ...prev,
         coins: currentCoins + amount
       };
+      try { localStorage.setItem('mk_user', JSON.stringify(updated)); } catch (e) {}
+      return updated;
     });
   };
 
