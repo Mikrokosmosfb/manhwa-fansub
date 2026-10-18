@@ -336,36 +336,30 @@ export const ShopContent: React.FC = () => {
     }
   };
 
-  const handleBuyCoinPackage = async (pkg: CoinPackage) => {
+    // Kullanıcı butona bastığında doğrudan ödeme yerine önce açıklama & yönerge modalını açar
+  const handleBuyCoinPackage = (pkg: CoinPackage) => {
     if (!user) {
       openAuthModal('login');
       setStatusMessage({ type: 'error', text: 'Cosmo-Puan yüklemek için lütfen önce giriş yapın.' });
       return;
     }
+    setSelectedGuidePkg(pkg);
+  };
 
-    const totalAdded = pkg.coins + pkg.bonusCoins;
+  // Açıklama modalının altındaki butona basıldığında DonationAlerts sayfasına yönlendirir
+  const handleProceedToDonationAlerts = (pkg: CoinPackage) => {
     let rawUrl = (packageUrls || {})[pkg.id]?.trim() || pkg.lemonCheckoutUrl?.trim() || getDefaultPackageUrls()[pkg.id]?.trim() || "https://www.donationalerts.com/r/rafiga";
-    // Eski/geçersiz Lemon Squeezy linki kalmışsa kesinlikle DonationAlerts linkine zorla
     if (rawUrl.includes("lemonsqueezy.com")) {
       rawUrl = "https://www.donationalerts.com/r/rafiga";
     }
     const targetCheckoutUrl = rawUrl;
-    const isShopier = targetCheckoutUrl.includes("shopier.com");
-    const isKofi = targetCheckoutUrl.includes("ko-fi.com");
-    const isKreosus = targetCheckoutUrl.includes("kreosus.com");
-    const isLemon = false; // Lemon Squeezy reddedildiği için devre dışı bırakıldı
-    const isDonationAlerts = true;
-    // Doğrudan ödeme sayfasını yeni sekmede aç - Araya hiçbir modal / popup koyma
     window.open(targetCheckoutUrl, '_blank');
-
-    const providerName = isShopier ? 'Shopier' : isKofi ? 'Ko-fi' : isKreosus ? 'Kreosus' : 'Ödeme';
+    setSelectedGuidePkg(null);
     setStatusMessage({
       type: 'info',
-      text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için ödeme sayfası açıldı. Ödemenizi tamamladıktan sonra sipariş/dekont kodunuzu aşağıdaki alana girerek puanlarınızı aktarabilirsiniz.`
+      text: `💳 "${pkg.name}" ($${pkg.priceUSD}) için DonationAlerts ödeme sayfası açıldı. Ödemenizi tamamladıktan sonra dekont/işlem numaranızı aşağıdaki alana girerek puanlarınızı aktarabilirsiniz.`
     });
-    return;
   };
-
 
   const handleVerifyOrderCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1500,26 +1494,26 @@ export const ShopContent: React.FC = () => {
             </div>
 
             {/* Nasıl Ödenir Adımları */}
-            <div className="space-y-2 text-xs bg-gray-900/80 p-3.5 rounded-2xl border border-gray-800">
-              <div className="font-extrabold text-amber-300 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
-                <Zap size={13} className="text-amber-400" /> Nasıl Ödeyeceksiniz?
+            <div className="space-y-2.5 text-xs bg-gray-900/90 p-4 rounded-2xl border border-amber-500/30">
+              <div className="font-extrabold text-amber-300 text-xs uppercase tracking-wider flex items-center gap-2">
+                <Zap size={15} className="text-amber-400" /> DonationAlerts Sayfasında Neler Yapacaksınız?
               </div>
-              <ul className="space-y-1.5 text-gray-300 text-[11px] leading-relaxed">
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold">1.</span>
-                  <span>Aşağıdaki butona basarak DonationAlerts ödeme sayfasına gidin.</span>
+              <ul className="space-y-2.5 text-gray-200 text-xs leading-relaxed">
+                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">1</span>
+                  <span>Aşağıdaki <strong className="text-amber-300">"Ödeme Sayfasına Git (DonationAlerts)"</strong> butonuna tıklayarak ödeme penceresini açın.</span>
                 </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold">2.</span>
-                  <span><strong>Adınız</strong> kısmına kullanıcı adınızı yazın.</span>
+                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">2</span>
+                  <span>DonationAlerts'te <strong className="text-white underline">"Anonim olarak gönder"</strong> yazan yerdeki kalem ikonuna basıp yukarıda kopyaladığınız <strong className="text-amber-300">Kullanıcı Adınızı</strong> yazın.</span>
                 </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold">3.</span>
-                  <span>İstediğiniz para birimini seçip tutarı girin: <strong>${selectedGuidePkg.priceUSD} USD</strong> veya <strong>{selectedGuidePkg.priceTRY} ₺ TL</strong> veya <strong>{selectedGuidePkg.priceAZN} ₼ AZN</strong></span>
+                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">3</span>
+                  <span>Tutar alanına paketinizin fiyatını girin: <strong className="text-amber-300">${selectedGuidePkg.priceUSD} USD</strong> veya <strong className="text-amber-400">{selectedGuidePkg.priceTRY} ₺ TL</strong> veya <strong className="text-cyan-300">{selectedGuidePkg.priceAZN} ₼ AZN</strong>.</span>
                 </li>
-                <li className="flex items-start gap-1.5">
-                  <span className="text-amber-400 font-bold">4.</span>
-                  <span>Banka / Kredi kartınızla ödemenizi tamamlayın.</span>
+                <li className="flex items-start gap-2 bg-purple-950/30 p-2.5 rounded-xl border border-purple-500/20">
+                  <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-300 font-black flex items-center justify-center shrink-0 text-[11px] mt-0.5">4</span>
+                  <span>Mesaj kutusuna <strong className="text-purple-200">"{selectedGuidePkg.name}"</strong> veya kullanıcı adınızı yazıp banka/kredi kartınızla ödemenizi güvenle tamamlayın.</span>
                 </li>
               </ul>
             </div>
@@ -1532,7 +1526,7 @@ export const ShopContent: React.FC = () => {
                 className="flex-1 py-3 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-500 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ExternalLink size={16} />
-                <span>DonationAlerts Sayfasına Git</span>
+                <span>Ödeme Yap (DonationAlerts Sayfasına Git)</span>
               </button>
               <button
                 type="button"
