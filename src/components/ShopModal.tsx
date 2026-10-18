@@ -105,6 +105,7 @@ export const ShopContent: React.FC = () => {
   const [isSubmittingNotification, setIsSubmittingNotification] = useState(false);
   const [isRedeemingPromo, setIsRedeemingPromo] = useState(false);
   const [isCheckingAutoDonation, setIsCheckingAutoDonation] = useState(false);
+  const [modalDonorName, setModalDonorName] = useState('');
   const [selectedGuidePkg, setSelectedGuidePkg] = useState<CoinPackage | null>(null);
   const [copiedUname, setCopiedUname] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
@@ -350,6 +351,7 @@ export const ShopContent: React.FC = () => {
       return;
     }
     setSelectedGuidePkg(pkg);
+    setModalDonorName(user.name || (user as any).displayName || user.email?.split('@')[0] || '');
   };
 
   // Açıklama modalının altındaki butona basıldığında DonationAlerts sayfasına yönlendirir
@@ -437,7 +439,8 @@ export const ShopContent: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_email: user.email,
-          user_name: user.name || (user as any).displayName || ''
+          user_name: user.name || (user as any).displayName || '',
+          donor_name: modalDonorName.trim() || user.name || (user as any).displayName || ''
         })
       });
       const data = await res.json().catch(() => ({}));
@@ -1035,7 +1038,7 @@ export const ShopContent: React.FC = () => {
                 }`}
               >
                 <CheckCircle2 size={14} className={verifyTab === 'notification' ? 'text-amber-400' : 'text-gray-400'} />
-                <span>DonationAlerts Ödeme Bildirimi Yap</span>
+                <span>Manuel Ödeme Bildirimi (Otomatik Yüklenmediyse)</span>
               </button>
               <button
                 type="button"
@@ -1059,7 +1062,7 @@ export const ShopContent: React.FC = () => {
                     💳 DonationAlerts Bağış / Ödeme Bildirimi
                   </span>
                   <span className="text-[10px] text-gray-400">
-                    Ödemenizi yaptıktan sonra bilgilerinizi iletin, onaylanınca puanınız yüklensin.
+                    Otomatik kontrolde puanınız anında gelmediyse buradan bildirim iletin, yöneticimiz kontrol edip yükleyecektir.
                   </span>
                 </div>
 
@@ -1651,42 +1654,59 @@ export const ShopContent: React.FC = () => {
               </div>
             </div>
 
-            {/* Kullanıcı Adı */}
-            <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-2xl flex items-center justify-between gap-2">
-              <div className="overflow-hidden">
-                <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız:</span>
-                <span className="text-sm font-black text-white truncate block">
-                  {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
-                </span>
+            {/* Kullanıcı Adı & DonationAlerts'te Yazılan İsim */}
+            <div className="space-y-3 bg-purple-950/40 border border-purple-500/40 rounded-2xl p-3.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="overflow-hidden">
+                  <span className="text-[10px] text-purple-300 block font-semibold">Sitedeki Kullanıcı Adınız:</span>
+                  <span className="text-sm font-black text-white truncate block">
+                    {user?.name || (user as any)?.displayName || user?.email?.split('@')[0]}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
+                    try {
+                      await navigator.clipboard.writeText(uname);
+                      setCopiedUname(true);
+                      setTimeout(() => setCopiedUname(false), 2500);
+                    } catch (e) {}
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                    copiedUname
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
+                  }`}
+                >
+                  {copiedUname ? (
+                    <>
+                      <Check size={14} />
+                      <span>Kopyalandı!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={14} />
+                      <span>Kullanıcı Adını Kopyala</span>
+                    </>
+                  )}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  const uname = user?.name || (user as any)?.displayName || user?.email?.split('@')[0] || '';
-                  try {
-                    await navigator.clipboard.writeText(uname);
-                    setCopiedUname(true);
-                    setTimeout(() => setCopiedUname(false), 2500);
-                  } catch (e) {}
-                }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
-                  copiedUname
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-purple-900/80 hover:bg-purple-800 text-purple-200 border border-purple-400/40'
-                }`}
-              >
-                {copiedUname ? (
-                  <>
-                    <Check size={14} />
-                    <span>Kopyalandı!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy size={14} />
-                    <span>Kullanıcı Adını Kopyala</span>
-                  </>
-                )}
-              </button>
+
+              {/* DonationAlerts'te Yazılan Gönderen İsmi (KOSMOS vb. yazdıysa eşleşmesi için) */}
+              <div className="pt-2 border-t border-purple-500/20">
+                <label className="text-[11px] text-amber-300 font-extrabold flex items-center justify-between mb-1">
+                  <span>DonationAlerts'te Yazdığınız İsim:</span>
+                  <span className="text-[10px] text-gray-400 font-normal">Farklı bir şey yazdıysanız değiştirin</span>
+                </label>
+                <input
+                  type="text"
+                  value={modalDonorName}
+                  onChange={e => setModalDonorName(e.target.value)}
+                  placeholder="Örn: Sitedeki adınız veya DonationAlerts'te yazdığınız isim"
+                  className="w-full bg-gray-950 border border-amber-500/40 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-amber-400 font-bold placeholder:text-gray-500"
+                />
+              </div>
             </div>
 
             {/* Nasıl Ödenir Adımları */}

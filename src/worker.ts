@@ -2467,9 +2467,10 @@ ${seriesXml}
           `).run().catch(() => {});
 
           const body = await request.json().catch(() => ({}));
-          const { user_email, user_name } = body;
+          const { user_email, user_name, donor_name } = body;
           const cleanEmail = (user_email || '').toLowerCase().trim();
           const cleanName = (user_name || '').toLowerCase().trim();
+          const cleanDonor = (donor_name || '').toLowerCase().trim();
 
           if (!cleanEmail && !cleanName) {
             return new Response(JSON.stringify({ success: false, message: 'Kullanıcı bilgisi eksik.' }), { headers });
@@ -2561,6 +2562,7 @@ ${seriesXml}
 
               const emailNamePart = cleanEmail.split('@')[0];
               const matchesUser =
+                (cleanDonor && (dUsername === cleanDonor || dMessage.includes(cleanDonor) || dUsername.includes(cleanDonor))) ||
                 (cleanName && (dUsername === cleanName || dMessage.includes(cleanName))) ||
                 (cleanEmail && (dUsername === cleanEmail || dUsername === emailNamePart || dMessage.includes(cleanEmail) || dMessage.includes(emailNamePart)));
 
