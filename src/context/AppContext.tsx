@@ -1777,7 +1777,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }
 
     // 5. Default roles for super admins by email or recognizable creator names
-    if (cleanEmail === 'aseleliyeva77@gmail.com' || cleanName === 'aselis') return ['Kurucu', 'Yönetici'];
+    if (cleanEmail === 'aseleliyeva77@gmail.com' || cleanName === 'aselis' || cleanName === 'kosmos') return ['Kurucu', 'Yönetici'];
     if (cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanName === 'mikrokosmos fansub' || cleanName === 'mikrokosmos') return ['Kurucu', 'Admin'];
 
     return [];
