@@ -103,6 +103,7 @@ export const ShopContent: React.FC = () => {
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [isSubmittingNotification, setIsSubmittingNotification] = useState(false);
   const [isRedeemingPromo, setIsRedeemingPromo] = useState(false);
+  const [isCheckingAutoDonation, setIsCheckingAutoDonation] = useState(false);
   const [selectedGuidePkg, setSelectedGuidePkg] = useState<CoinPackage | null>(null);
   const [copiedUname, setCopiedUname] = useState(false);
   const [celebrationPurchase, setCelebrationPurchase] = useState<{
@@ -416,6 +417,57 @@ export const ShopContent: React.FC = () => {
       setStatusMessage({
         type: 'error',
         text: 'Bağlantı hatası oluştu. Lütfen internetinizi kontrol edin.'
+      });
+    }
+  };
+
+  // ⚡ DonationAlerts API Üzerinden Ödemeyi Otomatik Kontrol Et & Anında Yükle
+  const handleAutoCheckDonation = async (targetPkg?: CoinPackage | null) => {
+    if (!user) {
+      openAuthModal('login');
+      setStatusMessage({ type: 'error', text: 'Ödemeyi kontrol edebilmek için lütfen önce giriş yapın.' });
+      return;
+    }
+
+    setIsCheckingAutoDonation(true);
+    try {
+      const res = await fetch('/api/donationalerts/claim-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_email: user.email,
+          user_name: user.name || (user as any).displayName || ''
+        })
+      });
+      const data = await res.json().catch(() => ({}));
+      setIsCheckingAutoDonation(false);
+
+      if (data && data.success && data.claimed) {
+        // EXACT POINTS AWARDED ACCORDING TO REAL MONEY PAID!
+        earnPoints(data.cpGranted, `DonationAlerts Otomatik: ${data.packageName} (#${data.donationId})`);
+        triggerPurchaseConfetti();
+        setSelectedGuidePkg(null);
+        setCelebrationPurchase({
+          pkgName: data.packageName,
+          coinsEarned: data.cpGranted,
+          priceUSD: Number(data.paidAmount) || targetPkg?.priceUSD || 0,
+          orderId: data.donationId
+        });
+        setStatusMessage({
+          type: 'success',
+          text: `🎉 TEBRİKLER! DonationAlerts üzerinden ${data.paidAmount} ${data.paidCurrency} tutarındaki ödemeniz onaylandı ve hesabınıza +${data.cpGranted.toLocaleString('tr-TR')} CP tanımlandı!`
+        });
+      } else {
+        setStatusMessage({
+          type: 'info',
+          text: data.message || 'DonationAlerts üzerinde henüz yeni bir ödeme bulunamadı. Lütfen ödemenizi tamamladıktan sonra 1-2 dakika içinde tekrar butona basınız.'
+        });
+      }
+    } catch (e: any) {
+      setIsCheckingAutoDonation(false);
+      setStatusMessage({
+        type: 'error',
+        text: 'DonationAlerts sorgulanırken bir bağlantı hatası oluştu.'
       });
     }
   };
@@ -1673,10 +1725,28 @@ export const ShopContent: React.FC = () => {
               </button>
               <button
                 type="button"
+                disabled={isCheckingAutoDonation}
+                onClick={() => handleAutoCheckDonation(selectedGuidePkg)}
+                className="py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-500 to-emerald-600 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs sm:text-sm rounded-xl shadow-lg transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isCheckingAutoDonation ? (
+                  <>
+                    <RotateCw size={15} className="animate-spin" />
+                    <span>Kontrol Ediliyor...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap size={15} className="text-yellow-300" />
+                    <span>Ödememi Yaptım, Puanımı Yükle 🚀</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
                 onClick={() => setSelectedGuidePkg(null)}
                 className="px-4 py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white font-extrabold text-xs rounded-xl border border-gray-700 transition cursor-pointer"
               >
-                Vazgeç
+                Kapat
               </button>
             </div>
           </div>

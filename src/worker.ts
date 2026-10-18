@@ -2348,6 +2348,286 @@ ${seriesXml}
           return new Response(JSON.stringify({ success: false }), { headers });
         }
 
+        // DONATIONALERTS OAUTH & AUTOMATIC COIN CLAIM API
+        const DA_CLIENT_ID = "22110";
+        const DA_CLIENT_SECRET = "q1igpferTJX5fHvsidPvwXhn7Px2mZbAmF4TH1Rv";
+        const DA_REDIRECT_URI = "https://mikrokosmos.fans/api/auth/donationalerts/callback";
+
+        // 1. Connect / Authorize Redirect
+        if (path === '/api/auth/donationalerts/connect') {
+          const authUrl = `https://www.donationalerts.com/oauth/authorize?client_id=${DA_CLIENT_ID}&redirect_uri=${encodeURIComponent(DA_REDIRECT_URI)}&response_type=code&scope=oauth-donation-index%20oauth-user-show`;
+          return Response.redirect(authUrl, 302);
+        }
+
+        // 2. OAuth Callback & Token Exchange
+        if (path.startsWith('/api/auth/donationalerts/callback')) {
+          const code = url.searchParams.get('code');
+          if (!code) {
+            return new Response("Yetkilendirme kodu bulunamadı.", { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+          }
+
+          const tokenParams = new URLSearchParams();
+          tokenParams.append('grant_type', 'authorization_code');
+          tokenParams.append('client_id', DA_CLIENT_ID);
+          tokenParams.append('client_secret', DA_CLIENT_SECRET);
+          tokenParams.append('redirect_uri', DA_REDIRECT_URI);
+          tokenParams.append('code', code);
+
+          try {
+            const tokenRes = await fetch('https://www.donationalerts.com/oauth/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: tokenParams.toString()
+            });
+
+            const tokenData: any = await tokenRes.json().catch(() => ({}));
+            if (tokenData && tokenData.access_token) {
+              const activeDb = usersDb || db;
+              if (activeDb) {
+                const authRecord = {
+                  access_token: tokenData.access_token,
+                  refresh_token: tokenData.refresh_token,
+                  expires_at: Date.now() + (tokenData.expires_in || 86400) * 1000,
+                  updated_at: new Date().toISOString()
+                };
+                await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('donationalerts_auth', ?)").bind(JSON.stringify(authRecord)).run();
+              }
+
+              return new Response(`<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DonationAlerts Başarıyla Bağlandı!</title>
+  <style>
+    body { background: #0b0716; color: #fff; font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+    .card { background: #150f26; border: 2px solid #a855f7; border-radius: 28px; padding: 36px; max-width: 480px; text-align: center; box-shadow: 0 0 60px rgba(168,85,247,0.35); }
+    .icon { font-size: 54px; margin-bottom: 16px; }
+    h1 { color: #f59e0b; margin: 0 0 12px 0; font-size: 24px; font-weight: 900; }
+    p { color: #cbd5e1; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0; }
+    .btn { display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #f59e0b, #eab308); color: #000; font-weight: 900; font-size: 14px; border-radius: 16px; text-decoration: none; box-shadow: 0 4px 20px rgba(245,158,11,0.4); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⚡🎉</div>
+    <h1>DonationAlerts Başarıyla Bağlandı!</h1>
+    <p>Mikrokosmos sistemi artık DonationAlerts hesabınızla tam otomatik olarak bağlandı. Kullanıcıların yaptığı ödemeler anında tespit edilecek ve kuruşu kuruşuna Cosmo-Puan tanımlanacaktır.</p>
+    <a href="/#/magaza" class="btn">Sitemize Geri Dön 🚀</a>
+  </div>
+</body>
+</html>`, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
+            }
+            return new Response(`Yetkilendirme hatası: ${JSON.stringify(tokenData)}`, { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+          } catch (e: any) {
+            return new Response(`Sunucu hatası: ${e.message}`, { status: 500, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+          }
+        }
+
+        // 3. DonationAlerts Connection Status
+        if (path === '/api/donationalerts/status') {
+          const activeDb = usersDb || db;
+          let isConnected = false;
+          if (activeDb) {
+            const row: any = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'donationalerts_auth'").first().catch(() => null);
+            if (row && row.value) {
+              try {
+                const parsed = JSON.parse(row.value);
+                if (parsed && parsed.access_token) {
+                  isConnected = true;
+                }
+              } catch (e) {}
+            }
+          }
+          return new Response(JSON.stringify({
+            success: true,
+            connected: isConnected,
+            connect_url: `https://www.donationalerts.com/oauth/authorize?client_id=${DA_CLIENT_ID}&redirect_uri=${encodeURIComponent(DA_REDIRECT_URI)}&response_type=code&scope=oauth-donation-index%20oauth-user-show`
+          }), { headers });
+        }
+
+        // 4. Automatic Claim & Verification (Sıfır Hileli Gerçek Tutar Kontrolü)
+        if (path === '/api/donationalerts/claim-points' && request.method === 'POST') {
+          const activeDb = usersDb || db;
+          if (!activeDb) {
+            return new Response(JSON.stringify({ success: false, message: 'Veritabanı bağlantısı kurulamadı.' }), { headers });
+          }
+
+          // Ensure claimed donations table exists
+          await activeDb.prepare(`
+            CREATE TABLE IF NOT EXISTS donationalerts_claimed (
+              donation_id TEXT PRIMARY KEY,
+              user_email TEXT NOT NULL,
+              user_name TEXT,
+              amount REAL NOT NULL,
+              currency TEXT NOT NULL,
+              cp_granted INTEGER NOT NULL,
+              created_at TEXT NOT NULL
+            );
+          `).run().catch(() => {});
+
+          const body = await request.json().catch(() => ({}));
+          const { user_email, user_name } = body;
+          const cleanEmail = (user_email || '').toLowerCase().trim();
+          const cleanName = (user_name || '').toLowerCase().trim();
+
+          if (!cleanEmail && !cleanName) {
+            return new Response(JSON.stringify({ success: false, message: 'Kullanıcı bilgisi eksik.' }), { headers });
+          }
+
+          // Fetch stored token
+          const authRow: any = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'donationalerts_auth'").first().catch(() => null);
+          if (!authRow || !authRow.value) {
+            return new Response(JSON.stringify({
+              success: false,
+              not_connected: true,
+              message: 'DonationAlerts henüz yönetici tarafından bağlanmamış. Lütfen yönetici ile iletişime geçin.'
+            }), { headers });
+          }
+
+          let authData: any = JSON.parse(authRow.value);
+          let accessToken = authData.access_token;
+
+          // Auto-refresh token if expired
+          if (authData.expires_at && Date.now() > authData.expires_at - 60000 && authData.refresh_token) {
+            try {
+              const refreshParams = new URLSearchParams();
+              refreshParams.append('grant_type', 'refresh_token');
+              refreshParams.append('refresh_token', authData.refresh_token);
+              refreshParams.append('client_id', DA_CLIENT_ID);
+              refreshParams.append('client_secret', DA_CLIENT_SECRET);
+
+              const refreshRes = await fetch('https://www.donationalerts.com/oauth/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: refreshParams.toString()
+              });
+              const refreshed: any = await refreshRes.json().catch(() => ({}));
+              if (refreshed && refreshed.access_token) {
+                accessToken = refreshed.access_token;
+                authData.access_token = refreshed.access_token;
+                if (refreshed.refresh_token) authData.refresh_token = refreshed.refresh_token;
+                authData.expires_at = Date.now() + (refreshed.expires_in || 86400) * 1000;
+                await activeDb.prepare("UPDATE site_settings SET value = ? WHERE key = 'donationalerts_auth'").bind(JSON.stringify(authData)).run();
+              }
+            } catch (e) {}
+          }
+
+          // Fetch recent donations from DonationAlerts API v1
+          try {
+            const daRes = await fetch('https://www.donationalerts.com/api/v1/alerts/donations', {
+              headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            const daData: any = await daRes.json().catch(() => ({}));
+
+            if (!daData || !Array.isArray(daData.data)) {
+              return new Response(JSON.stringify({
+                success: false,
+                message: 'DonationAlerts API yanıt vermedi veya yetkilendirme yenilenmeli.'
+              }), { headers });
+            }
+
+            // Get already claimed donation IDs
+            const claimedRows: any = await activeDb.prepare("SELECT donation_id FROM donationalerts_claimed").all().catch(() => ({ results: [] }));
+            const claimedSet = new Set((claimedRows?.results || []).map((r: any) => String(r.donation_id)));
+
+            // Calculate exact CP from actual paid amount & currency (Airtight security!)
+            const calcPackage = (amount: number, currency: string) => {
+              const cur = (currency || 'USD').toUpperCase();
+              let usd = amount;
+              if (cur === 'TRY') usd = amount / 50;
+              else if (cur === 'AZN') usd = amount / 1.7;
+              else if (cur === 'RUB') usd = amount / 95;
+              else if (cur === 'EUR') usd = amount * 1.05;
+
+              // Check packages from highest to lowest
+              if (usd >= 19.5) return { cp: 14000, name: 'Efsane Altın VIP Paketi ($20)' };
+              if (usd >= 7.8) return { cp: 4000, name: 'Gümüş Kozmik Paket ($8)' };
+              if (usd >= 2.8) return { cp: 1250, name: 'Bronz Okuyucu Paketi ($3)' };
+              if (usd >= 0.95) return { cp: 300, name: 'Başlangıç Paketi ($1)' };
+              return null; // Less than 1$
+            };
+
+            // Search for an unclaimed donation matching this user's username or email
+            let matchedDonation: any = null;
+            let matchedPkg: any = null;
+
+            for (const d of daData.data) {
+              const dId = String(d.id);
+              if (claimedSet.has(dId)) continue; // Already claimed!
+
+              const dUsername = (d.username || d.name || '').toLowerCase().trim();
+              const dMessage = (d.message || '').toLowerCase().trim();
+
+              const emailNamePart = cleanEmail.split('@')[0];
+              const matchesUser =
+                (cleanName && (dUsername === cleanName || dMessage.includes(cleanName))) ||
+                (cleanEmail && (dUsername === cleanEmail || dUsername === emailNamePart || dMessage.includes(cleanEmail) || dMessage.includes(emailNamePart)));
+
+              if (matchesUser) {
+                const pkg = calcPackage(Number(d.amount), String(d.currency));
+                if (pkg) {
+                  matchedDonation = d;
+                  matchedPkg = pkg;
+                  break; // Found the latest matching unclaimed donation!
+                }
+              }
+            }
+
+            if (!matchedDonation || !matchedPkg) {
+              return new Response(JSON.stringify({
+                success: false,
+                claimed: false,
+                message: 'Henüz bu kullanıcı adına ait doğrulanmamış yeni bir bağış bulunamadı. Lütfen DonationAlerts üzerinde adınızı doğru yazdığınızdan ve ödemenin tamamlandığından emin olun.'
+              }), { headers });
+            }
+
+            // SUCCESS! Record as claimed in database so it can NEVER be reused!
+            const nowIso = new Date().toISOString();
+            await activeDb.prepare(`
+              INSERT INTO donationalerts_claimed (donation_id, user_email, user_name, amount, currency, cp_granted, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              String(matchedDonation.id),
+              cleanEmail,
+              cleanName,
+              Number(matchedDonation.amount),
+              String(matchedDonation.currency),
+              matchedPkg.cp,
+              nowIso
+            ).run();
+
+            // Record in point_grants log
+            const grantId = `da-auto-${Date.now()}`;
+            await activeDb.prepare(`
+              INSERT INTO point_grants (id, target_email, amount, mode, note, admin_email, created_at)
+              VALUES (?, ?, ?, 'add', ?, 'DonationAlerts Auto', ?)
+            `).bind(
+              grantId,
+              cleanEmail,
+              matchedPkg.cp,
+              `DonationAlerts Otomatik Yükleme: ${matchedPkg.name} (${matchedDonation.amount} ${matchedDonation.currency} - ID: #${matchedDonation.id})`,
+              nowIso
+            ).run().catch(() => {});
+
+            return new Response(JSON.stringify({
+              success: true,
+              claimed: true,
+              cpGranted: matchedPkg.cp,
+              packageName: matchedPkg.name,
+              paidAmount: matchedDonation.amount,
+              paidCurrency: matchedDonation.currency,
+              donationId: matchedDonation.id
+            }), { headers });
+
+          } catch (apiErr: any) {
+            return new Response(JSON.stringify({
+              success: false,
+              message: `DonationAlerts sorgulanırken hata oluştu: ${apiErr.message}`
+            }), { headers });
+          }
+        }
+
         // PAYMENT NOTIFICATIONS API (DonationAlerts Ödeme Bildirimleri)
         if (path.startsWith('/api/payment-notifications')) {
           const activeDb = usersDb || db;

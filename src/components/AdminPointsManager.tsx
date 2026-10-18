@@ -53,6 +53,22 @@ export const AdminPointsManager: React.FC = () => {
   const [paymentNotifications, setPaymentNotifications] = useState<any[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [processingNotifId, setProcessingNotifId] = useState<string | null>(null);
+  const [daStatus, setDaStatus] = useState<{ connected: boolean; connect_url: string } | null>(null);
+
+  const checkDaStatus = () => {
+    fetch('/api/donationalerts/status')
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.success) {
+          setDaStatus(d);
+        }
+      })
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    checkDaStatus();
+  }, []);
 
   const fetchPaymentNotifications = () => {
     setIsLoadingNotifications(true);
@@ -313,6 +329,59 @@ export const AdminPointsManager: React.FC = () => {
               {user?.email || 'aseleliyeva77@gmail.com'}
             </p>
           </div>
+        </div>
+
+        {/* DONATIONALERTS OAUTH BAĞLANTI DURUMU BİLGİ KUTUSU */}
+        <div className="mt-6 p-4 rounded-2xl bg-gray-950/80 border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
+              daStatus?.connected
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+            }`}>
+              ⚡
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-white">DonationAlerts API Otomasyonu (OAuth v1)</span>
+                {daStatus?.connected ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Aktif & Bağlı
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                    <AlertCircle size={11} /> Yetkilendirme Bekleniyor
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {daStatus?.connected
+                  ? 'Siteniz DonationAlerts hesabınıza bağlı! Kullanıcıların yaptığı ödemeler kuruşu kuruşuna tespit edilip CP anında yüklenir.'
+                  : 'Otomatik CP yükleme sisteminin çalışabilmesi için DonationAlerts hesabınızı sitemize yetkilendirmeniz gerekir.'}
+              </p>
+            </div>
+          </div>
+
+          {!daStatus?.connected ? (
+            <a
+              href="/api/auth/donationalerts/connect"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs flex items-center gap-1.5 transition shadow-lg shrink-0 cursor-pointer"
+            >
+              <Zap size={14} />
+              <span>DonationAlerts Hesabını Bağla (İzin Ver)</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={checkDaStatus}
+              className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold border border-gray-700 transition flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <RotateCcw size={12} />
+              <span>Bağlantıyı Yenile</span>
+            </button>
+          )}
         </div>
 
         {/* Tab Switcher: Manuel Puan Yükleme vs DonationAlerts Bildirimleri */}
