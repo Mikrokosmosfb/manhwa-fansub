@@ -11,7 +11,7 @@ export const SeriesListView: React.FC = () => {
   const { seriesList, setView, showNsfw, isAdminLoggedIn, user } = useApp();
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('Tümü');
-  const [selectedGenre, setSelectedGenre] = useState<string>('Tümü');
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<string>('Tümü');
   const [sortBy, setSortBy] = useState<'newest' | 'rating' | 'title' | 'chapters' | 'updated'>('newest');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
@@ -72,10 +72,14 @@ export const SeriesListView: React.FC = () => {
   const filtered = visibleSeriesList.filter(s => {
     if (selectedType !== 'Tümü' && s.type !== selectedType) return false;
     if (selectedStatus !== 'Tümü' && s.status !== selectedStatus) return false;
-    if (selectedGenre !== 'Tümü') {
-      const hasGenre = (s.genres || []).some(g => g.toLowerCase() === selectedGenre.toLowerCase());
-      const hasBadge = (s.customBadges || []).some(b => b.toLowerCase() === selectedGenre.toLowerCase());
-      if (!hasGenre && !hasBadge) return false;
+    if (selectedGenres.length > 0) {
+      const hasAll = selectedGenres.every(sg => {
+        const sgLower = sg.toLowerCase();
+        const hasGenre = (s.genres || []).some(g => g.toLowerCase() === sgLower);
+        const hasBadge = (s.customBadges || []).some(b => b.toLowerCase() === sgLower);
+        return hasGenre || hasBadge;
+      });
+      if (!hasAll) return false;
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -103,7 +107,7 @@ export const SeriesListView: React.FC = () => {
   const resetAllFilters = () => {
     setSearch('');
     setSelectedType('Tümü');
-    setSelectedGenre('Tümü');
+    setSelectedGenres([]);
     setSelectedStatus('Tümü');
     setSortBy('newest');
   };
@@ -248,38 +252,59 @@ export const SeriesListView: React.FC = () => {
 
         </div>
 
-        {/* Row 2: Genre Dropdown Select */}
+        {/* Row 2: Genre Multi-Select Dropdown */}
         {genreCounts.length > 0 && (
-          <div className="pt-2.5 border-t border-gray-800/80 flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <Filter size={14} className="text-purple-400" />
-              <span className="text-xs font-black text-purple-300">Tür & Etiket Filtresi:</span>
-            </div>
-            <div className="relative flex-1 min-w-[200px] max-w-md">
-              <select
-                value={selectedGenre}
-                onChange={e => setSelectedGenre(e.target.value)}
-                className="w-full bg-gray-950 border-2 border-purple-500/40 text-amber-300 font-black text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-amber-400 cursor-pointer shadow-lg appearance-none pr-8"
-              >
-                <option value="Tümü" className="bg-gray-950 text-white font-bold">
-                  🎯 Tüm Türler ({visibleSeriesList.length} Seri)
-                </option>
-                {genreCounts.map(g => (
-                  <option key={g.name} value={g.name} className="bg-gray-950 text-white font-bold">
-                    {g.name} ({g.count} Seri)
+          <div className="pt-2.5 border-t border-gray-800/80 space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Filter size={14} className="text-purple-400" />
+                <span className="text-xs font-black text-purple-300">Tür & Etiket Filtresi:</span>
+              </div>
+              <div className="relative flex-1 min-w-[200px] max-w-md">
+                <select
+                  value=""
+                  onChange={e => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    if (val === 'Tümü') setSelectedGenres([]);
+                    else setSelectedGenres(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
+                  }}
+                  className="w-full bg-gray-950 border-2 border-purple-500/40 text-amber-300 font-black text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-amber-400 cursor-pointer shadow-lg appearance-none pr-8"
+                >
+                  <option value="" disabled>
+                    {selectedGenres.length === 0 ? '➕ Tür/Etiket Seçin (Çoklu Seçim)' : `Seçili Türler (${selectedGenres.length} Adet)`}
                   </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+                  <option value="Tümü" className="bg-gray-950 text-white font-bold">
+                    🔄 Tüm Türleri Sıfırla
+                  </option>
+                  {genreCounts.map(g => (
+                    <option key={g.name} value={g.name} className="bg-gray-950 text-white font-bold">
+                      {selectedGenres.includes(g.name) ? `✓ ${g.name}` : g.name} (${g.count} Seri)
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+              </div>
             </div>
-            {selectedGenre !== 'Tümü' && (
-              <button
-                onClick={() => setSelectedGenre('Tümü')}
-                className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/40 px-2.5 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
-              >
-                <X size={13} />
-                <span>Filtreyi Temizle ({selectedGenre})</span>
-              </button>
+
+            {/* Selected Genres Badges Bar */}
+            {selectedGenres.length > 0 && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-[11px] font-bold text-gray-400">Seçilenler:</span>
+                {selectedGenres.map(g => (
+                  <span key={g} className="bg-purple-950/90 text-purple-200 border border-purple-500/50 px-2.5 py-0.5 rounded-xl text-xs font-extrabold flex items-center gap-1 shadow-sm">
+                    {g}
+                    <X size={13} className="cursor-pointer hover:text-white" onClick={() => setSelectedGenres(prev => prev.filter(x => x !== g))} />
+                  </span>
+                ))}
+                <button
+                  onClick={() => setSelectedGenres([])}
+                  className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/40 px-2 py-0.5 rounded-xl transition flex items-center gap-1 cursor-pointer ml-auto"
+                >
+                  <X size={12} />
+                  <span>Temizle</span>
+                </button>
+              </div>
             )}
           </div>
         )}
