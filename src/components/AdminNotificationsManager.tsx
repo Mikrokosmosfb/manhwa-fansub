@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { AppNotification, Announcement } from '../types';
 import { ImageUploadField } from './ImageUploadField';
+import { sendDeviceNotification } from '../utils/pushNotifications';
 import {
   Bell,
   Megaphone,
@@ -211,6 +212,26 @@ export const AdminNotificationsManager: React.FC = () => {
           </div>
         </div>
 
+        <button
+            type="button"
+            onClick={() => {
+              sendDeviceNotification(
+                '🔔 Mikrokosmos Test Bildirimi',
+                'Tebrikler! Telefonunuz bildirimleri başarıyla alıyor.',
+                '/pwa-192x192.png'
+              );
+              showToast({
+                title: 'Test Bildirimi Gönderildi 📱',
+                message: 'Telefonunuzun üst bildirim çubuğunu kontrol edin.',
+                type: 'bell'
+              });
+            }}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black rounded-2xl flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 cursor-pointer transition active:scale-95 shrink-0"
+          >
+            <Bell size={14} className="animate-bounce" />
+            <span>Telefona Test Bildirimi Bas</span>
+          </button>
+          
         {/* Sub-tab Navigation */}
         <div className="flex items-center bg-gray-950/80 p-1.5 rounded-2xl border border-gray-800 gap-1 self-start md:self-auto">
           <button
