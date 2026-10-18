@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { SeriesCard } from './SeriesCard';
 import { HorizontalReleaseCard } from './HorizontalReleaseCard';
-import { Library, Search, ArrowUpDown, LayoutGrid, List, Sparkles, BookOpen, Filter, X, RefreshCw } from 'lucide-react';
+import { Library, Search, ArrowUpDown, LayoutGrid, List, Sparkles, BookOpen, Filter, X, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import { Series, isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { sortSeriesByLatestRelease } from '../utils/dateUtils';
 import { GENRE_LIST } from '../data/mockData';
