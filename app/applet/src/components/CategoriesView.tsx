@@ -147,13 +147,13 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
         
         {/* Search Input Bar */}
         <div className="relative">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-purple-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Seri adı, kategori veya etiket ara..."
-            className="w-full bg-gray-950 border border-purple-500/30 rounded-xl pl-10 pr-9 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
+            className="w-full bg-gray-950 border border-purple-500/30 rounded-xl pl-10 pr-9 py-2.5 text-xs sm:text-sm text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
           />
           {searchQuery && (
             <button
@@ -165,9 +165,9 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
           )}
         </div>
 
-        {/* Format / Tür (PILL BUTTONS - NOT DROPDOWN) */}
-        <div>
-          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block mb-2">
+        {/* Format / Tür (PILL BUTTONS - NO DROPDOWN) */}
+        <div className="space-y-2">
+          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block">
             Format / Tür
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -207,9 +207,9 @@ export const CategoriesView: React.FC<CategoriesViewProps> = ({ initialGenre }) 
           </div>
         </div>
 
-        {/* Yayın Durumu (PILL BUTTONS - NOT DROPDOWN) */}
-        <div>
-          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block mb-2">
+        {/* Yayın Durumu (PILL BUTTONS - NO DROPDOWN) */}
+        <div className="space-y-2">
+          <label className="text-xs font-black text-purple-300 uppercase tracking-wider block">
             Yayın Durumu
           </label>
           <div className="flex flex-wrap gap-1.5">
