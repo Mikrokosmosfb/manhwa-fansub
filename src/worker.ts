@@ -2577,21 +2577,10 @@ ${seriesXml}
             }
 
             if (!matchedDonation || !matchedPkg) {
-              const debugList = (daData.data || []).slice(0, 10).map((d: any) => ({
-                id: d.id,
-                name: d.name,
-                username: d.username,
-                message: d.message,
-                amount: d.amount,
-                currency: d.currency,
-                created_at: d.created_at
-              }));
               return new Response(JSON.stringify({
                 success: false,
                 claimed: false,
-                message: 'Henüz bu kullanıcı adına ait doğrulanmamış yeni bir bağış bulunamadı. Lütfen DonationAlerts üzerinde adınızı doğru yazdığınızdan ve ödemenin tamamlandığından emin olun.',
-                debugRecentDonations: debugList,
-                debugUserSearched: { cleanEmail, cleanName }
+                message: 'Henüz bu kullanıcı adına ait doğrulanmamış yeni bir ödeme bulunamadı. Lütfen DonationAlerts üzerinde adınızı doğru yazdığınızdan ve ödemenin tamamlandığından emin olun.'
               }), { headers });
             }
 
