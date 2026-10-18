@@ -12,6 +12,8 @@ export const SeriesListView: React.FC = () => {
   const [search, setSearch] = useState('');
   const [selectedType, setSelectedType] = useState<string>('Tümü');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
+  const [isGenreDropdownOpen, setIsGenreDropdownOpen] = useState(false);
+  const [genreSearch, setGenreSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('Tümü');
   const [sortBy, setSortBy] = useState<'newest' | 'rating' | 'title' | 'chapters' | 'updated'>('newest');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'list'>('grid');
@@ -102,7 +104,7 @@ export const SeriesListView: React.FC = () => {
     return sortSeriesByLatestRelease(filtered);
   }, [filtered, sortBy]);
 
-  const hasActiveFilters = search || selectedType !== 'Tümü' || selectedGenre !== 'Tümü' || selectedStatus !== 'Tümü';
+  const hasActiveFilters = Boolean(search) || selectedType !== 'Tümü' || selectedGenres.length > 0 || selectedStatus !== 'Tümü';
 
   const resetAllFilters = () => {
     setSearch('');
@@ -252,66 +254,119 @@ export const SeriesListView: React.FC = () => {
 
         </div>
 
-        {/* Row 2: Genre Multi-Select Dropdown */}
+        {/* Row 2: Custom Popover Filter */}
         {genreCounts.length > 0 && (
           <div className="pt-2.5 border-t border-gray-800/80 space-y-2">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <Filter size={14} className="text-purple-400" />
-                <span className="text-xs font-black text-purple-300">Tür & Etiket Filtresi:</span>
-              </div>
-              <div className="relative flex-1 min-w-[200px] max-w-md">
-                <select
-                  value=""
-                  onChange={e => {
-                    const val = e.target.value;
-                    if (!val) return;
-                    if (val === 'Tümü') setSelectedGenres([]);
-                    else setSelectedGenres(prev => prev.includes(val) ? prev.filter(x => x !== val) : [...prev, val]);
-                  }}
-                  className="w-full bg-gray-950 border-2 border-purple-500/40 text-amber-300 font-black text-xs rounded-xl px-3.5 py-2 focus:outline-none focus:border-amber-400 cursor-pointer shadow-lg appearance-none pr-8"
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsGenreDropdownOpen(!isGenreDropdownOpen)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-black transition flex items-center gap-2 border cursor-pointer shadow-lg active:scale-95 ${
+                    selectedGenres.length > 0
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 ring-2 ring-purple-400/30'
+                      : 'bg-gray-950 text-purple-200 border-purple-500/40 hover:bg-purple-950/60'
+                  }`}
                 >
-                  <option value="" disabled>
-                    {selectedGenres.length === 0 ? '➕ Tür/Etiket Seçin (Çoklu Seçim)' : `Seçili Türler (${selectedGenres.length} Adet)`}
-                  </option>
-                  <option value="Tümü" className="bg-gray-950 text-white font-bold">
-                    🔄 Tüm Türleri Sıfırla
-                  </option>
-                  {genreCounts.map(g => (
-                    <option key={g.name} value={g.name} className="bg-gray-950 text-white font-bold">
-                      {selectedGenres.includes(g.name) ? `✓ ${g.name}` : g.name} (${g.count} Seri)
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-purple-400 font-bold text-xs">▼</div>
+                  <Filter size={15} className="text-amber-400" />
+                  <span>
+                    {selectedGenres.length === 0
+                      ? '🎨 Tür & Etiket Filtresi Aç'
+                      : `🎨 Tür Filtresi (${selectedGenres.length} Seçili)`}
+                  </span>
+                  <ChevronDown
+                    size={16}
+                    className={`transition-transform duration-300 ${isGenreDropdownOpen ? 'rotate-180 text-amber-300' : ''}`}
+                  />
+                </button>
+
+                {selectedGenres.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedGenres([])}
+                    className="text-xs font-extrabold text-rose-400 hover:text-rose-300 bg-rose-950/50 border border-rose-800/50 px-3 py-2 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <X size={14} />
+                    <span>Tümünü Sıfırla</span>
+                  </button>
+                )}
               </div>
             </div>
 
-            {/* Selected Genres Badges Bar */}
+            {/* Custom Dropdown Expanded Panel */}
+            {isGenreDropdownOpen && (
+              <div className="p-4 bg-gray-950/95 border-2 border-purple-500/40 rounded-2xl shadow-2xl space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between gap-2 border-b border-gray-800 pb-2.5">
+                  <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Tür veya etiket ara..."
+                      value={genreSearch}
+                      onChange={e => setGenreSearch(e.target.value)}
+                      className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-purple-400 font-bold"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsGenreDropdownOpen(false)}
+                    className="p-1.5 bg-gray-900 hover:bg-gray-800 text-gray-400 hover:text-white rounded-xl border border-gray-700 transition cursor-pointer shrink-0"
+                    title="Kapat"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto pr-1">
+                  {genreCounts
+                    .filter(g => g.name.toLowerCase().includes(genreSearch.toLowerCase().trim()))
+                    .map(g => {
+                      const isSelected = selectedGenres.includes(g.name);
+                      return (
+                        <button
+                          key={g.name}
+                          type="button"
+                          onClick={() => {
+                            setSelectedGenres(prev =>
+                              prev.includes(g.name) ? prev.filter(x => x !== g.name) : [...prev, g.name]
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black font-black border border-amber-300 ring-2 ring-amber-400/40'
+                              : 'bg-gray-900 text-gray-200 hover:bg-purple-950/80 border border-purple-500/20'
+                          }`}
+                        >
+                          {isSelected && <Check size={13} className="stroke-[3]" />}
+                          <span>{g.name}</span>
+                          <span className={`text-[10px] px-1.5 py-0.2 rounded-md ${
+                            isSelected ? 'bg-black/30 text-black font-black' : 'bg-black/50 text-purple-300'
+                          }`}>
+                            {g.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+
+            {/* Active Selected Badges */}
             {selectedGenres.length > 0 && (
               <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                <span className="text-[11px] font-bold text-gray-400">Seçilenler:</span>
+                <span className="text-[11px] font-bold text-gray-400">Seçilen Türler:</span>
                 {selectedGenres.map(g => (
-                  <span key={g} className="bg-purple-950/90 text-purple-200 border border-purple-500/50 px-2.5 py-0.5 rounded-xl text-xs font-extrabold flex items-center gap-1 shadow-sm">
+                  <span key={g} className="bg-amber-950/80 text-amber-300 border border-amber-500/40 px-2.5 py-1 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm">
                     {g}
                     <X size={13} className="cursor-pointer hover:text-white" onClick={() => setSelectedGenres(prev => prev.filter(x => x !== g))} />
                   </span>
                 ))}
-                <button
-                  onClick={() => setSelectedGenres([])}
-                  className="text-xs font-bold text-rose-400 hover:text-rose-300 bg-rose-950/40 border border-rose-800/40 px-2 py-0.5 rounded-xl transition flex items-center gap-1 cursor-pointer ml-auto"
-                >
-                  <X size={12} />
-                  <span>Temizle</span>
-                </button>
               </div>
             )}
           </div>
         )}
-
       </div>
-
-      {/* Results Sub-header & Active Filters Reset */}
+        {/* Results Sub-header & Active Filters Reset */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400 bg-gray-950/60 p-3 rounded-2xl border border-gray-800">
         <div className="flex items-center gap-2">
           <span>Bulunan Seri Sayısı: <strong className="text-white font-bold">{sorted.length}</strong></span>
