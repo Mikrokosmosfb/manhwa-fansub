@@ -64,6 +64,48 @@ import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
 import { ShopItem, ThemeStyle } from '../data/shopData';
 import { AdminNotificationsManager } from './AdminNotificationsManager';
 import { ImageUploadField } from './ImageUploadField';
+
+const RELEASE_DAY_PRESETS = ['Her Gün', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', '9, 19, 29', 'Düzensiz'];
+
+function toggleReleaseDayPreset(currentVal: string, clickedPreset: string): string {
+  const val = (currentVal || '').trim();
+  if (clickedPreset === 'Her Gün') {
+    return val === 'Her Gün' ? '' : 'Her Gün';
+  }
+  if (clickedPreset === 'Düzensiz') {
+    return val === 'Düzensiz' ? '' : 'Düzensiz';
+  }
+  if (clickedPreset === '9, 19, 29') {
+    return val === '9, 19, 29' ? '' : '9, 19, 29';
+  }
+  if (val === 'Her Gün' || val === 'Düzensiz' || val === '9, 19, 29') {
+    return clickedPreset;
+  }
+  const days = val ? val.split(',').map(d => d.trim()).filter(Boolean) : [];
+  if (days.includes(clickedPreset)) {
+    const filtered = days.filter(d => d !== clickedPreset);
+    return filtered.join(', ');
+  } else {
+    days.push(clickedPreset);
+    const weekOrder = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
+    days.sort((a, b) => {
+      const idxA = weekOrder.indexOf(a);
+      const idxB = weekOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      return a.localeCompare(b);
+    });
+    return days.join(', ');
+  }
+}
+
+function isReleaseDaySelected(currentVal: string, preset: string): boolean {
+  const val = (currentVal || '').trim();
+  if (val === preset) return true;
+  if (preset === 'Her Gün' || preset === 'Düzensiz' || preset === '9, 19, 29') return val === preset;
+  const days = val.split(',').map(d => d.trim());
+  return days.includes(preset);
+}
+
 import { UserAvatar } from './UserAvatar';
 import { AdminTeamManager } from './AdminTeamManager';
 import { AdminPointsManager } from './AdminPointsManager';
@@ -1959,17 +2001,24 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 onChange={e => setReleaseDay(e.target.value as Series['releaseDay'])}
                 className="w-full bg-gray-950 border border-purple-500/30 text-amber-300 font-bold rounded-xl p-3 focus:outline-none"
               />
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', '9, 19, 29', 'Düzensiz'].map(preset => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setReleaseDay(preset)}
-                    className="text-[10px] bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/30 px-2 py-0.5 rounded-lg transition"
-                  >
-                    {preset}
-                  </button>
-                ))}
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {RELEASE_DAY_PRESETS.map(preset => {
+                  const selected = isReleaseDaySelected(releaseDay || '', preset);
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setReleaseDay(toggleReleaseDayPreset(releaseDay || '', preset))}
+                      className={`text-[10px] px-2.5 py-1 rounded-lg transition font-extrabold border ${
+                        selected
+                          ? 'bg-amber-400 text-black border-amber-300 shadow-md scale-105'
+                          : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border-purple-500/30'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -3174,17 +3223,24 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     onChange={e => setEditingSeries({ ...editingSeries, releaseDay: e.target.value as Series['releaseDay'] })}
                     className="w-full bg-gray-950 border border-purple-500/30 text-amber-300 font-bold rounded-xl p-2.5 focus:outline-none"
                   />
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar', '9, 19, 29', 'Düzensiz'].map(preset => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => setEditingSeries({ ...editingSeries, releaseDay: preset })}
-                        className="text-[10px] bg-purple-950/70 hover:bg-purple-900 text-purple-200 border border-purple-500/30 px-2 py-0.5 rounded-lg transition"
-                      >
-                        {preset}
-                      </button>
-                    ))}
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {RELEASE_DAY_PRESETS.map(preset => {
+                      const selected = isReleaseDaySelected(editingSeries.releaseDay || '', preset);
+                      return (
+                        <button
+                          key={preset}
+                          type="button"
+                          onClick={() => setEditingSeries({ ...editingSeries, releaseDay: toggleReleaseDayPreset(editingSeries.releaseDay || '', preset) })}
+                          className={`text-[10px] px-2.5 py-1 rounded-lg transition font-extrabold border ${
+                            selected
+                              ? 'bg-amber-400 text-black border-amber-300 shadow-md scale-105'
+                              : 'bg-purple-950/80 hover:bg-purple-900 text-purple-200 border-purple-500/30'
+                          }`}
+                        >
+                          {preset}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

@@ -163,7 +163,7 @@ export interface Series {
   genres: string[];
   chapters: Chapter[];
   updatedAt: string;
-  releaseDay?: 'Pazartesi' | 'Salı' | 'Çarşamba' | 'Perşembe' | 'Cuma' | 'Cumartesi' | 'Pazar' | 'Düzensiz';
+  releaseDay?: string;
   releaseTime?: string; // e.g. "18:00"
   notice?: string; // Series specific admin announcement/note
 }

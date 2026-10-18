@@ -700,5 +700,7 @@ export function isMonthlyDateSeries(releaseDay?: string): boolean {
 export function doesSeriesReleaseOnDay(series: { releaseDay?: string }, targetDayName: string): boolean {
   if (!series.releaseDay) return false;
   if (isMonthlyDateSeries(series.releaseDay)) return false;
-  return series.releaseDay.trim().toLowerCase() === targetDayName.toLowerCase();
+  const lower = series.releaseDay.trim().toLowerCase();
+  if (lower === 'her gün' || lower === 'hergun' || lower === 'her gun' || lower === 'hergün') return true;
+  return lower.includes(targetDayName.toLowerCase());
 }
