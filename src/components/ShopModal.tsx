@@ -49,7 +49,8 @@ import {
   CornerDownRight,
   Copy,
   Coffee,
-  Heart
+  Heart,
+  Send
 } from 'lucide-react';
 
 
