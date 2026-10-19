@@ -536,7 +536,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
             </div>
 
             {/* Tab Switchers */}
-            <div className="flex bg-black/40 p-1 rounded-xl border border-purple-500/20 mb-5">
+            <div className="flex bg-black/40 p-1 rounded-xl border border-purple-500/20 mb-4">
               <button
                 onClick={() => {
                   setActiveTab('login');
@@ -565,6 +565,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
               >
                 Kayıt Ol
               </button>
+            </div>
+
+            {/* EYE-CATCHING IMPORTANT NOTICE BOX */}
+            <div className="mb-4 p-3.5 rounded-xl bg-gradient-to-r from-amber-950/80 via-amber-900/60 to-purple-950/80 border-2 border-amber-500/60 text-amber-100 text-xs shadow-lg shadow-amber-950/40 relative overflow-hidden group">
+              <div className="absolute -right-4 -top-4 w-16 h-16 bg-amber-500/10 rounded-full blur-xl group-hover:bg-amber-500/20 transition-all pointer-events-none" />
+              <div className="flex items-start gap-2.5 relative z-10">
+                <div className="p-1.5 rounded-lg bg-amber-500/20 border border-amber-400/40 text-amber-300 shrink-0 mt-0.5">
+                  <AlertCircle size={18} className="animate-pulse text-amber-300" />
+                </div>
+                <div className="space-y-0.5">
+                  <span className="font-black text-amber-300 text-xs block uppercase tracking-wide">
+                    Önemli Hatırlatma & Uyarı ⚠️
+                  </span>
+                  <p className="text-[11px] leading-relaxed text-amber-100/95 font-medium">
+                    Lütfen sahte mail hesabı yazmayın ve kullanıcı adınızı unutmayın. Bu sizin sitedeki kaydettiğiniz seri ve kütüphaneniz için gereklidir.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Messages */}
