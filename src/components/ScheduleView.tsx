@@ -263,7 +263,12 @@ export const ScheduleView: React.FC = () => {
               </div>
             ) : (
               selectedDaySeries.map((series, idx) => {
-                const latestChapter = series.chapters[series.chapters.length - 1] || series.chapters[0];
+                const latestChapter = series.chapters && series.chapters.length > 0
+                  ? [...series.chapters].sort((a, b) => b.number - a.number)[0]
+                  : null;
+                const latestNumber = latestChapter?.number;
+                const nextNumber = latestNumber ? latestNumber + 1 : 1;
+                const isCompleted = series.status === 'Tamamlandı';
                 const releaseTime = series.releaseTime?.trim();
 
                 return (
@@ -300,16 +305,24 @@ export const ScheduleView: React.FC = () => {
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div>
                         {/* Top Bar: Release Time + Chapter Note */}
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5 flex-wrap">
                           {releaseTime ? (
-                            <span className="inline-flex items-center gap-1 text-xs font-black bg-purple-950 text-purple-300 border border-purple-700/60 px-2.5 py-0.5 rounded-lg shadow-sm">
-                              <Clock size={12} className="text-purple-400" />
+                            <span className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-black bg-purple-950 text-purple-300 border border-purple-700/60 px-2 sm:px-2.5 py-0.5 rounded-lg shadow-sm">
+                              <Clock size={11} className="text-purple-400" />
                               {releaseTime}
                             </span>
                           ) : <span />}
-                          <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg truncate max-w-[150px]">
-                            {`Bölüm ${latestChapter?.number || 1}`}
-                          </span>
+                          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+                            <span className="text-[11px] sm:text-xs font-bold text-emerald-400 bg-emerald-950/70 border border-emerald-800/60 px-2 sm:px-2.5 py-0.5 rounded-lg shadow-sm flex items-center gap-1">
+                              <span className="text-emerald-400/80 font-normal">Son Yayınlanan:</span>
+                              <strong className="text-emerald-300">{latestNumber ? `Bölüm ${latestNumber}` : 'Bölüm 1'}</strong>
+                            </span>
+                            {!isCompleted && latestNumber && (
+                              <span className="text-[10px] sm:text-xs font-bold text-purple-200 bg-purple-950/60 border border-purple-800/50 px-1.5 sm:px-2 py-0.5 rounded-lg shadow-sm">
+                                Sıradaki: <strong className="text-purple-100">Bölüm {nextNumber}</strong>
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         {/* Title */}
@@ -470,9 +483,18 @@ export const ScheduleView: React.FC = () => {
                       </h3>
 
                       {latestChapter ? (
-                        <span className="inline-block text-[11px] bg-purple-950/80 text-purple-200 border border-purple-500/40 px-2.5 py-0.5 rounded-lg font-bold">
-                          Bölüm {latestChapter.number}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[11px] bg-emerald-950/70 text-emerald-300 border border-emerald-700/60 px-2.5 py-0.5 rounded-lg font-bold shadow-sm">
+                            <span className="text-emerald-400/80 font-normal">Son Yayınlanan:</span>
+                            <strong className="text-emerald-200">Bölüm {latestChapter.number}</strong>
+                          </span>
+                          {series.status !== 'Tamamlandı' && (
+                            <span className="inline-flex items-center gap-1 text-[10px] bg-purple-950/70 text-purple-200 border border-purple-700/50 px-2 py-0.5 rounded-lg font-bold shadow-sm">
+                              <span>Sıradaki:</span>
+                              <strong className="text-purple-100">Bölüm {latestChapter.number + 1}</strong>
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-[11px] text-gray-500">Henüz bölüm yok</span>
                       )}
