@@ -34,6 +34,7 @@ import {
   formatRemainingDuration
 } from '../utils/shopExpiration';
 import { toCanonicalUsername } from '../utils/usernameUtils';
+import { safeSetItem, safeGetItem, safeRemoveItem, purgeExpendableStorageCache } from '../utils/safeStorage';
 
 type ViewState =
   | { type: 'home' }
@@ -437,11 +438,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const toggleNsfw = (val?: boolean) => {
     setShowNsfw(prev => {
       const next = typeof val === 'boolean' ? val : !prev;
-      localStorage.setItem('mk_show_nsfw', String(next));
+      safeSetItem('mk_show_nsfw', String(next));
       if (user) {
         const updatedUser = { ...user, showNsfw: next };
         setUser(updatedUser);
-        localStorage.setItem('mk_user', JSON.stringify(updatedUser));
+        safeSetItem('mk_user', JSON.stringify(updatedUser));
       }
       return next;
     });
@@ -903,13 +904,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    localStorage.setItem('mk_shop_items', JSON.stringify(shopItems));
+    safeSetItem('mk_shop_items', JSON.stringify(shopItems));
     SHOP_ITEMS.length = 0;
     SHOP_ITEMS.push(...shopItems);
   }, [shopItems]);
 
   useEffect(() => {
-    localStorage.setItem('mk_theme_styles', JSON.stringify(themeStyles));
+    safeSetItem('mk_theme_styles', JSON.stringify(themeStyles));
     Object.keys(THEME_STYLES).forEach(k => delete THEME_STYLES[k]);
     Object.assign(THEME_STYLES, themeStyles);
   }, [themeStyles]);
@@ -2353,7 +2354,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
   // Sync theme (Permanently Dark Mode)
   useEffect(() => {
-    localStorage.setItem('mk_theme', 'dark');
+    safeSetItem('mk_theme', 'dark');
     document.documentElement.classList.add('dark');
     document.documentElement.classList.add('dark-mode');
     document.documentElement.classList.remove('light');
@@ -2378,7 +2379,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       // 1. Full-fidelity persistence into IndexedDB (supports gigabytes of data, full novel chapters, all images)
       saveSeriesToIndexedDB(seriesList).catch(() => {});
 
-      // 2. Guaranteed-safe catalog in localStorage (always kept under 500 KB so it never hits 5MB quota)
+      // 2. Guaranteed-safe catalog in localStorage (always kept minimal under ~150 KB so it never hits browser quota)
       try {
         const safeCatalog = seriesList.map(s => ({
           ...s,
@@ -2391,11 +2392,11 @@ const deleteShopItemAndStyle = (itemId: string) => {
             is18Plus: ch.is18Plus,
             notice: ch.notice,
             createdAt: ch.createdAt,
-            images: Array.isArray(ch.images) && ch.images.length > 0 ? [ch.images[0]] : [],
-            content: ch.content
+            images: Array.isArray(ch.images) && ch.images.length > 0 ? [ch.images[0]] : []
+            // Full novel contents are kept in IndexedDB and Cloudflare D1
           }))
         }));
-        localStorage.setItem('mk_series_list', JSON.stringify(safeCatalog));
+        safeSetItem('mk_series_list', JSON.stringify(safeCatalog));
       } catch (e) {
         try {
           // Minimal fallback: preserve all series and chapter numbers/titles without content
@@ -2410,7 +2411,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
               is18Plus: ch.is18Plus
             }))
           }));
-          localStorage.setItem('mk_series_list', JSON.stringify(minimalCatalog));
+          safeSetItem('mk_series_list', JSON.stringify(minimalCatalog));
         } catch {}
       }
     }, 250);
@@ -2791,14 +2792,16 @@ const deleteShopItemAndStyle = (itemId: string) => {
   }, [user?.uid]);
 
   useEffect(() => {
-    localStorage.setItem('mk_bookmarks_v2', JSON.stringify(bookmarks));
-    localStorage.setItem('mk_reading_lists', JSON.stringify(readingLists));
-    localStorage.setItem('mk_kosmospins', JSON.stringify(kosmosPins));
-    if (user?.uid) {
-      localStorage.setItem(`mk_reading_lists_${user.uid}`, JSON.stringify(readingLists));
-      localStorage.setItem(`mk_kosmospins_${user.uid}`, JSON.stringify(kosmosPins));
-    }
-    localStorage.setItem('mk_followed_series', JSON.stringify(followedSeriesIds));
+    try {
+      safeSetItem('mk_bookmarks_v2', JSON.stringify(bookmarks));
+      safeSetItem('mk_reading_lists', JSON.stringify(readingLists));
+      safeSetItem('mk_kosmospins', JSON.stringify(kosmosPins));
+      if (user?.uid) {
+        safeSetItem(`mk_reading_lists_${user.uid}`, JSON.stringify(readingLists));
+        safeSetItem(`mk_kosmospins_${user.uid}`, JSON.stringify(kosmosPins));
+      }
+      safeSetItem('mk_followed_series', JSON.stringify(followedSeriesIds));
+    } catch (e) {}
 
     if (user && user.uid && isLibraryFetchedRef.current) {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);

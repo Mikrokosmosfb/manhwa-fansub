@@ -1,6 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 
+import { purgeExpendableStorageCache } from '../utils/safeStorage';
+
 interface Props {
   children: ReactNode;
 }
@@ -17,15 +19,28 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    const isQuota =
+      error?.name === 'QuotaExceededError' ||
+      String(error?.message || error).toLowerCase().includes('quota');
+    if (isQuota) {
+      purgeExpendableStorageCache();
+    }
     return { hasError: true, error };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error caught by ErrorBoundary:', error, errorInfo);
+    const isQuota =
+      error?.name === 'QuotaExceededError' ||
+      String(error?.message || error).toLowerCase().includes('quota');
+    if (isQuota) {
+      purgeExpendableStorageCache();
+    }
   }
 
   private handleReload = () => {
-    // Clear potentially corrupted transient session data but keep user preferences
+    // Proactively clear expendable caches & session data to free up space
+    purgeExpendableStorageCache();
     try {
       sessionStorage.clear();
     } catch (e) {}
