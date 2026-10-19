@@ -308,6 +308,9 @@ const MainContent: React.FC = () => {
       <AnnouncementAlert />
 
       <div className="max-w-7xl mx-auto px-2.5 sm:px-4 space-y-6 sm:space-y-8">
+        {/* 🏆 Haftalık Yorum Şampiyonları Top 50 Önizleme Widget */}
+        <TopCommentersWidget />
+
         {/* 🔥 Bu Haftanın Sevilenleri Slider */}
         <WeeklyPopularSlider />
 
@@ -419,9 +422,6 @@ const MainContent: React.FC = () => {
           
           {/* Discord Chibi Mascot Widget */}
           <DiscordWidget />
-
-          {/* Haftalık Yorum Şampiyonları Top 50 Önizleme Widget */}
-          <TopCommentersWidget />
 
           {/* Popular Series Widget with Tabs (Haftalık, Aylık, Yıllık) */}
           <section className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl space-y-4">

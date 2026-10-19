@@ -439,28 +439,30 @@ export const TopCommentersWidget: React.FC = () => {
   ];
 
   return (
-    <div className="bg-gradient-to-br from-purple-950/80 via-gray-900/95 to-indigo-950/80 border border-purple-500/30 rounded-2xl sm:rounded-3xl p-4 shadow-xl space-y-3.5 relative overflow-hidden">
-      <div className="absolute top-0 right-0 -mt-6 -mr-6 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="bg-gradient-to-r from-purple-950/90 via-gray-950 to-indigo-950/90 border border-purple-500/30 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-2xl space-y-3.5 relative overflow-hidden">
+      <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-pink-500/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
-        <div>
-          <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-            <Trophy className="text-amber-400 animate-pulse" size={18} />
-            Haftalık Yorum Şampiyonları
+      <div className="flex items-center justify-between border-b border-purple-500/20 pb-3 relative z-10 gap-2">
+        <div className="min-w-0">
+          <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+            <Trophy className="text-amber-400 animate-bounce shrink-0" size={20} />
+            <span className="truncate">Haftalık Yorum Şampiyonları</span>
           </h3>
-          <p className="text-[10px] text-purple-200/70 font-medium">Top 50 liderliğinde ilk 3'e özel unvan rolleri</p>
+          <p className="text-xs text-purple-200/70 font-medium mt-0.5 truncate">Top 50 liderliğinde ilk 3'e özel unvan rolleri & rozetler</p>
         </div>
         <button
           onClick={() => setView({ type: 'leaderboard' })}
-          className="text-[11px] font-bold text-amber-300 hover:text-white bg-amber-950/50 hover:bg-amber-900/70 border border-amber-500/30 px-2.5 py-1 rounded-xl transition flex items-center gap-0.5 cursor-pointer shrink-0"
+          className="text-xs font-extrabold text-amber-300 hover:text-white bg-amber-950/60 hover:bg-amber-900/80 border border-amber-500/40 px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer shrink-0 shadow active:scale-95"
         >
-          Top 50 <ChevronRight size={13} />
+          <span>Top 50 Liderlik Tablosu</span>
+          <ChevronRight size={14} />
         </button>
       </div>
 
-      <div className="space-y-2 pt-0.5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3.5 relative z-10">
         {top3.length === 0 ? (
-          <div className="text-center py-4 text-xs text-gray-500">Henüz yorum verisi bulunamadı.</div>
+          <div className="col-span-full text-center py-6 text-xs text-gray-500">Henüz yorum verisi bulunamadı.</div>
         ) : (
           top3.map((item, index) => {
             const roleInfo = ROLES[index] || ROLES[2];
@@ -468,56 +470,46 @@ export const TopCommentersWidget: React.FC = () => {
               <div
                 key={item.uid}
                 onClick={() => openPublicProfile(item.uid)}
-                className="p-2.5 rounded-2xl bg-gray-950/70 hover:bg-purple-900/30 border border-purple-500/20 hover:border-purple-400/50 cursor-pointer transition flex items-center justify-between gap-2.5 group"
+                className="p-3 rounded-2xl bg-gray-950/80 hover:bg-purple-900/40 border border-purple-500/25 hover:border-purple-400/60 cursor-pointer transition flex items-center justify-between gap-3 group shadow-md"
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div className="relative shrink-0">
                     <img
-                      src={getOptimizedImageUrl(item.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Reader', { width: 36, height: 36, quality: 65 })}
+                      src={getOptimizedImageUrl(item.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Reader', { width: 44, height: 44, quality: 65 })}
                       alt={item.name}
-                      width="32"
-                      height="32"
-                      className="w-8 h-8 rounded-full object-cover border border-purple-400/40 shadow-sm"
+                      width="38"
+                      height="38"
+                      className="w-9.5 h-9.5 rounded-full object-cover border-2 border-purple-400/50 shadow-md group-hover:scale-105 transition"
                     />
-                    <span className="absolute -bottom-1 -right-1 text-xs">{roleInfo.medal}</span>
+                    <span className="absolute -bottom-1 -right-1 text-sm">{roleInfo.medal}</span>
                   </div>
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-bold text-white group-hover:text-purple-200 truncate">
+                      <span className="text-xs font-black text-white group-hover:text-purple-200 truncate">
                         {item.name}
                       </span>
-                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border backdrop-blur-md shrink-0 ${roleInfo.badgeBg}`}>
+                    </div>
+                    <div className="mt-0.5">
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border backdrop-blur-md inline-block ${roleInfo.badgeBg}`}>
                         {roleInfo.title}
                       </span>
                     </div>
-                    <span className="text-[10px] text-purple-300/80 font-medium">
-                      {roleInfo.rankText}
-                    </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="text-xs font-black text-amber-300 font-mono flex items-center gap-1">
+                  <span className="text-xs font-black text-amber-300 font-mono flex items-center justify-end gap-1">
                     <MessageSquare size={11} className="text-amber-400" />
                     {item.count}
                   </span>
-                  <span className="text-[9px] text-gray-500">yorum</span>
+                  <span className="text-[9px] text-gray-500 block">yorum</span>
                 </div>
               </div>
             );
           })
         )}
       </div>
-
-      <button
-        onClick={() => setView({ type: 'leaderboard' })}
-        className="w-full py-2 bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800/80 hover:to-indigo-800/80 border border-purple-500/30 text-purple-200 hover:text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow cursor-pointer active:scale-98"
-      >
-        <Trophy size={13} className="text-amber-400" />
-        <span>Tüm Liderlik Tablosunu Gör (Top 50)</span>
-        <ChevronRight size={13} />
-      </button>
     </div>
   );
 };
