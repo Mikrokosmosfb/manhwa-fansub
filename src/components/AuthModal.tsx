@@ -177,26 +177,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
       return;
     }
     try {
-      // Send OTP to email
-      const otpRes = await sendOtp(emailTrimmed, 'register', nameTrimmed, registerPassword);
-      if (otpRes.success) {
-        setOtpTargetEmail(emailTrimmed);
-        setOtpPendingName(nameTrimmed);
-        setOtpPendingPassword(registerPassword);
-        setOtpCountdown(60);
-        setCanResendOtp(false);
-        if (otpRes.otpCode) {
-          setOtpCodeInput(otpRes.otpCode);
-        } else {
-          setOtpCodeInput('');
-        }
-        setIsOtpStep(true);
-        setSuccessMessage(otpRes.message || `6 haneli doğrulama kodu ${emailTrimmed} adresine gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`);
+      const res = await registerWithEmail(nameTrimmed, emailTrimmed, registerPassword);
+      if (res.success) {
+        setSuccessMessage('Aramıza hoş geldiniz! Üyeliğiniz ve hesabınız başarıyla oluşturuldu.');
+        setTimeout(() => {
+          onClose();
+        }, 1200);
       } else {
-        setErrorMessage(otpRes.message || 'Doğrulama kodu gönderilemedi.');
+        setErrorMessage(res.message || 'Kayıt yapılırken bir hata oluştu.');
       }
     } catch (err: any) {
-      setErrorMessage('Doğrulama kodu gönderilirken bir hata oluştu.');
+      setErrorMessage('Kayıt işlemi sırasında bir hata oluştu.');
     } finally {
       setIsLoading(false);
     }
@@ -539,7 +530,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
                 {activeTab === 'login'
                   ? 'Tüm bölümleri sınırsız okumak ve kütüphanenizi senkronize etmek için giriş yapın.'
                   : activeTab === 'register'
-                  ? 'Şifreli ve güvenli hesabınızı oluşturun, 6 haneli kodla onaylayın.'
+                  ? 'Şifreli ve güvenli hesabınızı anında oluşturun.'
                   : 'E-posta adresinize doğrulama kodu göndererek şifrenizi güvenle yenileyin.'}
               </p>
             </div>
@@ -771,7 +762,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
                     </div>
                     <div>
                       <span className="font-extrabold text-white text-[11px] block">Fake/Bot Hesap Filtresi</span>
-                      <span className="text-[10px] text-emerald-300 font-medium">OTP 6 Haneli E-posta Koruması</span>
+                      <span className="text-[10px] text-emerald-300 font-medium">Anında Aktivasyon ve Koruma</span>
                     </div>
                   </div>
                   <span className="text-[9px] bg-emerald-950 border border-emerald-500/40 text-emerald-300 font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider">
@@ -784,7 +775,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
                   disabled={isLoading}
                   className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 rounded-xl transition duration-200 shadow-lg shadow-emerald-900/40 disabled:opacity-50 mt-2"
                 >
-                  {isLoading ? 'Doğrulama Kodu Gönderiliyor...' : 'Doğrulama Kodu Al & Kaydol'}
+                  {isLoading ? 'Hesabınız Oluşturuluyor...' : 'Hesap Oluştur ve Katıl'}
                 </button>
               </form>
             )}

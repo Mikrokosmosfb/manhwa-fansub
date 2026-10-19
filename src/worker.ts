@@ -3513,8 +3513,8 @@ ${seriesXml}
             const { name, email, password, otpCode, code } = body;
             const finalCode = otpCode || code;
 
-            if (!name || !email || !password || !finalCode) {
-              return new Response(JSON.stringify({ success: false, message: 'Lütfen kullanıcı adı, e-posta, şifre ve 6 haneli doğrulama kodunu eksiksiz doldurun.' }), { status: 400, headers });
+            if (!name || !email || !password) {
+              return new Response(JSON.stringify({ success: false, message: 'Lütfen kullanıcı adı, e-posta ve şifrenizi eksiksiz doldurun.' }), { status: 400, headers });
             }
 
             const cleanEmail = email.trim().toLowerCase();
@@ -3530,29 +3530,6 @@ ${seriesXml}
 
             if (password.length < 6) {
               return new Response(JSON.stringify({ success: false, message: 'Şifreniz en az 6 karakter uzunluğunda olmalıdır.' }), { headers });
-            }
-
-            // Verify OTP code
-            const cleanCode = String(finalCode).trim();
-            const storedOtp = OTP_STORE.get(cleanEmail);
-            let isValidCode = false;
-
-            if (storedOtp && storedOtp.code === cleanCode && Date.now() < storedOtp.expiresAt) {
-              isValidCode = true;
-            } else if (userDb) {
-              try {
-                const dbOtp = await userDb.prepare("SELECT * FROM email_verifications WHERE email = ? AND code = ?").bind(cleanEmail, cleanCode).all();
-                if (dbOtp.results && dbOtp.results.length > 0) {
-                  const row: any = dbOtp.results[0];
-                  if (row.expires_at > Date.now()) {
-                    isValidCode = true;
-                  }
-                }
-              } catch(e) {}
-            }
-
-            if (!isValidCode) {
-              return new Response(JSON.stringify({ success: false, message: 'Girdiğiniz 6 haneli doğrulama kodu hatalı veya süresi dolmuş.' }), { headers });
             }
 
             const clientIp = request.headers.get('cf-connecting-ip') || 'anon-ip';
