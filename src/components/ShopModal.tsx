@@ -761,44 +761,7 @@ export const ShopContent: React.FC = () => {
           {/* Lemon Squeezy Admin Banner & Settings (Visible ONLY to aseleliyeva77@gmail.com and mikrokosmosfansub@gmail.com) */}
           {isAuthorizedAdmin(user?.email) && (
             <>
-              {/* Multi-Provider Admin Hero Header Banner */}
-              <div className="bg-gradient-to-r from-yellow-950/90 via-amber-950/80 to-purple-950/90 border border-amber-500/50 p-4 rounded-2xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xl">⚡</span>
-                    <h3 className="text-base font-black text-white flex items-center gap-2">
-                      Cosmo-Puan Paket Ödeme Altyapısı (DonationAlerts / Kart)
-                    </h3>
-                    <span className="bg-emerald-950 border border-emerald-500/50 text-emerald-300 font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
-                      Yönetici Paneli
-                    </span>
-                  </div>
-                  <p className="text-xs text-amber-200/90 leading-relaxed max-w-xl">
-                    Kullanıcılarınız <strong className="text-white">DonationAlerts (Kredi/Banka Kartı - $ USD)</strong> üzerinden komisyonsuz ve engelsiz şekilde kolayca Cosmo-Puan satın alabilir.
-                  </p>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => setShowLemonGuide(!showLemonGuide)}
-                    className="px-3 py-1.5 bg-amber-900/60 hover:bg-amber-800/80 border border-amber-500/50 text-amber-200 text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
-                  >
-                    <HelpCircle size={14} className="text-amber-400" />
-                    <span>Ödeme Platformları Rehberi</span>
-                    {showLemonGuide ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShowLemonSettings(!showLemonSettings)}
-                    className="p-2 bg-gray-900 hover:bg-gray-800 border border-gray-700 text-gray-300 hover:text-white rounded-xl transition cursor-pointer"
-                    title="Paket Linklerini Ayarla (DonationAlerts, Shopier, Ko-fi)"
-                  >
-                    <Settings size={15} />
-                  </button>
-                </div>
-              </div>
 
               {/* Multi-Provider Payment Settings Panel */}
               {showLemonSettings && (
@@ -993,35 +956,7 @@ export const ShopContent: React.FC = () => {
             ))}
           </div>
 
-          {/* HAVALE / EFT / PAPARA DOĞRUDAN DESTEK KUTUSU */}
-          <div className="bg-gradient-to-r from-gray-900/90 via-purple-950/30 to-gray-900/90 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-xl shrink-0">
-                🏦
-              </div>
-              <div className="space-y-0.5">
-                <h5 className="font-extrabold text-white text-xs sm:text-sm flex items-center gap-2">
-                  <span>Havale / FAST / Papara İle Destek</span>
-                  <span className="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-500/30 px-2 py-0.2 rounded font-bold">Komisyonsuz</span>
-                </h5>
-                <p className="text-gray-400 text-[11px] leading-relaxed">
-                  Banka veya Papara üzerinden doğrudan destek olmak isterseniz Discord sunucumuzdan destek bileti açarak veya yöneticiye mesaj atarak bakiye yükletebilirsiniz.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setStatusMessage({
-                  type: 'info',
-                  text: '💬 Havale, FAST veya Papara ile yükleme yapmak için transfer açıklama kısmına sitedeki kullanıcı adınızı yazıp Discord sunucumuzdan bize ulaşabilirsiniz.'
-                });
-              }}
-              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-amber-300 font-extrabold text-xs rounded-xl border border-gray-700 shrink-0 transition active:scale-95 cursor-pointer"
-            >
-              Bilgi Al
-            </button>
-          </div>
+
 
           {/* GÜVENLİ ÖDEME BİLDİRİMİ VE KUPON ALANI */}
           <div className="bg-gray-900/90 border border-purple-500/40 p-4 sm:p-5 rounded-2xl space-y-4 shadow-xl">
