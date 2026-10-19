@@ -3052,8 +3052,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     // 2. Periodic background notification fetcher
     const fetchLatestNotifications = () => {
-      // Fetch global notifications from Cloudflare D1
-      safeFetchJson<{ success: boolean; globalNotifications?: any[] }>('/api/series', { cache: 'no-store' })
+      // Fetch global notifications
+      safeFetchJson<{ success: boolean; globalNotifications?: any[] }>('/api/series')
         .then(data => {
           if (data && data.success && Array.isArray(data.globalNotifications)) {
             const deletedIdsStr = localStorage.getItem('mk_deleted_notifs') || '[]';
@@ -3165,8 +3165,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
     window.addEventListener('visibilitychange', handleVisibilityOrFocus);
     window.addEventListener('focus', handleVisibilityOrFocus);
 
-    // Periodic poll every 30 seconds
-    const interval = setInterval(handleVisibilityOrFocus, 30000);
+    // Periodic poll every 3 minutes
+    const interval = setInterval(handleVisibilityOrFocus, 180000);
 
     return () => {
       window.removeEventListener('storage', handleStorage);

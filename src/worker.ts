@@ -54,6 +54,10 @@ const OTP_STORE = new Map<string, { code: string; expiresAt: number; name?: stri
 let d1SchemaInitPromise: Promise<void> | null = null;
 let cachedSeriesResponseJson: string | null = null;
 let cachedSeriesExpiresAt = 0;
+let cachedCommentsResponseJson: string | null = null;
+let cachedCommentsExpiresAt = 0;
+let cachedWallpapersResponseJson: string | null = null;
+let cachedWallpapersExpiresAt = 0;
 
 // Disposable / Fake Email domains blocklist
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
@@ -1202,163 +1206,226 @@ ${seriesXml}
               }
             }
 
-            // Priority 3: Cloudflare D1 SQL Database
-            if (db) {
-              const targetSeriesId = url.searchParams.get('seriesId');
-              if (targetSeriesId) {
-                const chRows = await db
-                  .prepare(`
-                    SELECT * FROM chapters 
-                    WHERE series_id = ? 
-                       OR series_id = (SELECT id FROM series WHERE slug = ? OR id = ?)
-                       OR series_id = (SELECT slug FROM series WHERE id = ? OR slug = ?)
-                  `)
-                  .bind(targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId)
-                  .all();
-                const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => ({
-                  id: ch.id,
-                  number: ch.chapter_number,
-                  title: ch.title,
-                  publishedDate: ch.published_date,
-                  specialTag: ch.special_tag,
-                  is18Plus: Boolean(ch.is_18_plus),
-                  images: ch.images_json ? JSON.parse(ch.images_json) : [],
-                  content: ch.content,
-                  notice: ch.notice,
-                  createdAt: ch.created_at
-                }));
-                return new Response(
-                  JSON.stringify({
-                    success: true,
-                    storage: 'D1',
-                    seriesId: targetSeriesId,
-                    chapters: seriesChapters
-                  }),
-                  { headers: { ...headers, 'Cache-Control': 'no-cache' } }
-                );
-              }
+            const targetSeriesId = url.searchParams.get('seriesId');
+            const now = Date.now();
 
-              const now = Date.now();
-              if (cachedSeriesResponseJson && now < cachedSeriesExpiresAt) {
-                return new Response(cachedSeriesResponseJson, {
-                  headers: {
-                    ...headers,
-                    'Cache-Control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=300'
-                  }
-                });
-              }
-
-              const activeDb = usersDb || db;
-              const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
-                db.prepare("SELECT * FROM series").all(),
-                db.prepare("SELECT id, series_id, chapter_number, title, published_date, special_tag, images_json, is_18_plus, content, notice, created_at FROM chapters").all(),
-                activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions', 'coin_package_urls')").all().catch(() => ({ results: [] })),
-                activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
-              ]);
-
-              const series = seriesRes?.results || [];
-              const chapters = chaptersRes?.results || [];
-
-              // Group chapters by series_id in O(N) using a Map instead of O(N*M) filter
-              const chaptersBySeries = new Map<string, any[]>();
-              for (const ch of chapters as any[]) {
-                const sid = ch.series_id;
-                let list = chaptersBySeries.get(sid);
-                if (!list) {
-                  list = [];
-                  chaptersBySeries.set(sid, list);
-                }
-                list.push({
-                  id: ch.id,
-                  number: ch.chapter_number,
-                  title: ch.title,
-                  publishedDate: ch.published_date,
-                  specialTag: ch.special_tag,
-                  is18Plus: Boolean(ch.is_18_plus),
-                  images: ch.images_json ? JSON.parse(ch.images_json) : [],
-                  content: ch.content,
-                  notice: ch.notice,
-                  createdAt: ch.created_at
-                });
-              }
-
-              const fullSeries = (series as any[]).map((s: any) => ({
-                id: s.id,
-                slug: s.slug || s.id,
-                title: s.title,
-                type: s.type,
-                coverImage: s.cover_image,
-                bannerImage: s.banner_image,
-                synopsis: s.synopsis,
-                genres: s.genres_json ? JSON.parse(s.genres_json) : [],
-                customBadges: s.custom_badges_json ? (typeof s.custom_badges_json === 'string' ? JSON.parse(s.custom_badges_json) : s.custom_badges_json) : [],
-                rating: s.rating,
-                status: s.status,
-                author: s.author,
-                artist: s.artist,
-                translator: s.translator,
-                releaseDay: s.release_day,
-                releaseTime: s.release_time,
-                releaseYear: s.release_year || s.releaseYear || undefined,
-                isHot: Boolean(s.is_hot),
-                isNew: Boolean(s.is_new),
-                isGuncel: Boolean(s.is_guncel),
-                is18Plus: Boolean(s.is_18_plus),
-                isDraft: Boolean(s.is_draft),
-                updatedAt: s.updated_at,
-                chapters: chaptersBySeries.get(s.id) || []
-              }));
-
-              let announcement = null;
-              let adSettings = null;
-              let siteBranding = null;
-              let reactions = null;
-              let coinPackageUrls = null;
-              let globalNotifications: any[] = [];
-              try {
-                const setRes = setResObj?.results || [];
-                for (const row of setRes as any[]) {
-                  if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
-                  if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
-                  if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
-                  if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
-                  if (row.key === 'coin_package_urls' && row.value) coinPackageUrls = JSON.parse(row.value);
-                }
-                const notifRes = notifResObj?.results || [];
-                globalNotifications = (notifRes as any[]).map((n: any) => ({
-                  id: n.id, title: n.title, message: n.message, type: n.type,
-                  seriesId: n.series_id, seriesTitle: n.series_title, chapterTitle: n.chapter_title,
-                  chapterNumber: n.chapter_number, coverImage: n.cover_image,
-                  targetUserId: n.target_user_id || undefined,
-                  createdAt: n.created_at
-                }));
-              } catch(e) {}
-
-              const responseBody = JSON.stringify({
-                success: true,
-                storage: 'D1',
-                data: fullSeries,
-                announcement,
-                adSettings,
-                siteBranding,
-                reactions,
-                coinPackageUrls,
-                globalNotifications
-              });
-              cachedSeriesResponseJson = responseBody;
-              cachedSeriesExpiresAt = Date.now() + 180000;
-
-              return new Response(responseBody, {
+            // FAST PATH 1: Serve full series list from in-memory Worker cache (0 D1 row reads!)
+            if (!targetSeriesId && cachedSeriesResponseJson && now < cachedSeriesExpiresAt) {
+              return new Response(cachedSeriesResponseJson, {
                 headers: {
                   ...headers,
-                  'Cache-Control': 'public, max-age=60, s-maxage=180, stale-while-revalidate=300'
+                  'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600'
                 }
               });
             }
 
+            // FAST PATH 2: Serve single series/chapter query from in-memory Worker cache if present
+            if (targetSeriesId && cachedSeriesResponseJson) {
+              try {
+                const parsedCache = JSON.parse(cachedSeriesResponseJson);
+                if (parsedCache && Array.isArray(parsedCache.data)) {
+                  const matchedSeries = parsedCache.data.find(
+                    (s: any) => s.id === targetSeriesId || s.slug === targetSeriesId
+                  );
+                  if (matchedSeries && Array.isArray(matchedSeries.chapters) && matchedSeries.chapters.length > 0) {
+                    return new Response(
+                      JSON.stringify({
+                        success: true,
+                        storage: 'Cache',
+                        seriesId: targetSeriesId,
+                        chapters: matchedSeries.chapters
+                      }),
+                      { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
+                    );
+                  }
+                }
+              } catch (eCache) {}
+            }
+
+            // Priority: Cloudflare D1 SQL Database (with Fail-Safe Try/Catch)
+            if (db) {
+              try {
+                if (targetSeriesId) {
+                  const chRows = await db
+                    .prepare(`
+                      SELECT * FROM chapters 
+                      WHERE series_id = ? 
+                         OR series_id = (SELECT id FROM series WHERE slug = ? OR id = ?)
+                         OR series_id = (SELECT slug FROM series WHERE id = ? OR slug = ?)
+                    `)
+                    .bind(targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId)
+                    .all();
+                  const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => ({
+                    id: ch.id,
+                    number: ch.chapter_number,
+                    title: ch.title,
+                    publishedDate: ch.published_date,
+                    specialTag: ch.special_tag,
+                    is18Plus: Boolean(ch.is_18_plus),
+                    images: ch.images_json ? JSON.parse(ch.images_json) : [],
+                    content: ch.content,
+                    notice: ch.notice,
+                    createdAt: ch.created_at
+                  }));
+                  return new Response(
+                    JSON.stringify({
+                      success: true,
+                      storage: 'D1',
+                      seriesId: targetSeriesId,
+                      chapters: seriesChapters
+                    }),
+                    { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
+                  );
+                }
+
+                const activeDb = usersDb || db;
+                const [seriesRes, chaptersRes, setResObj, notifResObj] = await Promise.all([
+                  db.prepare("SELECT * FROM series").all(),
+                  db.prepare("SELECT id, series_id, chapter_number, title, published_date, special_tag, images_json, is_18_plus, content, notice, created_at FROM chapters").all(),
+                  activeDb.prepare("SELECT * FROM site_settings WHERE key IN ('announcement', 'ad_settings', 'site_branding', 'reactions', 'coin_package_urls')").all().catch(() => ({ results: [] })),
+                  activeDb.prepare("SELECT * FROM global_notifications ORDER BY created_at DESC LIMIT 60").all().catch(() => ({ results: [] }))
+                ]);
+
+                const series = seriesRes?.results || [];
+                const chapters = chaptersRes?.results || [];
+
+                // Group chapters by series_id in O(N) using a Map
+                const chaptersBySeries = new Map<string, any[]>();
+                for (const ch of chapters as any[]) {
+                  const sid = ch.series_id;
+                  let list = chaptersBySeries.get(sid);
+                  if (!list) {
+                    list = [];
+                    chaptersBySeries.set(sid, list);
+                  }
+                  list.push({
+                    id: ch.id,
+                    number: ch.chapter_number,
+                    title: ch.title,
+                    publishedDate: ch.published_date,
+                    specialTag: ch.special_tag,
+                    is18Plus: Boolean(ch.is_18_plus),
+                    images: ch.images_json ? JSON.parse(ch.images_json) : [],
+                    content: ch.content,
+                    notice: ch.notice,
+                    createdAt: ch.created_at
+                  });
+                }
+
+                const fullSeries = (series as any[]).map((s: any) => ({
+                  id: s.id,
+                  slug: s.slug || s.id,
+                  title: s.title,
+                  type: s.type,
+                  coverImage: s.cover_image,
+                  bannerImage: s.banner_image,
+                  synopsis: s.synopsis,
+                  genres: s.genres_json ? JSON.parse(s.genres_json) : [],
+                  customBadges: s.custom_badges_json ? (typeof s.custom_badges_json === 'string' ? JSON.parse(s.custom_badges_json) : s.custom_badges_json) : [],
+                  rating: s.rating,
+                  status: s.status,
+                  author: s.author,
+                  artist: s.artist,
+                  translator: s.translator,
+                  releaseDay: s.release_day,
+                  releaseTime: s.release_time,
+                  releaseYear: s.release_year || s.releaseYear || undefined,
+                  isHot: Boolean(s.is_hot),
+                  isNew: Boolean(s.is_new),
+                  isGuncel: Boolean(s.is_guncel),
+                  is18Plus: Boolean(s.is_18_plus),
+                  isDraft: Boolean(s.is_draft),
+                  updatedAt: s.updated_at,
+                  chapters: chaptersBySeries.get(s.id) || []
+                }));
+
+                let announcement = null;
+                let adSettings = null;
+                let siteBranding = null;
+                let reactions = null;
+                let coinPackageUrls = null;
+                let globalNotifications: any[] = [];
+                try {
+                  const setRes = setResObj?.results || [];
+                  for (const row of setRes as any[]) {
+                    if (row.key === 'announcement' && row.value) announcement = JSON.parse(row.value);
+                    if (row.key === 'ad_settings' && row.value) adSettings = JSON.parse(row.value);
+                    if (row.key === 'site_branding' && row.value) siteBranding = JSON.parse(row.value);
+                    if (row.key === 'reactions' && row.value) reactions = JSON.parse(row.value);
+                    if (row.key === 'coin_package_urls' && row.value) coinPackageUrls = JSON.parse(row.value);
+                  }
+                  const notifRes = notifResObj?.results || [];
+                  globalNotifications = (notifRes as any[]).map((n: any) => ({
+                    id: n.id, title: n.title, message: n.message, type: n.type,
+                    seriesId: n.series_id, seriesTitle: n.series_title, chapterTitle: n.chapter_title,
+                    chapterNumber: n.chapter_number, coverImage: n.cover_image,
+                    targetUserId: n.target_user_id || undefined,
+                    createdAt: n.created_at
+                  }));
+                } catch(e) {}
+
+                const responseBody = JSON.stringify({
+                  success: true,
+                  storage: 'D1',
+                  data: fullSeries,
+                  announcement,
+                  adSettings,
+                  siteBranding,
+                  reactions,
+                  coinPackageUrls,
+                  globalNotifications
+                });
+                cachedSeriesResponseJson = responseBody;
+                cachedSeriesExpiresAt = Date.now() + 300000; // 5 mins cache
+
+                // Sync KV in background as extra backup
+                if (kv) {
+                  kv.put('data/series_full_cache.json', responseBody).catch(() => {});
+                }
+
+                return new Response(responseBody, {
+                  headers: {
+                    ...headers,
+                    'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600'
+                  }
+                });
+              } catch (d1Err: any) {
+                console.warn('D1 Query Error or Quota Blocked:', d1Err?.message);
+              }
+            }
+
+            // FALLBACK PATH: If D1 is blocked by Cloudflare daily limit, serve from stale memory or KV/R2!
+            if (cachedSeriesResponseJson) {
+              return new Response(cachedSeriesResponseJson, {
+                headers: {
+                  ...headers,
+                  'Cache-Control': 'public, max-age=60, s-maxage=180'
+                }
+              });
+            }
+
+            if (kv) {
+              try {
+                const kvCache = await kv.get('data/series_full_cache.json');
+                if (kvCache) {
+                  return new Response(kvCache, { headers });
+                }
+                const data = (await kv.get('data/series.json', 'json')) || [];
+                return new Response(JSON.stringify({ success: true, storage: 'KV', data }), { headers });
+              } catch (e: any) {}
+            }
+
+            if (r2) {
+              try {
+                const item = await r2.get('data/series.json');
+                const data = item ? await item.json() : [];
+                return new Response(JSON.stringify({ success: true, storage: 'R2', data }), { headers });
+              } catch (e: any) {}
+            }
+
             return new Response(JSON.stringify({
               success: false,
-              message: 'Cloudflare Depolama Bağlantısı Eksik (R2, KV veya D1 bağlanmalıdır)'
+              message: 'Cloudflare D1 günlük okuma limiti doldu ve önbellek bulunamadı. Lütfen daha sonra tekrar deneyiniz.'
             }), { headers });
           }
 
@@ -1767,43 +1834,59 @@ ${seriesXml}
           }
 
           if (request.method === 'GET') {
-            if (false && r2) {
-              const item = await r2.get('data/comments.json');
-              const data = item ? await item.json() : [];
-              return new Response(JSON.stringify({ success: true, storage: 'R2', data }), { headers });
-            }
-
-            if (false && kv) {
-              const data = (await kv.get('data/comments.json', 'json')) || [];
-              return new Response(JSON.stringify({ success: true, storage: 'KV', data }), { headers });
+            const now = Date.now();
+            if (cachedCommentsResponseJson && now < cachedCommentsExpiresAt) {
+              return new Response(cachedCommentsResponseJson, {
+                headers: {
+                  ...headers,
+                  'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=300'
+                }
+              });
             }
 
             if (commentsDb) {
-              const { results } = await commentsDb.prepare("SELECT * FROM comments ORDER BY created_at DESC").all();
-              const mapped = (results || []).map((c: any) => ({
-                id: c.id,
-                seriesId: c.series_id,
-                chapterId: c.chapter_id,
-                userId: c.user_id,
-                userName: c.user_name,
-                userAvatar: c.user_avatar,
-                text: c.text,
-                imageUrl: c.image_url,
-                parentId: c.parent_id,
-                isSpoiler: Boolean(c.is_spoiler),
-                likes: c.likes_json ? JSON.parse(c.likes_json) : [],
-                dislikes: c.dislikes_json ? JSON.parse(c.dislikes_json) : [],
-                date: c.created_at,
-                equippedTheme: c.equipped_theme,
-                equippedBadge: c.equipped_badge,
-                equippedBadges: c.equipped_badges_json ? JSON.parse(c.equipped_badges_json) : [],
-                equippedFrame: c.equipped_frame
-              }));
-              return new Response(JSON.stringify({
-                success: true,
-                storage: (env.COMMENTS_DB || env.COMMENTS_D1 || env.DB_COMMENTS) ? 'D1 (Ayrı Yorumlar DB)' : 'D1',
-                data: mapped
-              }), { headers });
+              try {
+                const { results } = await commentsDb.prepare("SELECT * FROM comments ORDER BY created_at DESC LIMIT 1500").all();
+                const mapped = (results || []).map((c: any) => ({
+                  id: c.id,
+                  seriesId: c.series_id,
+                  chapterId: c.chapter_id,
+                  userId: c.user_id,
+                  userName: c.user_name,
+                  userAvatar: c.user_avatar,
+                  text: c.text,
+                  imageUrl: c.image_url,
+                  parentId: c.parent_id,
+                  isSpoiler: Boolean(c.is_spoiler),
+                  likes: c.likes_json ? JSON.parse(c.likes_json) : [],
+                  dislikes: c.dislikes_json ? JSON.parse(c.dislikes_json) : [],
+                  date: c.created_at,
+                  equippedTheme: c.equipped_theme,
+                  equippedBadge: c.equipped_badge,
+                  equippedBadges: c.equipped_badges_json ? JSON.parse(c.equipped_badges_json) : [],
+                  equippedFrame: c.equipped_frame
+                }));
+                const respStr = JSON.stringify({
+                  success: true,
+                  storage: (env.COMMENTS_DB || env.COMMENTS_D1 || env.DB_COMMENTS) ? 'D1 (Ayrı Yorumlar DB)' : 'D1',
+                  data: mapped
+                });
+                cachedCommentsResponseJson = respStr;
+                cachedCommentsExpiresAt = Date.now() + 120000; // 2 min in-memory cache
+
+                return new Response(respStr, {
+                  headers: {
+                    ...headers,
+                    'Cache-Control': 'public, max-age=60, s-maxage=120, stale-while-revalidate=300'
+                  }
+                });
+              } catch (d1Err: any) {
+                console.warn('Comments D1 query failed or quota exceeded:', d1Err?.message);
+              }
+            }
+
+            if (cachedCommentsResponseJson) {
+              return new Response(cachedCommentsResponseJson, { headers });
             }
 
             return new Response(JSON.stringify({ success: true, data: [] }), { headers });
@@ -2827,6 +2910,16 @@ ${seriesXml}
           }
 
           if (request.method === 'GET') {
+            const now = Date.now();
+            if (cachedWallpapersResponseJson && now < cachedWallpapersExpiresAt) {
+              return new Response(cachedWallpapersResponseJson, {
+                headers: {
+                  ...headers,
+                  'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600'
+                }
+              });
+            }
+
             if (activeDb) {
               try {
                 const { results } = await activeDb.prepare("SELECT * FROM wallpapers ORDER BY created_at DESC LIMIT 2000").all();
@@ -2853,8 +2946,21 @@ ${seriesXml}
                     if (Array.isArray(parsed)) list = parsed;
                   }
                 }
-                return new Response(JSON.stringify({ success: true, storage: 'D1', wallpapers: list }), { headers });
+                const respStr = JSON.stringify({ success: true, storage: 'D1', wallpapers: list });
+                cachedWallpapersResponseJson = respStr;
+                cachedWallpapersExpiresAt = Date.now() + 300000; // 5 min in-memory cache
+
+                return new Response(respStr, {
+                  headers: {
+                    ...headers,
+                    'Cache-Control': 'public, max-age=120, s-maxage=300, stale-while-revalidate=600'
+                  }
+                });
               } catch (e) {}
+            }
+
+            if (cachedWallpapersResponseJson) {
+              return new Response(cachedWallpapersResponseJson, { headers });
             }
             if (r2) {
               try {
@@ -2873,6 +2979,8 @@ ${seriesXml}
           }
 
           if (request.method === 'POST') {
+            cachedWallpapersResponseJson = null;
+            cachedWallpapersExpiresAt = 0;
             const body: any = await request.json();
             const callerEmail = String(body.adminEmail || '').trim().toLowerCase();
             if (callerEmail && !ADMIN_EMAILS.has(callerEmail)) {
