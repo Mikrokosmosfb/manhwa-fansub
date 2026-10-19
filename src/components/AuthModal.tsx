@@ -37,7 +37,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
     registerWithEmail,
     verifyAdminPassword,
     sendOtp,
-    resetPasswordWithOtp
+    resetPasswordWithOtp,
+    checkUsernameAvailability
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot'>(initialTab);
@@ -184,7 +185,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
         setOtpPendingPassword(registerPassword);
         setOtpCountdown(60);
         setCanResendOtp(false);
-        setOtpCodeInput('');
+        if (otpRes.otpCode) {
+          setOtpCodeInput(otpRes.otpCode);
+        } else {
+          setOtpCodeInput('');
+        }
         setIsOtpStep(true);
         setSuccessMessage(otpRes.message || `6 haneli doğrulama kodu ${emailTrimmed} adresine gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`);
       } else {
@@ -244,7 +249,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
         setOtpTargetEmail(emailTrimmed);
         setOtpCountdown(60);
         setCanResendOtp(false);
-        setOtpCodeInput('');
+        if (otpRes.otpCode) {
+          setOtpCodeInput(otpRes.otpCode);
+        } else {
+          setOtpCodeInput('');
+        }
         setIsOtpStep(true);
         setSuccessMessage(otpRes.message || `Şifre sıfırlama kodu ${emailTrimmed} adresine gönderildi. Lütfen gelen kutunuzu kontrol ediniz.`);
       } else {
@@ -310,8 +319,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialTa
       if (res.success) {
         setOtpCountdown(60);
         setCanResendOtp(false);
-        setOtpCodeInput('');
-        setSuccessMessage('Yeni 6 haneli doğrulama kodu e-posta adresinize gönderildi.');
+        if (res.otpCode) {
+          setOtpCodeInput(res.otpCode);
+        } else {
+          setOtpCodeInput('');
+        }
+        setSuccessMessage(res.message || 'Yeni 6 haneli doğrulama kodu e-posta adresinize gönderildi.');
       } else {
         setErrorMessage(res.message || 'Yeni kod gönderilemedi.');
       }

@@ -33,6 +33,7 @@ import {
   stripExpiredEquippedFromUser,
   formatRemainingDuration
 } from '../utils/shopExpiration';
+import { toCanonicalUsername } from '../utils/usernameUtils';
 
 type ViewState =
   | { type: 'home' }
@@ -607,29 +608,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [seriesList]);
 
   // Bookmarks Map (seriesId -> BookmarkItem)
+  // Bookmarks Map (seriesId -> BookmarkItem)
   const [readingLists, setReadingListsState] = useState<import('../types').ReadingList[]>(() => {
-    const saved = localStorage.getItem('mk_reading_lists');
-    if (saved) {
-      try {
+    try {
+      const savedUser = localStorage.getItem('mk_user');
+      let uid = '';
+      if (savedUser) {
+        const p = JSON.parse(savedUser);
+        if (p && p.uid) uid = p.uid;
+      }
+      const saved = (uid ? localStorage.getItem(`mk_reading_lists_${uid}`) : null) || localStorage.getItem('mk_reading_lists');
+      if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
           return parsed.filter((l: any) => l && l.id !== '__kosmospins__');
         }
-      } catch (e) {}
-    }
+      }
+    } catch (e) {}
     return [];
   });
 
   // KosmosPin'ler (Pinned Wallpapers)
   const [kosmosPins, setKosmosPinsState] = useState<import('../types').KosmosPinItem[]>(() => {
     try {
-      const saved = localStorage.getItem('mk_kosmospins');
+      const savedUser = localStorage.getItem('mk_user');
+      let uid = '';
+      if (savedUser) {
+        const p = JSON.parse(savedUser);
+        if (p && p.uid) uid = p.uid;
+      }
+      const saved = (uid ? localStorage.getItem(`mk_kosmospins_${uid}`) : null) || localStorage.getItem('mk_kosmospins');
       if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) return parsed;
       }
       // Fallback: check if embedded inside mk_reading_lists
-      const savedLists = localStorage.getItem('mk_reading_lists');
+      const savedLists = (uid ? localStorage.getItem(`mk_reading_lists_${uid}`) : null) || localStorage.getItem('mk_reading_lists');
       if (savedLists) {
         const parsedLists = JSON.parse(savedLists);
         if (Array.isArray(parsedLists)) {
@@ -3990,7 +4004,8 @@ const deleteShopItemAndStyle = (itemId: string) => {
       if (data) {
         return {
           success: !!data.success,
-          message: data.message || `6 haneli doğrulama kodu ${email} adresinize gönderildi.`
+          message: data.message || `6 haneli doğrulama kodu ${email} adresinize gönderildi.`,
+          otpCode: data.devOtpCode || data.otpCode
         };
       }
     } catch (e) {
@@ -4312,13 +4327,22 @@ const deleteShopItemAndStyle = (itemId: string) => {
   };
 
   const logout = () => {
+    isLibraryFetchedRef.current = false;
+    if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     setUser(null);
     localStorage.removeItem('mk_user');
+    try {
+      localStorage.removeItem('mk_reading_lists_dirty');
+      localStorage.removeItem('mk_kosmospins_dirty');
+      localStorage.removeItem('mk_reading_lists');
+      localStorage.removeItem('mk_kosmospins');
+    } catch (e) {}
     setBookmarks({});
     setFollowedSeriesIds([]);
     setReadingHistory({});
     setNotifications([]);
-    setReadingLists([]);
+    setReadingListsState([]);
+    setKosmosPinsState([]);
     setView({ type: 'home' });
   };
 

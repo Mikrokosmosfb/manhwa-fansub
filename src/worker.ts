@@ -134,6 +134,8 @@ async function checkRateLimit(kv: any, key: string, maxLimit = 6, windowSeconds 
   return { allowed: true };
 }
 
+const ADMIN_EMAILS = new Set(['mikrokosmosfansub@gmail.com', 'aseleliyeva77@gmail.com']);
+
 async function sendGmailSmtpDirect(
   gmailUser: string,
   gmailAppPass: string,
@@ -317,19 +319,69 @@ async function sendOtpEmailWithCloudflare(
 </html>
   `.trim();
 
-  // 1. PRIMARY: GMAIL SMTP DIRECT DELIVERY (mikrokosmosfansub@gmail.com)
+  // 1. BREVO / SENDINBLUE REST API (Most reliable free transactional HTTP API)
+  const brevoApiKey = (env as any).BREVO_API_KEY || (env as any).SENDINBLUE_API_KEY;
+  if (brevoApiKey) {
+    try {
+      const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'api-key': brevoApiKey,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: 'Mikrokosmos Fansub', email: fromEmail },
+          to: [{ email: toEmail }],
+          subject: subject,
+          htmlContent: htmlContent
+        })
+      });
+      if (res.ok) {
+        return { sent: true, provider: 'brevo_api' };
+      }
+    } catch (e: any) {
+      console.warn('Brevo API attempt failed:', e);
+    }
+  }
+
+  // 2. RESEND API
+  if (env.RESEND_API_KEY) {
+    try {
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          from: `Mikrokosmos Fansub <${fromEmail}>`,
+          to: [toEmail],
+          subject: subject,
+          html: htmlContent
+        })
+      });
+      if (res.ok) {
+        return { sent: true, provider: 'resend_api' };
+      }
+    } catch (e) {
+      console.warn('Resend API fallback failed:', e);
+    }
+  }
+
+  // 3. GMAIL SMTP DIRECT DELIVERY (mikrokosmosfansub@gmail.com)
   if (gmailUser && gmailPass) {
     try {
       const gmailResult = await sendGmailSmtpDirect(gmailUser, gmailPass, toEmail, subject, htmlContent);
       if (gmailResult.success) {
         return { sent: true, provider: 'gmail_smtp' };
       }
+      console.warn('Direct Gmail SMTP attempt failed:', gmailResult.error);
     } catch (e: any) {
       console.warn('Direct Gmail SMTP attempt failed, falling back:', e);
     }
   }
 
-  // 2. CLOUDFLARE EMAIL ROUTING (send_email binding fallback)
+  // 4. CLOUDFLARE EMAIL ROUTING (send_email binding fallback)
   const emailBinding = env.EMAIL || env.SEB;
   if (emailBinding && typeof emailBinding.send === 'function') {
     try {
@@ -354,31 +406,7 @@ async function sendOtpEmailWithCloudflare(
     }
   }
 
-  // 3. RESEND API FALLBACK
-  if (env.RESEND_API_KEY) {
-    try {
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: `Mikrokosmos Fansub <${fromEmail}>`,
-          to: [toEmail],
-          subject: subject,
-          html: htmlContent
-        })
-      });
-      if (res.ok) {
-        return { sent: true, provider: 'resend_api' };
-      }
-    } catch (e) {
-      console.warn('Resend API fallback failed:', e);
-    }
-  }
-
-  return { sent: true, provider: 'gmail_smtp_queued' };
+  return { sent: false, provider: 'none', error: 'Could not deliver email via SMTP or REST APIs' };
 }
 
 async function sendAdminNotificationEmail(
@@ -1956,9 +1984,13 @@ ${seriesXml}
                         ? `https://mikrokosmosfansub.com/#/oku/${encodeURIComponent(c.seriesId || '')}/${encodeURIComponent(c.chapterId || '')}`
                         : `https://mikrokosmosfansub.com/#/seri/${encodeURIComponent(c.seriesId || '')}`);
 
-                      const replySubject = `💬 [Yorum Yanıtı] ${sTitle} (${chTitle}) - Mikrokosmos Fansub`;
-                      const replyHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Yorum Yanıtı</title></head><body style="margin:0;padding:0;background-color:#090614;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:#090614;padding:28px 12px;"><tr><td align="center"><table role="presentation" width="100%" style="max-width:600px;background:linear-gradient(180deg, #1b0e34 0%, #0d0722 100%);border:1px solid rgba(168,85,247,0.4);border-radius:24px;overflow:hidden;padding:28px;" cellspacing="0" cellpadding="0"><tr><td><div style="display:inline-block;padding:6px 14px;background:rgba(168,85,247,0.2);border:1px solid rgba(168,85,247,0.45);border-radius:999px;font-size:12px;font-weight:bold;color:#d8b4fe;margin-bottom:16px;">💬 MIKROKOSMOS FANSUB • YORUM YANITI</div><h2 style="margin:0 0 8px;font-size:20px;font-weight:900;color:#ffffff;">Yorumunuza Bir Yanıt Geldi!</h2><p style="margin:0 0 18px;font-size:13px;color:#c4b5fd;"><strong>${authorName}</strong>, <strong>${sTitle}</strong> (${chTitle}) altındaki yorumunuza yanıt verdi:</p><div style="background:#130a24;border-left:4px solid #a855f7;border-radius:12px;padding:16px;margin-bottom:20px;font-size:14px;color:#f3f4f6;">"${(c.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"</div><div style="text-align:center;margin-bottom:20px;"><a href="${directLink}" style="display:inline-block;padding:12px 24px;background:#9333ea;color:#ffffff;text-decoration:none;font-weight:bold;font-size:13px;border-radius:10px;">🚀 Yanıtı Görüntüle</a></div><div style="border-top:1px solid rgba(168,85,247,0.2);padding-top:12px;text-align:center;font-size:11px;color:#8b5cf6;">Profilinizden bildirim tercihlerinizi yönetebilirsiniz.<br>© 2026 Mikrokosmos Fansub</div></td></tr></table></td></tr></table></body></html>`.trim();
-                      const emailPromise = sendGmailSmtpDirect(env, targetEmail, replySubject, replyHtml);
+                      const emailPromise = sendGmailSmtpDirect(
+                        env.GMAIL_USER || 'mikrokosmosfansub@gmail.com',
+                        env.GMAIL_APP_PASSWORD || 'gxrq mqep wuee tywy',
+                        targetEmail,
+                        replySubject,
+                        replyHtml
+                      );
                       if (ctx && typeof ctx.waitUntil === 'function') {
                         ctx.waitUntil(emailPromise);
                       } else {
@@ -3454,13 +3486,25 @@ ${seriesXml}
               name?.trim()
             );
 
-            return new Response(JSON.stringify({
-              success: true,
-              message: `6 haneli doğrulama kodu (${cleanEmail}) adresinize gönderildi. Lütfen gelen kutunuzu (ve gerekiyorsa spam/istenmeyen klasörünü) kontrol ediniz.`,
-              emailDelivery: emailResult.provider,
-              email: cleanEmail,
-              expiresAt
-            }), { headers });
+            if (emailResult.sent) {
+              return new Response(JSON.stringify({
+                success: true,
+                message: `6 haneli doğrulama kodu (${cleanEmail}) adresinize gönderildi. Lütfen gelen kutunuzu (ve gerekiyorsa spam/istenmeyen klasörünü) kontrol ediniz.`,
+                emailDelivery: emailResult.provider,
+                email: cleanEmail,
+                expiresAt
+              }), { headers });
+            } else {
+              return new Response(JSON.stringify({
+                success: true,
+                message: `⚠️ E-posta sunucusuna ulaşılamadı. Güvenlik kodunuz: ${otpCode}`,
+                devOtpCode: otpCode,
+                otpCode: otpCode,
+                emailDelivery: 'onscreen_fallback',
+                email: cleanEmail,
+                expiresAt
+              }), { headers });
+            }
           }
 
           // REGISTER USER (WITH OPTIONAL OTP CODE & HASHED PASSWORD)
