@@ -48,14 +48,29 @@ export const QuickNav: React.FC = () => {
       highlight: true
     },
     {
-      title: 'Wallpaper',
-      icon: <ImageIcon className="w-3.5 h-3.5 text-pink-300" />,
-      onClick: () => setView({ type: 'wallpapers' })
+      title: 'İstek Panosu',
+      icon: <ThumbsUp className="w-3.5 h-3.5 text-fuchsia-300" />,
+      onClick: () => setView({ type: 'request-board' })
     },
     {
       title: 'Yayın Takvimi',
       icon: <Calendar className="w-3.5 h-3.5 text-amber-300" />,
       onClick: () => setView({ type: 'schedule' })
+    },
+    {
+      title: 'Geçmiş',
+      icon: <Clock className="w-3.5 h-3.5 text-purple-300" />,
+      onClick: () => setView({ type: 'history' })
+    },
+    {
+      title: 'Discord',
+      icon: <MessageSquare className="w-3.5 h-3.5 text-indigo-300" />,
+      onClick: () => window.open('https://discord.gg/5d6sseKRfs', '_blank')
+    },
+    {
+      title: 'Wallpaper',
+      icon: <ImageIcon className="w-3.5 h-3.5 text-pink-300" />,
+      onClick: () => setView({ type: 'wallpapers' })
     },
     {
       title: 'Kategoriler',
@@ -71,21 +86,6 @@ export const QuickNav: React.FC = () => {
       title: 'A-Z Liste',
       icon: <ArrowDownAZ className="w-3.5 h-3.5 text-purple-300" />,
       onClick: () => setView({ type: 'az-list' })
-    },
-    {
-      title: 'Geçmiş',
-      icon: <Clock className="w-3.5 h-3.5 text-purple-300" />,
-      onClick: () => setView({ type: 'history' })
-    },
-    {
-      title: 'İstek Panosu',
-      icon: <ThumbsUp className="w-3.5 h-3.5 text-fuchsia-300" />,
-      onClick: () => setView({ type: 'request-board' })
-    },
-    {
-      title: 'Discord',
-      icon: <MessageSquare className="w-3.5 h-3.5 text-indigo-300" />,
-      onClick: () => window.open('https://discord.gg/5d6sseKRfs', '_blank')
     },
     {
       title: 'Sosyal Medya',
