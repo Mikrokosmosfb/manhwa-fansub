@@ -3050,9 +3050,25 @@ const deleteShopItemAndStyle = (itemId: string) => {
     };
     window.addEventListener('storage', handleStorage);
 
-    // 2. Periodic background notification fetcher
-    const fetchLatestNotifications = () => {
-      // Fetch global notifications
+    // 2. Periodic background notification fetcher with 0-D1-Read Signal Architecture
+    let lastSignalId = localStorage.getItem('mk_last_signal_id') || '';
+
+    const fetchLatestNotifications = async () => {
+      try {
+        // Fast 0-D1-Read Signal Check
+        const sigRes = await safeFetchJson<{ success: boolean; signal?: { timestamp: number; latestId: string } }>('/api/notifications/signal');
+        if (sigRes && sigRes.success && sigRes.signal) {
+          const currentSigId = `${sigRes.signal.latestId}_${sigRes.signal.timestamp}`;
+          // If signal hasn't changed since last check, return immediately (0 D1 reads!)
+          if (lastSignalId && lastSignalId === currentSigId) {
+            return;
+          }
+          lastSignalId = currentSigId;
+          try { localStorage.setItem('mk_last_signal_id', currentSigId); } catch(e){}
+        }
+      } catch (eSig) {}
+
+      // A new notification signal was detected: pull updated global notifications
       safeFetchJson<{ success: boolean; globalNotifications?: any[] }>('/api/series')
         .then(data => {
           if (data && data.success && Array.isArray(data.globalNotifications)) {

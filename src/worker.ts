@@ -59,6 +59,22 @@ let cachedCommentsExpiresAt = 0;
 let cachedWallpapersResponseJson: string | null = null;
 let cachedWallpapersExpiresAt = 0;
 
+let latestNotificationSignal = {
+  timestamp: Date.now(),
+  latestId: 'init-' + Date.now(),
+  count: 1
+};
+
+function triggerNotificationSignal(id?: string) {
+  latestNotificationSignal = {
+    timestamp: Date.now(),
+    latestId: id || 'notif-' + Date.now(),
+    count: (latestNotificationSignal.count || 0) + 1
+  };
+  cachedSeriesResponseJson = null;
+  cachedSeriesExpiresAt = 0;
+}
+
 // Disposable / Fake Email domains blocklist
 const DISPOSABLE_EMAIL_DOMAINS = new Set([
   'tempmail.com', '10minutemail.com', 'mailinator.com', 'guerrillamail.com',
@@ -1182,6 +1198,19 @@ ${seriesXml}
           return new Response(JSON.stringify({ success: false, message: 'D1 not bound' }), { headers });
         }
 
+        // LIGHTWEIGHT NOTIFICATION SIGNAL API (0 D1 Reads!)
+        if (path.startsWith('/api/notifications/signal')) {
+          return new Response(JSON.stringify({
+            success: true,
+            signal: latestNotificationSignal
+          }), {
+            headers: {
+              ...headers,
+              'Cache-Control': 'public, max-age=10, s-maxage=20'
+            }
+          });
+        }
+
         // SERIES API
         if (path.startsWith('/api/series')) {
           if (request.method === 'GET') {
@@ -1430,8 +1459,7 @@ ${seriesXml}
           }
 
           if (request.method === 'POST') {
-            cachedSeriesResponseJson = null;
-            cachedSeriesExpiresAt = 0;
+            triggerNotificationSignal();
             const body: any = await request.json();
             const seriesListInput = Array.isArray(body.seriesList)
               ? body.seriesList
@@ -2378,8 +2406,7 @@ ${seriesXml}
               `).bind(
                 n.id, n.title, n.message, n.type, n.seriesId || null, n.seriesTitle || null, n.chapterTitle || null, n.chapterNumber || null, n.coverImage || null, n.createdAt || new Date().toISOString()
               ).run();
-              cachedSeriesResponseJson = null;
-              cachedSeriesExpiresAt = 0;
+              triggerNotificationSignal(n.id);
               return new Response(JSON.stringify({ success: true }), { headers });
             }
           }
