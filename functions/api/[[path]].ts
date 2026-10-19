@@ -238,11 +238,33 @@ export async function onRequest(context: any) {
     // SERIES API
     
     if (path.startsWith('/api/auth/library')) {
+      const activeDb = env.USERS_DB || env.DB || env.mikrokosmos_db || env.D1;
       if (request.method === 'GET') {
         const url = new URL(request.url);
         const uid = url.searchParams.get('uid');
-        if (!uid || !db) return new Response(JSON.stringify({ success: false }), { status: 400, headers });
-        const user = await db.prepare("SELECT * FROM users WHERE uid = ?").bind(uid).first();
+        if (!uid || !activeDb) return new Response(JSON.stringify({ success: false }), { status: 400, headers });
+        
+        try {
+          const libRow = await activeDb.prepare("SELECT * FROM user_library WHERE uid = ?").bind(uid).first().catch(() => null);
+          if (libRow) {
+            return new Response(JSON.stringify({
+              success: true,
+              bookmarks: libRow.bookmarks || '{}',
+              followed_series: libRow.followed_series || '[]',
+              reading_history: libRow.reading_history || '{}',
+              reading_lists: libRow.reading_lists || '[]',
+              notifications: libRow.notifications || '[]',
+              cosmo_points: libRow.cosmo_points || 0,
+              shop_items: libRow.shop_items || '[]',
+              equipped_theme: libRow.equipped_theme || null,
+              equipped_badge: libRow.equipped_badge || null,
+              equipped_badges: libRow.equipped_badges || '[]',
+              equipped_frame: libRow.equipped_frame || null
+            }), { headers });
+          }
+        } catch (eLib) {}
+
+        const user = await activeDb.prepare("SELECT * FROM users WHERE uid = ?").bind(uid).first().catch(() => null);
         if (!user) return new Response(JSON.stringify({ success: false }), { status: 404, headers });
         return new Response(JSON.stringify({
           success: true,
@@ -260,12 +282,14 @@ export async function onRequest(context: any) {
         }), { headers });
       }
       if (request.method === 'POST') {
-        if (!db) return new Response(JSON.stringify({ success: false }), { status: 500, headers });
+        if (!activeDb) return new Response(JSON.stringify({ success: false }), { status: 500, headers });
         const body = await request.json();
-        const existingUser: any = await db.prepare("SELECT * FROM users WHERE uid = ?").bind(body.uid).first().catch(() => null);
-        let finalShop = body.shop_items !== undefined ? body.shop_items : (existingUser?.inventory_json || '[]');
+        const existingLib: any = await activeDb.prepare("SELECT * FROM user_library WHERE uid = ?").bind(body.uid).first().catch(() => null);
+        const userRow: any = await activeDb.prepare("SELECT name, email FROM users WHERE uid = ?").bind(body.uid).first().catch(() => null);
+        
+        let finalShop = body.shop_items !== undefined ? body.shop_items : (existingLib?.shop_items || '[]');
         try {
-          const existingArr = JSON.parse(existingUser?.inventory_json || '[]');
+          const existingArr = JSON.parse(existingLib?.shop_items || '[]');
           const incomingArr = body.shop_items !== undefined
             ? (typeof body.shop_items === 'string' ? JSON.parse(body.shop_items) : body.shop_items)
             : [];
@@ -311,26 +335,86 @@ export async function onRequest(context: any) {
             ]);
           }
         } catch (e) {}
-        await db.prepare(`
-          UPDATE users SET 
-            bookmarks_json = ?, followed_series_json = ?, reading_history_json = ?, reading_lists_json = ?,
-            notifications_json = ?, cosmo_points = ?, inventory_json = ?, 
-            equipped_theme = ?, equipped_badge = ?, equipped_badges_json = ?, equipped_frame = ?, updated_at = ?
-          WHERE uid = ?
-        `).bind(
-          body.bookmarks !== undefined ? body.bookmarks : (existingUser?.bookmarks_json || '{}'),
-          body.followed_series !== undefined ? body.followed_series : (existingUser?.followed_series_json || '[]'),
-          body.reading_history !== undefined ? body.reading_history : (existingUser?.reading_history_json || '{}'),
-          body.reading_lists !== undefined ? body.reading_lists : (existingUser?.reading_lists_json || '[]'),
-          body.notifications !== undefined ? body.notifications : (existingUser?.notifications_json || '[]'),
-          body.cosmo_points !== undefined ? body.cosmo_points : (existingUser?.cosmo_points || 0),
-          finalShop,
-          body.equipped_theme !== undefined ? body.equipped_theme : (existingUser?.equipped_theme || null),
-          body.equipped_badge !== undefined ? body.equipped_badge : (existingUser?.equipped_badge || null),
-          body.equipped_badges !== undefined ? body.equipped_badges : (existingUser?.equipped_badges_json || '[]'),
-          body.equipped_frame !== undefined ? body.equipped_frame : (existingUser?.equipped_frame || null),
-          new Date().toLocaleString('tr-TR'), body.uid
-        ).run();
+
+        const finalFollowed = body.followed_series !== undefined ? body.followed_series : (existingLib?.followed_series || '[]');
+        const finalBookmarks = body.bookmarks !== undefined ? body.bookmarks : (existingLib?.bookmarks || '{}');
+        const finalHistory = body.reading_history !== undefined ? body.reading_history : (existingLib?.reading_history || '{}');
+        const finalReadingLists = body.reading_lists !== undefined
+          ? (typeof body.reading_lists === 'string' ? body.reading_lists : JSON.stringify(body.reading_lists))
+          : (existingLib?.reading_lists || '[]');
+        const finalNotifs = body.notifications !== undefined ? body.notifications : (existingLib?.notifications || '[]');
+        const finalPoints = body.cosmo_points !== undefined ? Number(body.cosmo_points) : (existingLib?.cosmo_points || 0);
+        const finalTheme = body.equipped_theme !== undefined ? body.equipped_theme : (existingLib?.equipped_theme || null);
+        const finalBadge = body.equipped_badge !== undefined ? body.equipped_badge : (existingLib?.equipped_badge || null);
+        const finalBadges = body.equipped_badges !== undefined ? body.equipped_badges : (existingLib?.equipped_badges || '[]');
+        const finalFrame = body.equipped_frame !== undefined ? body.equipped_frame : (existingLib?.equipped_frame || '');
+
+        const doSaveLib = async () => {
+          await activeDb.prepare(`
+            INSERT INTO user_library (uid, name, email, followed_series, bookmarks, reading_history, notifications, cosmo_points, shop_items, equipped_theme, equipped_badge, equipped_badges, equipped_frame, reading_lists)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(uid) DO UPDATE SET
+            name = excluded.name,
+            email = excluded.email,
+            followed_series = excluded.followed_series,
+            bookmarks = excluded.bookmarks,
+            reading_history = excluded.reading_history,
+            notifications = excluded.notifications,
+            cosmo_points = excluded.cosmo_points,
+            shop_items = excluded.shop_items,
+            equipped_theme = excluded.equipped_theme,
+            equipped_badge = excluded.equipped_badge,
+            equipped_badges = excluded.equipped_badges,
+            equipped_frame = excluded.equipped_frame,
+            reading_lists = excluded.reading_lists
+          `).bind(
+            body.uid,
+            userRow?.name ?? existingLib?.name ?? null,
+            userRow?.email ?? existingLib?.email ?? null,
+            finalFollowed,
+            finalBookmarks,
+            finalHistory,
+            finalNotifs,
+            finalPoints,
+            finalShop,
+            finalTheme,
+            finalBadge,
+            finalBadges,
+            finalFrame,
+            finalReadingLists
+          ).run();
+        };
+
+        try {
+          await doSaveLib();
+        } catch (errLib) {
+          try {
+            await activeDb.prepare(`
+              CREATE TABLE IF NOT EXISTS user_library (
+                uid TEXT PRIMARY KEY,
+                name TEXT,
+                email TEXT,
+                followed_series TEXT,
+                bookmarks TEXT,
+                reading_history TEXT,
+                notifications TEXT,
+                cosmo_points INTEGER DEFAULT 0,
+                shop_items TEXT,
+                equipped_theme TEXT,
+                equipped_badge TEXT,
+                equipped_badges TEXT,
+                equipped_frame TEXT,
+                reading_lists TEXT,
+                daily_checkin_day INTEGER DEFAULT 0,
+                last_daily_checkin TEXT,
+                claimed_checkin_days TEXT DEFAULT '[]'
+              );
+            `).run().catch(() => {});
+            await activeDb.prepare(`ALTER TABLE user_library ADD COLUMN reading_lists TEXT DEFAULT '[]'`).run().catch(() => {});
+            await doSaveLib();
+          } catch (eRetry) {}
+        }
+
         return new Response(JSON.stringify({ success: true }), { headers });
       }
     }

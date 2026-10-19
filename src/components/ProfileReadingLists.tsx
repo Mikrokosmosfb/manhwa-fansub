@@ -430,7 +430,7 @@ export const ProfileReadingLists: React.FC<{
           <div className="space-y-6">
             {listsToDisplay.map(list => {
               const listSeries = (list.seriesIds || [])
-                .map(id => seriesList.find(s => s.id === id))
+                .map(id => seriesList.find(s => String(s.id).trim() === String(id).trim() || (s.slug && String(s.slug).trim() === String(id).trim())))
                 .filter(Boolean) as Series[];
 
               return (

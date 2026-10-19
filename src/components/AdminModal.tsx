@@ -151,6 +151,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     comments,
     notifications,
     sendChapterNotification,
+    showToast,
     isAdminLoggedIn,
     verifyAdminPassword,
     changeAdminPassword,
@@ -1346,11 +1347,22 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       .catch(() => {});
   };
 
-  const handleSaveChapterEdit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveChapterEdit = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (!editingChapterSeriesId || !editingChapter) return;
     const targetSeries = seriesList.find(s => s.id === editingChapterSeriesId);
     if (!targetSeries) return;
+
+    if (!editingChapter.title || !editingChapter.title.trim()) {
+      showToast({
+        title: 'Eksik Bilgi',
+        message: 'Lütfen bölüm başlığı giriniz.',
+        type: 'series'
+      });
+      return;
+    }
 
     const extractedImages = extractImageUrls(editingChapterImagesText);
     const parsedImages = extractedImages.length > 0 ? extractedImages : undefined;
@@ -1382,9 +1394,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     addOrUpdateSeries(
       {
         ...targetSeries,
-        releaseTime: editingSeries.releaseTime?.trim() || undefined,
-      releaseDay: editingSeries.releaseDay?.trim() || undefined,
-      updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
         chapters: updatedChapters
       },
       {
@@ -1394,7 +1404,18 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
       }
     );
 
-    alert(`"${updatedChapter.title}" (Bölüm ${updatedChapter.number}) başarıyla güncellendi!${notifyFollowersOnEdit ? ' Takipçilere bildirim iletildi.' : ''}`);
+    showToast({
+      title: 'Bölüm Güncellendi! ✨',
+      message: `"${updatedChapter.title}" (Bölüm ${updatedChapter.number}) başarıyla kaydedildi!${notifyFollowersOnEdit ? ' Takipçilere bildirim iletildi.' : ''}`,
+      type: 'chapter',
+      seriesId: targetSeries.id,
+      chapterId: updatedChapter.id,
+      chapterTitle: updatedChapter.title,
+      chapterNumber: updatedChapter.number,
+      coverImage: targetSeries.coverImage,
+      duration: 5000
+    });
+
     setEditingChapter(null);
     setEditingChapterSeriesId(null);
   };
@@ -1530,8 +1551,10 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setSelectedSeriesId(newSeries.id);
   };
 
-  const handleSaveEditSeries = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSaveEditSeries = (e?: React.FormEvent | React.MouseEvent) => {
+    if (e && typeof e.preventDefault === 'function') {
+      e.preventDefault();
+    }
     if (!editingSeries) return;
 
     const parsedBadges = editingBadgesText
@@ -1551,7 +1574,15 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     };
 
     addOrUpdateSeries(updatedSeries);
-    alert(`"${updatedSeries.title}" serisi güncellendi!`);
+    showToast({
+      title: 'Seri Güncellendi! ✨',
+      message: `"${updatedSeries.title}" serisi başarıyla güncellendi!`,
+      type: 'series',
+      seriesId: updatedSeries.id,
+      seriesTitle: updatedSeries.title,
+      coverImage: updatedSeries.coverImage,
+      duration: 5000
+    });
     setEditingSeries(null);
   };
 
@@ -3069,12 +3100,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 {/* Fixed Footer */}
                 <div className="flex gap-2 p-3 sm:p-4 border-t border-purple-900/60 bg-gray-950/90 shrink-0">
                   <button
-                    type="submit"
-                    form="chapterEditForm"
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={handleSaveChapterEdit}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold py-3.5 sm:py-3 rounded-xl shadow-lg transition text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer touch-manipulation select-none"
                   >
                     <Save size={16} />
-                    Bölüm Değişikliklerini Kaydet
+                    <span>Bölüm Değişikliklerini Kaydet</span>
                   </button>
                   <button
                     type="button"
@@ -3082,7 +3113,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       setEditingChapter(null);
                       setEditingChapterSeriesId(null);
                     }}
-                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs cursor-pointer"
+                    className="bg-gray-800 hover:bg-gray-700 active:scale-[0.98] text-gray-300 font-bold px-4 py-3.5 sm:py-3 rounded-xl text-xs cursor-pointer touch-manipulation transition"
                   >
                     İptal
                   </button>
@@ -3445,17 +3476,17 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 {/* Sticky Footer */}
                 <div className="flex gap-2 p-3 sm:p-4 border-t border-purple-900/60 bg-gray-950/90 shrink-0">
                   <button
-                    type="submit"
-                    form="editSeriesForm"
-                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl shadow transition text-xs sm:text-sm flex items-center justify-center gap-1.5 cursor-pointer"
+                    type="button"
+                    onClick={handleSaveEditSeries}
+                    className="flex-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 active:scale-[0.98] text-white font-bold py-3.5 sm:py-3 rounded-xl shadow-lg transition text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer touch-manipulation select-none"
                   >
                     <Save size={16} />
-                    Değişiklikleri Kaydet
+                    <span>Değişiklikleri Kaydet</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingSeries(null)}
-                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold px-4 py-3 rounded-xl text-xs cursor-pointer"
+                    className="bg-gray-800 hover:bg-gray-700 active:scale-[0.98] text-gray-300 font-bold px-4 py-3.5 sm:py-3 rounded-xl text-xs cursor-pointer touch-manipulation transition"
                   >
                     İptal
                   </button>

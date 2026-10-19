@@ -154,7 +154,11 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
   const selectedFolderNames = currentBookmark ? currentBookmark.folders : [];
 
   // Active reading lists for this series
-  const activeReadingLists = readingLists.filter(l => l.seriesIds.includes(series.id));
+  const activeReadingLists = readingLists.filter(l =>
+    (l.seriesIds || []).some(
+      id => String(id).trim() === String(series.id).trim() || (series.slug && String(id).trim() === String(series.slug).trim())
+    )
+  );
   const isAddedToAnyList = activeReadingLists.length > 0;
 
   // Reading history progress
@@ -1292,7 +1296,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                     const createdList = {
                       id: 'list-' + Date.now(),
                       name: trimmed,
-                      seriesIds: [series.id]
+                      seriesIds: [String(series.id)]
                     };
                     setReadingLists([...readingLists, createdList]);
                     setNewReadingListName('');
@@ -1339,8 +1343,10 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                 </div>
               ) : (
                 readingLists.map(list => {
-                  const isInList = list.seriesIds.includes(series.id);
-                  const isListFull = list.seriesIds.length >= 30;
+                  const isInList = (list.seriesIds || []).some(
+                    id => String(id).trim() === String(series.id).trim() || (series.slug && String(id).trim() === String(series.slug).trim())
+                  );
+                  const isListFull = (list.seriesIds || []).length >= 30;
                   return (
                     <div
                       key={list.id}
@@ -1360,7 +1366,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                                 : 'bg-gray-900 border-gray-700 text-gray-400'
                             }`}
                           >
-                            {list.seriesIds.length} / 30 Seri
+                            {(list.seriesIds || []).length} / 30 Seri
                           </span>
                         </div>
                       </div>
@@ -1372,9 +1378,14 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                             const newLists = readingLists.map(l => {
                               if (l.id === list.id) {
                                 if (isInList) {
-                                  return { ...l, seriesIds: l.seriesIds.filter(id => id !== series.id) };
+                                  return {
+                                    ...l,
+                                    seriesIds: (l.seriesIds || []).filter(
+                                      id => String(id).trim() !== String(series.id).trim() && (!series.slug || String(id).trim() !== String(series.slug).trim())
+                                    )
+                                  };
                                 } else {
-                                  if (l.seriesIds.length >= 30) {
+                                  if ((l.seriesIds || []).length >= 30) {
                                     showToast({
                                       title: 'Liste Dolu (30/30)',
                                       message: 'Bir okuma listesine en fazla 30 seri eklenebilir.',
@@ -1382,7 +1393,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                                     });
                                     return l;
                                   }
-                                  return { ...l, seriesIds: [...l.seriesIds, series.id] };
+                                  return { ...l, seriesIds: [...(l.seriesIds || []), String(series.id)] };
                                 }
                               }
                               return l;
