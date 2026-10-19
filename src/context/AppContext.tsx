@@ -1739,15 +1739,47 @@ const deleteShopItemAndStyle = (itemId: string) => {
     return { success: true, message: 'Kullanıcının ekip rolleri kaldırıldı.' };
   };
 
+  const top3Commenters = useMemo(() => {
+    const stats: Record<string, { key: string; name: string; email?: string; count: number }> = {};
+    (comments || []).forEach(c => {
+      const cleanN = c.userName?.toLowerCase().trim();
+      if (cleanN === 'aseleliyeva1234') return;
+      let key = c.userId || c.userName || 'guest';
+      if (user && (c.userId === user.uid || (cleanN && cleanN === user.name.toLowerCase().trim()))) {
+        key = user.uid;
+      }
+      if (!stats[key]) {
+        stats[key] = {
+          key,
+          name: (user && key === user.uid) ? user.name : (c.userName || 'Okuyucu'),
+          count: 0
+        };
+      }
+      stats[key].count += 1;
+    });
+
+    const sorted = Object.values(stats)
+      .filter(s => s.name && s.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+
+    return {
+      rank1: sorted[0] || null,
+      rank2: sorted[1] || null,
+      rank3: sorted[2] || null
+    };
+  }, [comments, user]);
+
   const getUserTeamRoles = (userOrIdentifier: { email?: string; uid?: string; name?: string; userId?: string; userName?: string; teamRole?: string | null; teamRoles?: string[] } | null | undefined): string[] => {
     if (!userOrIdentifier) return [];
 
+    let roles: string[] = [];
+
     // 1. Direct roles on object
     if (userOrIdentifier.teamRoles && Array.isArray(userOrIdentifier.teamRoles) && userOrIdentifier.teamRoles.length > 0) {
-      return userOrIdentifier.teamRoles;
-    }
-    if (userOrIdentifier.teamRole) {
-      return [userOrIdentifier.teamRole];
+      roles = [...userOrIdentifier.teamRoles];
+    } else if (userOrIdentifier.teamRole) {
+      roles = [userOrIdentifier.teamRole];
     }
 
     const cleanEmail = userOrIdentifier.email?.toLowerCase().trim();
@@ -1756,7 +1788,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     // 2. Check by email in teamRoles
     if (cleanEmail && teamRoles[cleanEmail] && Array.isArray(teamRoles[cleanEmail].roles) && teamRoles[cleanEmail].roles.length > 0) {
-      return teamRoles[cleanEmail].roles;
+      roles = Array.from(new Set([...roles, ...teamRoles[cleanEmail].roles]));
     }
 
     // 3. Check by UID or Name in teamRoles registry
@@ -1766,7 +1798,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       return false;
     });
     if (foundEntry && Array.isArray(foundEntry.roles) && foundEntry.roles.length > 0) {
-      return foundEntry.roles;
+      roles = Array.from(new Set([...roles, ...foundEntry.roles]));
     }
 
     // 4. Resolve via knownUsers (if identifier is just userId or userName)
@@ -1779,24 +1811,38 @@ const deleteShopItemAndStyle = (itemId: string) => {
 
     if (matchedKnownUser) {
       if (matchedKnownUser.teamRoles && matchedKnownUser.teamRoles.length > 0) {
-        return matchedKnownUser.teamRoles;
-      }
-      if (matchedKnownUser.teamRole) {
-        return [matchedKnownUser.teamRole];
+        roles = Array.from(new Set([...roles, ...matchedKnownUser.teamRoles]));
+      } else if (matchedKnownUser.teamRole) {
+        roles = Array.from(new Set([...roles, matchedKnownUser.teamRole]));
       }
       const kuEmail = matchedKnownUser.email?.toLowerCase().trim();
       if (kuEmail && teamRoles[kuEmail] && Array.isArray(teamRoles[kuEmail].roles) && teamRoles[kuEmail].roles.length > 0) {
-        return teamRoles[kuEmail].roles;
+        roles = Array.from(new Set([...roles, ...teamRoles[kuEmail].roles]));
       }
-      if (kuEmail === 'aseleliyeva77@gmail.com') return ['Kurucu', 'Yönetici'];
-      if (kuEmail === 'mikrokosmosfansub@gmail.com') return ['Kurucu', 'Admin'];
+      if (kuEmail === 'aseleliyeva77@gmail.com') roles = Array.from(new Set([...roles, 'Kurucu', 'Yönetici']));
+      if (kuEmail === 'mikrokosmosfansub@gmail.com') roles = Array.from(new Set([...roles, 'Kurucu', 'Admin']));
     }
 
     // 5. Default roles for super admins by email or recognizable creator names
-    if (cleanEmail === 'aseleliyeva77@gmail.com' || cleanName === 'aselis' || cleanName === 'kosmos') return ['Kurucu', 'Yönetici'];
-    if (cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanName === 'mikrokosmos fansub' || cleanName === 'mikrokosmos') return ['Kurucu', 'Admin'];
+    if (cleanEmail === 'aseleliyeva77@gmail.com' || cleanName === 'aselis' || cleanName === 'kosmos') {
+      roles = Array.from(new Set([...roles, 'Kurucu', 'Yönetici']));
+    }
+    if (cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanName === 'mikrokosmos fansub' || cleanName === 'mikrokosmos') {
+      roles = Array.from(new Set([...roles, 'Kurucu', 'Admin']));
+    }
 
-    return [];
+    // 6. Dynamic Weekly Top 3 Commenter Titles
+    if (top3Commenters.rank1 && (cleanUid === top3Commenters.rank1.key || cleanName === top3Commenters.rank1.name.toLowerCase().trim())) {
+      if (!roles.includes('Son Söz Bükücü')) roles.push('Son Söz Bükücü');
+    }
+    if (top3Commenters.rank2 && (cleanUid === top3Commenters.rank2.key || cleanName === top3Commenters.rank2.name.toLowerCase().trim())) {
+      if (!roles.includes('Baş Eleştirmen')) roles.push('Baş Eleştirmen');
+    }
+    if (top3Commenters.rank3 && (cleanUid === top3Commenters.rank3.key || cleanName === top3Commenters.rank3.name.toLowerCase().trim())) {
+      if (!roles.includes('Yorumbaz')) roles.push('Yorumbaz');
+    }
+
+    return roles;
   };
 
   const grantCosmoPoints = async (

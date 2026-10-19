@@ -75,6 +75,30 @@ export const TEAM_ROLE_PRESETS: TeamRolePreset[] = [
     badgeClass: 'bg-gradient-to-r from-fuchsia-500/25 via-pink-500/25 to-rose-500/25 border-fuchsia-400/60 text-fuchsia-300 shadow-sm shadow-fuchsia-950/60',
     iconColor: 'text-fuchsia-300',
     description: 'Dizgi, Temizleme & Grafik Editörü'
+  },
+  {
+    id: 'son-soz-bukucu',
+    name: 'Son Söz Bükücü',
+    icon: Crown,
+    badgeClass: 'bg-gradient-to-r from-amber-500/30 via-yellow-400/35 to-amber-600/30 border-amber-400 text-amber-200 shadow-md shadow-amber-950/80 animate-pulse',
+    iconColor: 'text-amber-300',
+    description: '1. Yorum Şampiyonu'
+  },
+  {
+    id: 'bas-elestirmen',
+    name: 'Baş Eleştirmen',
+    icon: Award,
+    badgeClass: 'bg-gradient-to-r from-cyan-500/30 via-sky-400/35 to-blue-600/30 border-cyan-400 text-cyan-200 shadow-md shadow-cyan-950/80',
+    iconColor: 'text-cyan-300',
+    description: '2. Yorum Şampiyonu'
+  },
+  {
+    id: 'yorumbaz',
+    name: 'Yorumbaz',
+    icon: Sparkles,
+    badgeClass: 'bg-gradient-to-r from-purple-500/30 via-fuchsia-400/35 to-pink-600/30 border-purple-400 text-purple-200 shadow-md shadow-purple-950/80',
+    iconColor: 'text-pink-300',
+    description: '3. Yorum Şampiyonu'
   }
 ];
 
@@ -85,7 +109,17 @@ export const getTeamRoleConfig = (roleName: string): {
   iconColor: string;
 } => {
   const clean = (roleName || '').trim().toLowerCase();
-  
+
+  if (clean.includes('son söz bükücü') || clean.includes('son soz bukucu')) {
+    return { name: 'Son Söz Bükücü', Icon: Crown, badgeClass: TEAM_ROLE_PRESETS[7].badgeClass, iconColor: TEAM_ROLE_PRESETS[7].iconColor };
+  }
+  if (clean.includes('baş eleştirmen') || clean.includes('bas elestirmen')) {
+    return { name: 'Baş Eleştirmen', Icon: Award, badgeClass: TEAM_ROLE_PRESETS[8].badgeClass, iconColor: TEAM_ROLE_PRESETS[8].iconColor };
+  }
+  if (clean.includes('yorumbaz')) {
+    return { name: 'Yorumbaz', Icon: Sparkles, badgeClass: TEAM_ROLE_PRESETS[9].badgeClass, iconColor: TEAM_ROLE_PRESETS[9].iconColor };
+  }
+
   if (clean === 'kurucu') {
     return { name: 'Kurucu', Icon: Crown, badgeClass: TEAM_ROLE_PRESETS[0].badgeClass, iconColor: TEAM_ROLE_PRESETS[0].iconColor };
   }

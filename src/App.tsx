@@ -10,7 +10,8 @@ import {
   RandomSeriesWidget,
   QuickCategoriesWidget,
   RecentCommentsWidget,
-  SiteStatsWidget
+  SiteStatsWidget,
+  TopCommentersWidget
 } from './components/SidebarWidgets';
 import { SeriesCard } from './components/SeriesCard';
 import { HorizontalReleaseCard } from './components/HorizontalReleaseCard';
@@ -418,6 +419,9 @@ const MainContent: React.FC = () => {
           
           {/* Discord Chibi Mascot Widget */}
           <DiscordWidget />
+
+          {/* Haftalık Yorum Şampiyonları Top 50 Önizleme Widget */}
+          <TopCommentersWidget />
 
           {/* Popular Series Widget with Tabs (Haftalık, Aylık, Yıllık) */}
           <section className="bg-gray-900/90 border border-purple-500/20 rounded-2xl sm:rounded-3xl p-3.5 sm:p-5 shadow-xl space-y-4">

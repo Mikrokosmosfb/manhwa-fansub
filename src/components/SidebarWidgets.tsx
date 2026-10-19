@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Dices, Tags, MessageSquare, Sparkles, BookOpen, Star, ChevronRight, Users, Layers, Award } from 'lucide-react';
+import { Dices, Tags, MessageSquare, Sparkles, BookOpen, Star, ChevronRight, Users, Layers, Award, Trophy } from 'lucide-react';
 import { Series, isAuthorizedAdmin } from '../types';
 import { TeamBadges } from './TeamBadge';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
@@ -380,6 +380,144 @@ export const SiteStatsWidget: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
+  );
+};
+
+export const TopCommentersWidget: React.FC = () => {
+  const { comments, user, setView, openPublicProfile, deletedUsers } = useApp();
+
+  const isDeletedAccount = (uid?: string, email?: string, name?: string): boolean => {
+    const cleanUid = uid?.trim();
+    const cleanEmail = email?.toLowerCase().trim();
+    const cleanName = name?.toLowerCase().trim();
+    if (user) {
+      if (cleanUid && user.uid === cleanUid) return false;
+      if (cleanEmail && user.email?.toLowerCase().trim() === cleanEmail) return false;
+      if (cleanName && user.name.toLowerCase().trim() === cleanName) return false;
+    }
+    if (deletedUsers && Array.isArray(deletedUsers)) {
+      for (const d of deletedUsers) {
+        if (cleanUid && d.uid && d.uid === cleanUid) return true;
+        if (cleanEmail && d.email && d.email.toLowerCase().trim() === cleanEmail) return true;
+        if (cleanName && d.name && d.name.toLowerCase().trim() === cleanName) return true;
+      }
+    }
+    if (cleanName === 'aseleliyeva1234' || cleanEmail === 'aseleliyeva1234@gmail.com') return true;
+    return false;
+  };
+
+  const top3 = React.useMemo(() => {
+    const stats: Record<string, { uid: string; name: string; avatar: string; count: number }> = {};
+    (comments || []).forEach(c => {
+      if (isDeletedAccount(c.userId, undefined, c.userName)) return;
+      let key = c.userId || c.userName || 'guest';
+      if (user && (c.userId === user.uid || (c.userName && c.userName.toLowerCase().trim() === user.name.toLowerCase().trim()))) {
+        key = user.uid;
+      }
+      if (!stats[key]) {
+        stats[key] = {
+          uid: key,
+          name: (user && key === user.uid) ? user.name : (c.userName || 'Okuyucu'),
+          avatar: (user && key === user.uid) ? user.avatar : (c.userAvatar || ''),
+          count: 0
+        };
+      }
+      stats[key].count += 1;
+      if (c.userAvatar) stats[key].avatar = c.userAvatar;
+    });
+
+    return Object.values(stats)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 3);
+  }, [comments, user, deletedUsers]);
+
+  const ROLES = [
+    { title: 'Son Söz Bükücü', rankText: '1. Yorum Şampiyonu', badgeBg: 'from-amber-500/30 via-yellow-400/35 to-amber-600/30 border-amber-400 text-amber-200 shadow-md shadow-amber-950/80 animate-pulse', medal: '🥇' },
+    { title: 'Baş Eleştirmen', rankText: '2. Yorum Şampiyonu', badgeBg: 'from-cyan-500/30 via-sky-400/35 to-blue-600/30 border-cyan-400 text-cyan-200 shadow-md shadow-cyan-950/80', medal: '🥈' },
+    { title: 'Yorumbaz', rankText: '3. Yorum Şampiyonu', badgeBg: 'from-purple-500/30 via-fuchsia-400/35 to-pink-600/30 border-purple-400 text-purple-200 shadow-md shadow-purple-950/80', medal: '🥉' }
+  ];
+
+  return (
+    <div className="bg-gradient-to-br from-purple-950/80 via-gray-900/95 to-indigo-950/80 border border-purple-500/30 rounded-2xl sm:rounded-3xl p-4 shadow-xl space-y-3.5 relative overflow-hidden">
+      <div className="absolute top-0 right-0 -mt-6 -mr-6 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl pointer-events-none" />
+
+      <div className="flex items-center justify-between border-b border-purple-500/20 pb-2.5">
+        <div>
+          <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
+            <Trophy className="text-amber-400 animate-pulse" size={18} />
+            Haftalık Yorum Şampiyonları
+          </h3>
+          <p className="text-[10px] text-purple-200/70 font-medium">Top 50 liderliğinde ilk 3'e özel unvan rolleri</p>
+        </div>
+        <button
+          onClick={() => setView({ type: 'leaderboard' })}
+          className="text-[11px] font-bold text-amber-300 hover:text-white bg-amber-950/50 hover:bg-amber-900/70 border border-amber-500/30 px-2.5 py-1 rounded-xl transition flex items-center gap-0.5 cursor-pointer shrink-0"
+        >
+          Top 50 <ChevronRight size={13} />
+        </button>
+      </div>
+
+      <div className="space-y-2 pt-0.5">
+        {top3.length === 0 ? (
+          <div className="text-center py-4 text-xs text-gray-500">Henüz yorum verisi bulunamadı.</div>
+        ) : (
+          top3.map((item, index) => {
+            const roleInfo = ROLES[index] || ROLES[2];
+            return (
+              <div
+                key={item.uid}
+                onClick={() => openPublicProfile(item.uid)}
+                className="p-2.5 rounded-2xl bg-gray-950/70 hover:bg-purple-900/30 border border-purple-500/20 hover:border-purple-400/50 cursor-pointer transition flex items-center justify-between gap-2.5 group"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="relative shrink-0">
+                    <img
+                      src={getOptimizedImageUrl(item.avatar || 'https://api.dicebear.com/7.x/bottts/svg?seed=Reader', { width: 36, height: 36, quality: 65 })}
+                      alt={item.name}
+                      width="32"
+                      height="32"
+                      className="w-8 h-8 rounded-full object-cover border border-purple-400/40 shadow-sm"
+                    />
+                    <span className="absolute -bottom-1 -right-1 text-xs">{roleInfo.medal}</span>
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-xs font-bold text-white group-hover:text-purple-200 truncate">
+                        {item.name}
+                      </span>
+                      <span className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border backdrop-blur-md shrink-0 ${roleInfo.badgeBg}`}>
+                        {roleInfo.title}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-purple-300/80 font-medium">
+                      {roleInfo.rankText}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <span className="text-xs font-black text-amber-300 font-mono flex items-center gap-1">
+                    <MessageSquare size={11} className="text-amber-400" />
+                    {item.count}
+                  </span>
+                  <span className="text-[9px] text-gray-500">yorum</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <button
+        onClick={() => setView({ type: 'leaderboard' })}
+        className="w-full py-2 bg-gradient-to-r from-purple-900/60 to-indigo-900/60 hover:from-purple-800/80 hover:to-indigo-800/80 border border-purple-500/30 text-purple-200 hover:text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shadow cursor-pointer active:scale-98"
+      >
+        <Trophy size={13} className="text-amber-400" />
+        <span>Tüm Liderlik Tablosunu Gör (Top 50)</span>
+        <ChevronRight size={13} />
+      </button>
     </div>
   );
 };
