@@ -1102,7 +1102,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const [customGenreInput, setCustomGenreInput] = useState('');
   const [customGenreEditInput, setCustomGenreEditInput] = useState('');
   const [releaseDay, setReleaseDay] = useState<Series['releaseDay']>('Pazartesi');
-  const [releaseTime, setReleaseTime] = useState('18:00');
+  const [releaseTime, setReleaseTime] = useState('');
   const [notice, setNotice] = useState('');
   const [is18Plus, setIs18Plus] = useState(false);
   const [isHot, setIsHot] = useState(false);
@@ -1382,7 +1382,9 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     addOrUpdateSeries(
       {
         ...targetSeries,
-        updatedAt: new Date().toISOString(),
+        releaseTime: editingSeries.releaseTime?.trim() || undefined,
+      releaseDay: editingSeries.releaseDay?.trim() || undefined,
+      updatedAt: new Date().toISOString(),
         chapters: updatedChapters
       },
       {
@@ -1521,6 +1523,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setIsNew(false);
     setIsGuncel(false);
     setIsDraft(false);
+    setReleaseTime('');
+    setReleaseDay('');
     setNotifyNewSeriesCustomMessage('');
     setActiveTab('add-chapter');
     setSelectedSeriesId(newSeries.id);
@@ -1537,6 +1541,8 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
     const updatedSeries: Series = {
       ...editingSeries,
+      releaseTime: editingSeries.releaseTime?.trim() || undefined,
+      releaseDay: editingSeries.releaseDay?.trim() || undefined,
       updatedAt: new Date().toISOString(),
       bannerImage: editingSeries.bannerImage?.trim() || undefined,
       heroImage: editingSeries.bannerImage?.trim() || editingSeries.heroImage?.trim() || undefined,
@@ -2023,7 +2029,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             </div>
 
             <div>
-              <label className="block text-purple-300 font-bold mb-1">Yayın Saati (Örn: 18:00)</label>
+              <label className="block text-purple-300 font-bold mb-1">Yayın Saati (Opsiyonel)</label>
               <input
                 type="text"
                 placeholder="Örn: 18:00 veya 20:30"
@@ -3219,7 +3225,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   <input
                     type="text"
                     placeholder="Örn: Pazartesi veya 9, 19, 29"
-                    value={editingSeries.releaseDay || 'Pazartesi'}
+                    value={editingSeries.releaseDay || ''}
                     onChange={e => setEditingSeries({ ...editingSeries, releaseDay: e.target.value as Series['releaseDay'] })}
                     className="w-full bg-gray-950 border border-purple-500/30 text-amber-300 font-bold rounded-xl p-2.5 focus:outline-none"
                   />
@@ -3245,7 +3251,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 <div>
-                  <label className="block text-purple-300 font-bold mb-1">Yayın Saati</label>
+                  <label className="block text-purple-300 font-bold mb-1">Yayın Saati (Opsiyonel)</label>
                   <input
                     type="text"
                     placeholder="Örn: 18:00"

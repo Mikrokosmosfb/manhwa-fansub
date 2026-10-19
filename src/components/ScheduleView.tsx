@@ -264,7 +264,7 @@ export const ScheduleView: React.FC = () => {
             ) : (
               selectedDaySeries.map((series, idx) => {
                 const latestChapter = series.chapters[series.chapters.length - 1] || series.chapters[0];
-                const releaseTime = series.releaseTime || '18:00';
+                const releaseTime = series.releaseTime?.trim();
 
                 return (
                   <div
@@ -301,10 +301,12 @@ export const ScheduleView: React.FC = () => {
                       <div>
                         {/* Top Bar: Release Time + Chapter Note */}
                         <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="inline-flex items-center gap-1 text-xs font-black bg-purple-950 text-purple-300 border border-purple-700/60 px-2.5 py-0.5 rounded-lg shadow-sm">
-                            <Clock size={12} className="text-purple-400" />
-                            {releaseTime}
-                          </span>
+                          {releaseTime ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-black bg-purple-950 text-purple-300 border border-purple-700/60 px-2.5 py-0.5 rounded-lg shadow-sm">
+                              <Clock size={12} className="text-purple-400" />
+                              {releaseTime}
+                            </span>
+                          ) : <span />}
                           <span className="text-xs font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2 py-0.5 rounded-lg truncate max-w-[150px]">
                             {`Bölüm ${latestChapter?.number || 1}`}
                           </span>

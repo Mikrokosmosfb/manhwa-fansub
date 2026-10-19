@@ -264,7 +264,7 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
           <div className="mt-2 pt-1.5 border-t border-gray-800/50 flex items-center justify-between">
             <span className="text-[10px] sm:text-[11px] font-bold text-purple-300 bg-purple-950/80 border border-purple-700/60 px-2 py-0.5 rounded-md flex items-center gap-1.5 shadow-sm">
               <Calendar size={11} className="text-purple-300" />
-              <span>Yayın Günü: <strong className="text-purple-200">{series.releaseDay}{series.releaseTime ? ` ${series.releaseTime}` : ''}</strong></span>
+              <span>Yayın Günü: <strong className="text-purple-200">{series.releaseDay}{series.releaseTime && series.releaseTime.trim() ? ` (${series.releaseTime.trim()})` : ''}</strong></span>
             </span>
           </div>
         )}

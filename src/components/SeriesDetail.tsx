@@ -715,7 +715,7 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                   <Megaphone size={18} className="text-amber-400 flex-shrink-0" />
                   <p className="text-xs sm:text-sm text-amber-300/90 font-semibold flex items-center gap-1.5">
                     <Clock size={14} className="text-amber-400" />
-                    Yayın Günü: <span className="text-white font-bold">{series.releaseDay}</span> {series.releaseTime ? `(${series.releaseTime})` : ''}
+                    Yayın Günü: <span className="text-white font-bold">{series.releaseDay}</span> {series.releaseTime && series.releaseTime.trim() ? ` (${series.releaseTime.trim()})` : ''}
                   </p>
                 </div>
               )}
