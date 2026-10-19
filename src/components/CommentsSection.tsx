@@ -260,7 +260,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
   // Filter comments for this series and chapter
   // - In paragraph drawer mode: show only comments for that specific paragraph key
   // - In chapter bottom mode: show both general chapter comments AND all paragraph comments of this chapter
-  // - In series detail mode: show general series comments (exclude paragraph-specific comments)
+  // - In series detail mode: show ONLY comments posted on the series intro page (where c.chapterId is falsy)
   const filteredComments = comments.filter(c => {
     if (chapterId) {
       if (isParagraphMode) {
@@ -272,7 +272,8 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         (rawChId === chapterId || rawChId.startsWith(`${chapterId}__p__`))
       );
     }
-    return c.seriesId === seriesId && !String(c.chapterId || '').includes('__p__');
+    // In series detail mode: show ONLY comments created on the series intro page (where c.chapterId is undefined or empty)
+    return c.seriesId === seriesId && (!c.chapterId || c.chapterId === '');
   });
 
   const normalizedEmojiInv = normalizeShopInventory(
@@ -1367,7 +1368,7 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
             <MessageSquare className="text-purple-400" size={20} />
-            Yorumlar ({filteredComments.length})
+            {chapterId ? 'Bölüm Yorumları' : 'Seri Genel Yorumları'} ({filteredComments.length})
           </h3>
 
           <div className="flex items-center gap-2">
