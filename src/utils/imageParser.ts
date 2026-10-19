@@ -13,10 +13,6 @@
 export function normalizeImageUrl(url: string): string {
   if (!url) return '';
   let clean = url.trim();
-  // Filter out unwanted imgbox.com images
-  if (clean.toLowerCase().includes('imgbox.com')) {
-    return '';
-  }
 
   // Remove surrounding quotes or angle brackets
   clean = clean.replace(/^["']+|["']+$|^<|>$/g, '');
@@ -140,13 +136,12 @@ export function extractImageUrls(input: string | string[] | undefined | null): s
     const normalized = normalizeImageUrl(urlStr);
     if (!normalized) return;
 
-    // Filter out 1x1 transparent tracking pixels and imgbox images
+    // Filter out 1x1 transparent tracking pixels
     if (
       normalized.startsWith('data:image/gif;base64,R0lGODlhAQAB') ||
       normalized.includes('blank.gif') ||
       normalized.includes('spacer.gif') ||
-      normalized.includes('pixel.gif') ||
-      normalized.toLowerCase().includes('imgbox.com')
+      normalized.includes('pixel.gif')
     ) {
       return;
     }

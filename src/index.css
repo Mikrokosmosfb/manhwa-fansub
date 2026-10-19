@@ -418,15 +418,4 @@ html.light {
 
 
 
-/* Global Filter: Completely hide any imgbox.com images and links */
-img[src*="imgbox.com"],
-img[src*="images2.imgbox.com"],
-img[data-src*="imgbox.com"],
-a[href*="imgbox.com"] {
-  display: none !important;
-  visibility: hidden !important;
-  height: 0 !important;
-  width: 0 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
+
