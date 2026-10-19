@@ -676,7 +676,6 @@ export const ShopContent: React.FC = () => {
           >
             <CreditCard size={15} className="stroke-[2.5]" />
             <span>Cosmo-Puan Yükle</span>
-            <span className="text-[10px] bg-black/30 px-1.5 py-0.5 rounded-md font-bold">DonationAlerts ($ USD)</span>
           </button>
 
           <button
@@ -966,7 +965,7 @@ export const ShopContent: React.FC = () => {
 
                     const btnIcon = isDonationAlerts ? '⚡' : isShopier ? '🛍️' : isKofi ? '☕' : isKreosus ? '💜' : isLemon ? '🍋' : '💳';
                     const btnText = isDonationAlerts
-                      ? `DonationAlerts ($${pkg.priceUSD} USD)`
+                      ? `Satın Al ($${pkg.priceUSD} USD)`
                       : isShopier
                       ? `Shopier (${pkg.priceTRY ? `${pkg.priceTRY} ₺` : `$${pkg.priceUSD}`})`
                       : isKofi
