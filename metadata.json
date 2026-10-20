@@ -1,0 +1,6 @@
+{
+  "name": "Mikrokosmos - Manhwa & Novel Reader",
+  "description": "Turkish Manhwa and Web Novel reader web application designed for GitHub deployment with library bookmarking, custom reading settings, dark mode, and comment system.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

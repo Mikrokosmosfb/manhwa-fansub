@@ -1,0 +1,380 @@
+export const AUTHORIZED_ADMIN_EMAILS = [
+  'mikrokosmosfansub@gmail.com',
+  'aseleliyeva77@gmail.com'
+];
+
+export const isAuthorizedAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  return AUTHORIZED_ADMIN_EMAILS.includes(email.toLowerCase().trim());
+};
+
+export interface User {
+  uid: string;
+  name: string; // Takma Ad / Görünen İsim (DisplayName)
+  username?: string; // Benzersiz Kullanıcı Adı (@kullanici_adi)
+  usernameLastChangedAt?: number; // Son kullanıcı adı değiştirme zamanı (timestamp ms)
+  email: string;
+  avatar: string;
+  bio?: string; // Personal quote or bio note
+  role?: 'admin' | 'user';
+  provider?: 'email' | 'google';
+  createdAt?: string;
+  coins?: number; // Cosmo-Puan balance
+  inventory?: string[]; // Item IDs purchased e.g. ['theme_gold', 'chibi_solo']
+  inventoryExpiresAt?: Record<string, number>; // Expiration timestamp (ms) per purchased shop item ID (1 month / 30 days)
+  equippedTheme?: string | null; // Equipped comment card theme e.g. 'theme_gold'
+  equippedBadge?: string | null; // Equipped primary VIP title badge e.g. 'Mutlak Enigma'
+  equippedBadges?: string[]; // Up to 5 equipped VIP title badges e.g. ['Mutlak Enigma', 'S-Rank Avcı']
+  equippedFrame?: string | null; // Equipped avatar frame e.g. 'frame_golden_crown'
+  unlockedEmojiPacks?: string[]; // Unlocked chibi emoji pack IDs e.g. ['chibi_solo']
+  lastDailyCheckin?: string; // Date string "YYYY-MM-DD"
+  dailyCheckinDay?: number; // Completed check-in days (0 to 7)
+  claimedCheckinDays?: number[]; // [1, 2, 3, 4, 5, 6, 7]
+  lastDailySpin?: string; // Date string "YYYY-MM-DD"
+  showNsfw?: boolean; // Adult (+18) content filter preference
+  emailNotificationsEnabled?: boolean; // Yorum yanıtlarında e-posta bildirim tercihi (açık/kapalı)
+  teamRole?: string | null; // Staff / team role e.g. 'Çevirmen', 'Editör', 'Kurucu', 'Yönetici'
+  teamRoles?: string[]; // Multiple staff team roles
+}
+
+export interface TeamMemberRecord {
+  email: string;
+  uid?: string;
+  name?: string;
+  roles: string[];
+  role?: string;
+  updatedAt?: string;
+}
+
+export interface PointGrantLog {
+  id: string;
+  targetEmail: string;
+  amount: number;
+  mode: 'add' | 'subtract' | 'set';
+  note?: string;
+  adminEmail: string;
+  timestamp: number;
+  date: string;
+  previousBalance?: number;
+  newBalance?: number;
+}
+
+export interface KnownUserRecord {
+  uid: string;
+  email: string;
+  name: string;
+  username?: string;
+  avatar: string;
+  coins: number;
+  role?: string;
+  teamRole?: string | null;
+  teamRoles?: string[];
+  lastActive?: string;
+  equippedBadge?: string | null;
+  equippedBadges?: string[];
+}
+
+export interface DailyRewardDay {
+  day: number;
+  points: number;
+  label: string;
+  description: string;
+}
+
+export const DAILY_STARTER_REWARDS: DailyRewardDay[] = [
+  { day: 1, points: 5, label: '1. Gün', description: 'Hoş Geldin Ödülü' },
+  { day: 2, points: 7, label: '2. Gün', description: 'İkinci Gün Takviyesi' },
+  { day: 3, points: 10, label: '3. Gün', description: '3. Gün Başlangıç Puanı' },
+  { day: 4, points: 12, label: '4. Gün', description: 'İstikrar Takviyesi' },
+  { day: 5, points: 15, label: '5. Gün', description: '5. Gün Süper Paketi' },
+  { day: 6, points: 18, label: '6. Gün', description: 'Geri Sayım Ödülü' },
+  { day: 7, points: 20, label: '7. Gün', description: '🎉 Büyük Final Hediyesi' },
+];
+
+export const isSeries18Plus = (s?: Series | null): boolean => {
+  if (!s) return false;
+  if (s.is18Plus) return true;
+  if (s.ageRating === '18+' || s.ageRating === '21+') return true;
+  if (s.genres && Array.isArray(s.genres)) {
+    if (s.genres.some(g => ['18+', 'nsfw', 'adult', 'hentai', 'ecchi'].includes(g.toLowerCase().trim()))) {
+      return true;
+    }
+  }
+  if (s.customBadges && Array.isArray(s.customBadges)) {
+    if (s.customBadges.some(b => ['18+', 'nsfw', 'adult'].includes(b.toLowerCase().trim()))) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export type SeriesType = 'Manhwa' | 'Web Novel' | 'Manga' | 'Webtoon' | 'Manhua' | 'One Shot';
+export type SeriesStatus = 'Devam Ediyor' | 'Tamamlandı' | 'Güncel' | 'Yakında' | 'Bıraktıldı';
+
+export interface Chapter {
+  id: string;
+  number: number;
+  title: string;
+  publishedDate: string; // e.g. "2026-07-20" or "2 saat önce"
+  createdAt?: number; // Epoch timestamp for exact time-based 12/24 hour "YENİ" tag calculations
+  isNew?: boolean;
+  is18Plus?: boolean; // 18+ / Smut chapter flag managed by admin
+  specialTag?: 'Sezon Finali' | 'Final' | 'Ekstra' | 'Yan Bölüm' | 'Özel' | string;
+  content?: string; // HTML or Markdown text for Web Novels
+  images?: string[]; // Image URLs for Manhwa/Webtoons
+  notice?: string; // Chapter specific admin notice / translator note
+}
+
+export const isChapter18Plus = (ch?: Chapter | null): boolean => {
+  if (!ch) return false;
+  if (ch.is18Plus) return true;
+  if (ch.specialTag) {
+    const t = ch.specialTag.toLowerCase().trim();
+    if (t === '18+' || t === '+18' || t.includes('18+') || t.includes('smut') || t.includes('nsfw')) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export interface Series {
+  id: string;
+  title: string;
+  slug: string;
+  coverImage: string;
+  heroImage?: string;
+  bannerImage?: string;
+  type: SeriesType;
+  status: SeriesStatus;
+  rating: number; // e.g. 9.4
+  ageRating?: '18+' | '21+' | 'Genel';
+  is18Plus?: boolean; // 18+ adult content tag managed by admin
+  isDraft?: boolean; // Draft status - if true, hidden from non-admin visitors
+  isHot?: boolean;
+  isNew?: boolean;
+  isGuncel?: boolean; // "GÜNCEL" badge for up-to-date ongoing series
+  isColored?: boolean;
+  synopsis: string;
+  author: string;
+  artist?: string;
+  releaseYear?: number | string;
+  customBadges?: string[];
+  translator?: string;
+  genres: string[];
+  chapters: Chapter[];
+  updatedAt: string;
+  releaseDay?: string;
+  releaseTime?: string; // e.g. "18:00"
+  notice?: string; // Series specific admin announcement/note
+}
+
+export interface BookmarkFolder {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+}
+
+export interface BookmarkItem {
+  seriesId: string;
+  folders: string[]; // Folder names or IDs
+  addedAt: string;
+}
+
+export interface ReadingProgress {
+  seriesId: string;
+  lastChapterId: string;
+  lastChapterNumber: number;
+  lastChapterTitle: string;
+  readAt: string;
+  scrollPosition?: number;
+  readChapterIds?: string[]; // List of all chapter IDs read by the user for this series
+}
+
+export interface NovelSettings {
+  bgColor: string;
+  textColor: string;
+  fontSize: number; // in px
+  fontFamily: string;
+  lineHeight: string; // e.g. "160%"
+  textAlign: 'left' | 'center' | 'justify';
+  padding: string; // e.g. "20px"
+  widthMode: 'dar' | 'orta' | 'genis'; // dar = 600px, orta = 800px, genis = 100%
+  isBold: boolean;
+  scrollSpeed: number; // 1, 2, 3
+  readingMode?: 'scroll' | 'book'; // Dikey kaydırma veya sayfa sayfa kitap modu
+  paragraphsPerPage?: number; // Kitap modunda sayfa başına paragraf sayısı
+}
+
+export interface Comment {
+  id: string;
+  seriesId: string;
+  chapterId?: string; // Optional: specific to a chapter
+  userId: string;
+  userName: string; // Görünen Takma Ad
+  userHandle?: string; // Benzersiz @kullanici_adi
+  userAvatar: string;
+  text: string;
+  imageUrl?: string;
+  date: string;
+  likes: string[]; // User IDs who liked
+  dislikes: string[]; // User IDs who disliked
+  parentId?: string | null;
+  isSpoiler?: boolean;
+  reported?: boolean;
+  equippedTheme?: string | null; // Equipped comment card theme style e.g. 'theme_gold'
+  equippedBadge?: string | null; // Equipped VIP title badge e.g. 'S-Rank Avcı'
+  equippedBadges?: string[]; // Up to 5 equipped VIP title badges
+  equippedFrame?: string | null; // Equipped avatar frame e.g. 'frame_golden_crown'
+  teamRole?: string | null; // Staff / team role e.g. 'Çevirmen', 'Editör', 'Kurucu', 'Yönetici'
+  teamRoles?: string[]; // Multiple staff team roles
+}
+
+export interface Announcement {
+  id: string;
+  title: string;
+  text: string;
+  type: 'announcement' | 'warning' | 'info' | 'maintenance' | 'danger';
+  active: boolean;
+}
+
+export interface SeriesRequest {
+  id?: string;
+  row?: number;
+  seri?: string;
+  title: string;
+  kullanici?: string;
+  requestedBy: string;
+  kat?: string;
+  type: SeriesType | string;
+  synopsis?: string;
+  oy?: number;
+  votes: number;
+  votedUserIds?: string[];
+  durum?: string;
+  status: 'Beklemede' | 'İncelemede' | 'Kabul Edildi' | 'Yapımda' | 'Yakında' | 'Yayında!' | 'Reddedildi' | string;
+  tarih?: string;
+  createdAt: string;
+  resim?: string;
+  coverImage?: string;
+  seriDurumu?: string;
+  originalStatus?: string;
+  tur?: string;
+  tags?: string[];
+  link?: string;
+  note?: string;
+  readLink?: string;
+  rejectionReason?: string;
+}
+
+export interface ScheduleItem {
+  seriesId: string;
+  time: string;
+  chapterNote?: string;
+}
+
+export interface ScheduleDay {
+  day: 'Pazartesi' | 'Salı' | 'Çarşamba' | 'Perşembe' | 'Cuma' | 'Cumartesi' | 'Pazar';
+  dayShort: 'Pzt' | 'Sal' | 'Çar' | 'Per' | 'Cum' | 'Cmt' | 'Paz';
+  items: ScheduleItem[];
+}
+
+export interface ToastMessage {
+  id: string;
+  title: string;
+  message: string;
+  type?: 'success' | 'bell' | 'info' | 'warning' | 'chapter';
+  seriesId?: string;
+  chapterId?: string;
+  seriesTitle?: string;
+  chapterTitle?: string;
+  coverImage?: string;
+  duration?: number;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'chapter' | 'new-series' | 'announcement' | 'system' | 'reward' | 'comment-reply';
+  targetUserId?: string;
+  seriesId?: string;
+  seriesTitle?: string;
+  chapterId?: string;
+  chapterTitle?: string;
+  chapterNumber?: number;
+  coverImage?: string;
+  createdAt: string; // ISO date or formatted
+  isRead: boolean;
+}
+
+export interface SiteBrandingSettings {
+  logoUrl?: string; // Custom uploaded image or URL for header & footer logo
+  faviconUrl?: string; // Custom uploaded image or URL for browser tab icon (favicon)
+  siteTitle?: string; // e.g. "Mikrokosmos"
+  siteSlogan?: string; // e.g. "Shine, Dream, Smile"
+}
+
+export const DEFAULT_SITE_BRANDING: SiteBrandingSettings = {
+  logoUrl: '',
+  faviconUrl: '',
+  siteTitle: 'Mikrokosmos',
+  siteSlogan: 'Shine, Dream, Smile'
+};
+
+export interface AdSettings {
+  popadsEnabled: boolean;
+  popadsCode: string; // Popunder / PopAds / PopCash JS snippet or script tag
+  readerAdEnabled: boolean;
+  readerAdCode: string; // Ad code shown in chapter reader (Manhwa & Novel)
+  topBannerEnabled: boolean;
+  topBannerCode: string; // Ad banner under header
+  bottomBannerEnabled: boolean;
+  bottomBannerCode: string; // Ad banner above footer
+  customHeadScript: string; // Optional custom script for <head> (e.g. ad network verification or analytics)
+}
+
+export const DEFAULT_AD_SETTINGS: AdSettings = {
+  popadsEnabled: false,
+  popadsCode: '',
+  readerAdEnabled: false,
+  readerAdCode: '',
+  topBannerEnabled: false,
+  topBannerCode: '',
+  bottomBannerEnabled: false,
+  bottomBannerCode: '',
+  customHeadScript: ''
+};
+
+export type WallpaperCategory = 'mobil' | 'masaustu' | 'kare' | 'genel';
+
+export interface KosmosPinItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  seriesId?: string;
+  seriesTitle: string;
+  category?: WallpaperCategory;
+  createdAt?: string;
+}
+
+export interface ReadingList {
+  id: string;
+  name: string;
+  seriesIds: string[];
+  pins?: KosmosPinItem[];
+}
+
+export interface WallpaperItem {
+  id: string;
+  title: string;
+  imageUrl: string;
+  seriesId?: string;
+  seriesTitle: string;
+  category?: WallpaperCategory;
+  tags?: string[];
+  likes?: number;
+  downloads?: number;
+  uploadedBy?: string;
+  createdAt: string;
+}
+
