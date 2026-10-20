@@ -1075,14 +1075,6 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
                                 OKUNDU
                               </span>
                             )}
-
-                            {/* Non-logged in lock badge */}
-                            {!user && (
-                              <span className="bg-purple-950/90 text-amber-300 border border-purple-500/40 text-[9px] font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5 flex-shrink-0">
-                                <Lock size={8} />
-                                Üyelik
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
