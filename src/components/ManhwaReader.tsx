@@ -131,50 +131,6 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     } catch {}
   };
 
-  const getBgStyle = () => {
-    switch (manhwaSettings.bgTheme) {
-      case 'oled':
-        return '#000000';
-      case 'gri':
-        return '#18181b';
-      case 'sepya':
-        return '#1c1917';
-      default:
-        return '#030712';
-    }
-  };
-
-  const getContainerMaxWidth = () => {
-    switch (manhwaSettings.widthMode) {
-      case 'dar':
-        return '600px';
-      case 'genis':
-        return '1024px';
-      case 'tam':
-        return '100%';
-      default:
-        return '768px';
-    }
-  };
-
-  const getImageOptimizationConfig = () => {
-    switch (manhwaSettings.imageQuality) {
-      case 'orijinal':
-      case 'yuksek':
-        return { width: 3840, quality: 100, original: true };
-      case 'tasarruf':
-        return { width: 800, quality: 70 };
-      default:
-        return { width: 3840, quality: 100, original: true };
-    }
-  };
-
-  const handleWebtoonImageTap = () => {
-    if (manhwaSettings.tapToScroll && readerMode === 'webtoon') {
-      window.scrollBy({ top: window.innerHeight * 0.75, behavior: 'smooth' });
-    }
-  };
-
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAutoScrolling, setIsAutoScrolling] = useState(false);
   const [isPrivacyBlurred, setIsPrivacyBlurred] = useState(false);
@@ -584,12 +540,12 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
   // Record last opened chapter on mount
   useEffect(() => {
-    if (series && currentChapter) {
+    if (user && series && currentChapter) {
       updateReadingProgress(series.id, currentChapter.id, currentChapter.number, currentChapter.title);
       setCurrentPage(0);
       window.scrollTo(0, 0);
     }
-  }, [seriesId, chapterId]);
+  }, [user, seriesId, chapterId]);
 
     if (!series || !currentChapter) {
     return (
@@ -599,10 +555,124 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
     );
   }
 
+  // Member Protection Gate
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4 sm:p-6 animate-fade-in">
+        <div className="max-w-md w-full bg-gradient-to-b from-purple-900/60 via-purple-950/80 to-gray-950 border border-purple-500/30 rounded-3xl p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden backdrop-blur-xl">
+          <div className="absolute -top-16 -left-16 w-40 h-40 bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-16 -right-16 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="w-16 h-16 rounded-2xl bg-purple-900/80 border border-purple-400/40 flex items-center justify-center mx-auto mb-5 shadow-lg text-amber-300">
+            <Lock size={32} />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-bold mb-3">
+            <Sparkles size={14} />
+            <span>Üyelere Özel İçerik</span>
+          </div>
+
+          <h2 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-purple-100 to-amber-200 mb-2">
+            Bölümü Okumak İçin Üye Olun
+          </h2>
+
+          <p className="text-xs sm:text-sm text-purple-200/80 mb-6 leading-relaxed">
+            <strong className="text-white font-semibold">{series.title}</strong> serisinin <strong className="text-amber-300 font-semibold">{currentChapter.title || `Bölüm ${currentChapter.number}`}</strong> içeriğini okuyabilmek için Mikrokosmos Fansub hesabınıza giriş yapmalı veya ücretsiz üye olmalısınız.
+          </p>
+
+          <div className="space-y-3 mb-6">
+            <button
+              onClick={() => openAuthModal('login')}
+              className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-black py-3 px-4 rounded-2xl shadow-xl shadow-purple-950/80 transition duration-200 transform hover:scale-[1.02] cursor-pointer"
+            >
+              <User size={18} />
+              <span>Giriş Yap / Ücretsiz Kayıt Ol</span>
+            </button>
+
+            <button
+              onClick={() => openAuthModal('login')}
+              className="w-full flex items-center justify-center gap-2.5 bg-white hover:bg-gray-100 text-gray-900 font-bold py-3 px-4 rounded-2xl shadow-md transition duration-200 cursor-pointer"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.15C3.26 21.3 7.31 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.24c-.25-.72-.38-1.49-.38-2.24s.13-1.52.38-2.24V6.61H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.39l3.99-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.61l3.99 3.15c.95-2.85 3.6-4.96 6.72-4.96z"
+                />
+              </svg>
+              <span className="text-xs sm:text-sm">Google ile Giriş Yap</span>
+            </button>
+          </div>
+
+          <button
+            onClick={() => setView({ type: 'series-detail', seriesId: (series && series.id) ? series.id : seriesId })}
+            className="text-xs text-purple-300 hover:text-white underline underline-offset-4 transition cursor-pointer"
+          >
+            ← Seri Sayfasına Geri Dön
+          </button>
+        </div>
+      </div>
+    );
+  }
   const effectiveProgress =
     readerMode === 'manga' && totalPages > 0
       ? ((currentPage + 1) / totalPages) * 100
       : scrollProgress;
+
+  const getBgStyle = () => {
+    switch (manhwaSettings.bgTheme) {
+      case 'oled':
+        return '#000000';
+      case 'gri':
+        return '#18181b';
+      case 'sepya':
+        return '#1c1917';
+      default:
+        return '#030712';
+    }
+  };
+
+  const getContainerMaxWidth = () => {
+    switch (manhwaSettings.widthMode) {
+      case 'dar':
+        return '600px';
+      case 'genis':
+        return '1024px';
+      case 'tam':
+        return '100%';
+      default:
+        return '768px';
+    }
+  };
+
+  const getImageOptimizationConfig = () => {
+    switch (manhwaSettings.imageQuality) {
+      case 'orijinal':
+      case 'yuksek':
+        return { width: 3840, quality: 100, original: true };
+      case 'tasarruf':
+        return { width: 800, quality: 70 };
+      default:
+        return { width: 3840, quality: 100, original: true };
+    }
+  };
+
+  const handleWebtoonImageTap = () => {
+    if (manhwaSettings.tapToScroll && readerMode === 'webtoon') {
+      window.scrollBy({ top: window.innerHeight * 0.75, behavior: 'smooth' });
+    }
+  };
 
   return (
     <div
