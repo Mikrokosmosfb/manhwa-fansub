@@ -78,13 +78,13 @@ export function getChapterImageUrl(
     if (!clean.includes('/d/')) {
       if (qualityMode === 'tasarruf') {
         clean = clean
-          .replace(/\/(s|w)\d{1,5}(-h\d{1,5})?(-rw(-l\d+)?)?\//g, '/s1200/')
-          .replace(/=(s|w)\d{1,5}(-h\d{1,5})?(-rw(-l\d+)?)?$/g, '=s1200');
+          .replace(/\/(s|w)\d{1,5}(-[a-z0-9_-]+)*\//gi, '/s1200/')
+          .replace(/=(s|w)\d{1,5}(-[a-z0-9_-]+)*$/gi, '=s1200');
       } else {
         // Original 100% uncompressed quality (default for reader)
         clean = clean
-          .replace(/\/(s|w)\d{1,5}(-h\d{1,5})?(-rw(-l\d+)?)?\//g, '/s0/')
-          .replace(/=(s|w)\d{1,5}(-h\d{1,5})?(-rw(-l\d+)?)?$/g, '=s0');
+          .replace(/\/(s|w)\d{1,5}(-[a-z0-9_-]+)*\//gi, '/s0/')
+          .replace(/=(s|w)\d{1,5}(-[a-z0-9_-]+)*$/gi, '=s0');
       }
     }
   }
