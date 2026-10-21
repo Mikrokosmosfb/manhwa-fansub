@@ -122,23 +122,25 @@ export function isIframeUrl(url: string): boolean {
   );
 }
 
+interface MediaMatch {
+  index: number;
+  url: string;
+}
+
 /**
  * Extracts and normalizes all image and embed URLs from raw text, HTML snippets,
- * BBCode, Markdown, or string arrays.
+ * BBCode, Markdown, or string arrays in strict top-to-bottom document position order.
  */
 export function extractImageUrls(input: string | string[] | undefined | null): string[] {
   if (!input) return [];
 
-  const rawText = Array.isArray(input) ? input.join('\n') : input;
-  if (typeof rawText !== 'string' || !rawText.trim()) return [];
-
+  const stringList = Array.isArray(input) ? input : [input];
   const extracted: string[] = [];
 
   const addUrl = (urlStr: string) => {
     if (!urlStr) return;
     const normalized = normalizeImageUrl(urlStr);
     if (!normalized) return;
-
     // Filter out 1x1 transparent tracking pixels
     if (
       normalized.startsWith('data:image/gif;base64,R0lGODlhAQAB') ||
@@ -148,79 +150,61 @@ export function extractImageUrls(input: string | string[] | undefined | null): s
     ) {
       return;
     }
-
     if (!extracted.includes(normalized)) {
       extracted.push(normalized);
     }
   };
 
-  // 1. Match HTML <img ...> with src, data-src, data-original, data-url, data-lazy-src, data-lazy
-  const imgTagRegex = /<img\b[^>]*?\b(?:src|data-src|data-original|data-url|data-lazy-src|data-lazy)=["']?([^"'\s>]+)["']?[^>]*>/gi;
-  let match: RegExpExecArray | null;
-  while ((match = imgTagRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+  for (const item of stringList) {
+    if (typeof item !== 'string' || !item.trim()) continue;
 
-  // 2. Match HTML <iframe ... src="..." />
-  const iframeTagRegex = /<iframe\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi;
-  while ((match = iframeTagRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    const matches: MediaMatch[] = [];
 
-  // 3. Match HTML <embed ... src="..." /> and <source ... src="..." />
-  const embedTagRegex = /<(?:embed|source|video)\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi;
-  while ((match = embedTagRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    const collectMatches = (regex: RegExp, groupIndex: number = 1) => {
+      regex.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = regex.exec(item)) !== null) {
+        if (m[groupIndex]) {
+          matches.push({ index: m.index, url: m[groupIndex] });
+        }
+      }
+    };
 
-  // 4. Match HTML <object ... data="..." />
-  const objectTagRegex = /<object\b[^>]*?\bdata=["']?([^"'\s>]+)["']?[^>]*>/gi;
-  while ((match = objectTagRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    // 1. Match HTML <img ...> with src, data-src, data-original, data-url, data-lazy-src, data-lazy
+    collectMatches(/<img\b[^>]*?\b(?:src|data-src|data-original|data-url|data-lazy-src|data-lazy)=["']?([^"'\s>]+)["']?[^>]*>/gi, 1);
 
-  // 5. Match HTML <a ... href="image/drive/pinterest link">
-  const aTagRegex = /<a\b[^>]*?\bhref=["']?([^"'\s>]+\.(?:jpg|jpeg|png|webp|gif|bmp|svg)(?:\?[^"'\s>]*)?|https?:\/\/(?:drive|docs)\.google\.com\/[^"'\s>]+|https?:\/\/(?:[a-z]{2,3}\.)?pinterest\.[^"'\s>]+\/pin\/[^"'\s>]+)["']?[^>]*>/gi;
-  while ((match = aTagRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    // 2. Match HTML <iframe ... src="..." />
+    collectMatches(/<iframe\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi, 1);
 
-  // 6. Match BBCode [img]...[/img]
-  const bbcodeRegex = /\[img\](.*?)\[\/img\]/gi;
-  while ((match = bbcodeRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    // 3. Match HTML <embed ... src="..." /> and <source ... src="..." />
+    collectMatches(/<(?:embed|source|video)\b[^>]*?\bsrc=["']?([^"'\s>]+)["']?[^>]*>/gi, 1);
 
-  // 7. Match Markdown ![...](...) and [link](image)
-  const markdownImgRegex = /!\[.*?\]\((.*?)\)/gi;
-  while ((match = markdownImgRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    // 4. Match HTML <object ... data="..." />
+    collectMatches(/<object\b[^>]*?\bdata=["']?([^"'\s>]+)["']?[^>]*>/gi, 1);
 
-  // 8. Match CSS url(...)
-  const cssUrlRegex = /url\(["']?([^"')]+)["']?\)/gi;
-  while ((match = cssUrlRegex.exec(rawText)) !== null) {
-    if (match[1]) addUrl(match[1]);
-  }
+    // 5. Match HTML <a ... href="image/drive/pinterest link">
+    collectMatches(/<a\b[^>]*?\bhref=["']?([^"'\s>]+\.(?:jpg|jpeg|png|webp|gif|bmp|svg)(?:\?[^"'\s>]*)?|https?:\/\/(?:drive|docs)\.google\.com\/[^"'\s>]+|https?:\/\/(?:[a-z]{2,3}\.)?pinterest\.[^"'\s>]+\/pin\/[^"'\s>]+)["']?[^>]*>/gi, 1);
 
-  // 9. Also parse line-by-line / text URLs for lines that do not already contain HTML/BBCode/Markdown media tags
-  const lines = rawText.split(/[\n\r]+/);
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed) continue;
+    // 6. Match BBCode [img]...[/img]
+    collectMatches(/\[img\](.*?)\[\/img\]/gi, 1);
 
-    // Skip raw URL scraping on lines that already had structured embed/img tags parsed above
-    if (/<(?:img|iframe|embed|object|source|video)\b|\[img\]|!\[.*?\]\(/i.test(trimmed)) {
-      continue;
-    }
+    // 7. Match Markdown ![...](...) and [link](image)
+    collectMatches(/!\s*\[.*?\]\((.*?)\)/gi, 1);
 
-    // Direct Google Drive, Blogger, Discord, Worker, Pinterest, or web URLs
-    const urlMatches = trimmed.match(/(https?:\/\/[^\s"'<>\])]+|data:image\/[^\s"'<>\])]+|\/api\/[^\s"'<>\])]+)/gi);
-    if (urlMatches && urlMatches.length > 0) {
-      urlMatches.forEach(u => addUrl(u));
+    // 8. Match CSS url(...)
+    collectMatches(/url\(["']?([^"')]+)["']?\)/gi, 1);
+
+    // 9. Direct raw URLs
+    collectMatches(/(https?:\/\/[^\s"'<>\])]+|data:image\/[^\s"'<>\])]+|\/api\/[^\s"'<>\])]+)/gi, 1);
+
+    // Sort all matches strictly by character position in the document (top to bottom)
+    matches.sort((a, b) => a.index - b.index);
+
+    // Add in exact position order
+    for (const matchObj of matches) {
+      addUrl(matchObj.url);
     }
   }
 
   return extracted;
 }
-
