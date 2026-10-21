@@ -124,14 +124,14 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     setHighlightedParaKey(null);
   }, [seriesId, chapterId]);
 
-  // Her bölümde roman içeriği ve görselleri belleğe takılmadan doğrudan sunucudan taze çekilir
+  // Roman içeriği eksikse sunucudan çekilir (Cloudflare kotasını korur)
   useEffect(() => {
+    if (!currentChapter || (currentChapter.content && currentChapter.content.trim())) return;
     let cancelled = false;
     setIsHydratingContent(true);
     const targetQuery = (series && series.id) ? series.id : seriesId;
-    fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}&_t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}`, {
+      cache: 'no-store'
     })
       .then(r => r.json())
       .then(data => {

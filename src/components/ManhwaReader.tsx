@@ -261,15 +261,17 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
   const [isHydratingImages, setIsHydratingImages] = useState(false);
   const [reloadTrigger, setReloadTrigger] = useState(0);
 
-  // Her bölümde sayfalar kesinlikle belleğe alınmadan doğrudan sunucudan/veritabanından taze çekilir
+  // Sayfa görselleri eksikse veya kullanıcı yenile butonuna bastıysa sunucudan çekilir (Cloudflare kotasını korur)
   useEffect(() => {
     let cancelled = false;
+    const needsFetch = reloadTrigger > 0 || !currentChapter || chapterImageUrls.length === 0;
+    if (!needsFetch) return;
+
     const targetQuery = (series && series.id) ? series.id : seriesId;
     setIsHydratingImages(true);
 
     fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}&_t=${Date.now()}`, {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      cache: 'no-store'
     })
       .then(r => r.json())
       .then(data => {
