@@ -240,10 +240,10 @@ export const HorizontalReleaseCard: React.FC<HorizontalReleaseCardProps> = ({
                       <ChapterSpecialBadge tag={ch.specialTag} size="xs" />
                     )}
 
-                    {/* Parıltılı Mor "YENİ" Etiketi (Manhwa/Manga için) */}
+                    {/* Parıltılı Kırmızı/Mor "YENİ" Etiketi (Manhwa/Manga için) */}
                     {!isNovel && isChapterNew && (
-                      <span className="bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.2 rounded shadow-sm border border-purple-300/40 animate-pulse flex items-center gap-0.5 flex-shrink-0">
-                        <Sparkles size={8} className="text-purple-100 fill-purple-100" />
+                      <span className="bg-gradient-to-r from-red-600 via-rose-600 to-purple-600 text-white font-black text-[8px] sm:text-[9px] px-1.5 py-0.5 rounded-md shadow-md shadow-red-900/50 border border-red-300/40 animate-pulse flex items-center gap-0.5 flex-shrink-0">
+                        <Sparkles size={8} className="text-white fill-white" />
                         YENİ
                       </span>
                     )}

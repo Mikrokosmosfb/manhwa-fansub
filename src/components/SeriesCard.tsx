@@ -196,8 +196,8 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
             </div>
           )}
           {series.isNew && !series.isHot && (
-            <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-[10px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-md border border-purple-300/30">
-              <Sparkles size={11} />
+            <div className="bg-gradient-to-r from-red-600 via-rose-600 to-purple-600 text-white text-[10px] font-black px-1.5 py-0.5 rounded flex items-center gap-0.5 shadow-md shadow-red-900/50 border border-red-300/40 animate-pulse">
+              <Sparkles size={11} fill="currentColor" />
               YENİ
             </div>
           )}
@@ -268,7 +268,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
                       </span>
                     )}
                     {!isNovel && isNew && (
-                      <span className="text-[9px] bg-emerald-600 text-white px-1 rounded font-bold uppercase flex-shrink-0 animate-pulse">
+                      <span className="text-[9px] bg-gradient-to-r from-red-600 via-rose-600 to-purple-600 text-white px-1.5 py-0.2 rounded font-black uppercase flex-shrink-0 animate-pulse shadow-md shadow-red-900/50 border border-red-300/40 flex items-center gap-0.5">
                         YENİ
                       </span>
                     )}

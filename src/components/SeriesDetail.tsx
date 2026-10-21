@@ -1062,8 +1062,8 @@ export const SeriesDetail: React.FC<SeriesDetailProps> = ({ seriesId }) => {
 
                             {/* 24-Hour "YENİ" Tag */}
                             {isNew24h && (
-                              <span className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white text-[9px] font-black px-1.5 py-0.2 rounded uppercase flex-shrink-0 animate-pulse shadow-sm flex items-center gap-0.5">
-                                <Flame size={9} />
+                              <span className="bg-gradient-to-r from-red-600 via-rose-600 to-purple-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md uppercase flex-shrink-0 animate-pulse shadow-md shadow-red-900/50 border border-red-300/40 flex items-center gap-0.5">
+                                <Flame size={9} fill="currentColor" />
                                 YENİ
                               </span>
                             )}
