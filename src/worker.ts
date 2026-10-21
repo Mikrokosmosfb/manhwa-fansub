@@ -1248,15 +1248,22 @@ ${seriesXml}
               });
             }
 
-            // FAST PATH 2: Serve single series/chapter query from in-memory Worker cache if present
-            if (targetSeriesId && cachedSeriesResponseJson) {
+            const hasTimestampBust = Boolean(url.searchParams.get('_t'));
+
+            // FAST PATH 2: Serve single series/chapter query from in-memory Worker cache ONLY if chapters have images and no bust was requested
+            if (targetSeriesId && cachedSeriesResponseJson && !hasTimestampBust) {
               try {
                 const parsedCache = JSON.parse(cachedSeriesResponseJson);
                 if (parsedCache && Array.isArray(parsedCache.data)) {
                   const matchedSeries = parsedCache.data.find(
                     (s: any) => s.id === targetSeriesId || s.slug === targetSeriesId
                   );
-                  if (matchedSeries && Array.isArray(matchedSeries.chapters) && matchedSeries.chapters.length > 0) {
+                  if (
+                    matchedSeries &&
+                    Array.isArray(matchedSeries.chapters) &&
+                    matchedSeries.chapters.length > 0 &&
+                    matchedSeries.chapters.some((c: any) => (Array.isArray(c.images) && c.images.length > 0) || c.content)
+                  ) {
                     return new Response(
                       JSON.stringify({
                         success: true,
@@ -1264,7 +1271,7 @@ ${seriesXml}
                         seriesId: targetSeriesId,
                         chapters: matchedSeries.chapters
                       }),
-                      { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
+                      { headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0' } }
                     );
                   }
                 }
@@ -1281,21 +1288,32 @@ ${seriesXml}
                       WHERE series_id = ? 
                          OR series_id = (SELECT id FROM series WHERE slug = ? OR id = ?)
                          OR series_id = (SELECT slug FROM series WHERE id = ? OR slug = ?)
+                      ORDER BY CAST(chapter_number AS REAL) ASC
                     `)
                     .bind(targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId)
                     .all();
-                  const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => ({
-                    id: ch.id,
-                    number: ch.chapter_number,
-                    title: ch.title,
-                    publishedDate: ch.published_date,
-                    specialTag: ch.special_tag,
-                    is18Plus: Boolean(ch.is_18_plus),
-                    images: ch.images_json ? JSON.parse(ch.images_json) : [],
-                    content: ch.content,
-                    notice: ch.notice,
-                    createdAt: ch.created_at
-                  }));
+                  const seriesChapters = ((chRows?.results || []) as any[]).map((ch: any) => {
+                    let parsedImages: any[] = [];
+                    if (ch.images_json) {
+                      try {
+                        parsedImages = typeof ch.images_json === 'string' ? JSON.parse(ch.images_json) : ch.images_json;
+                      } catch {
+                        parsedImages = String(ch.images_json).split(/[\n,]+/).map((s: string) => s.trim()).filter(Boolean);
+                      }
+                    }
+                    return {
+                      id: ch.id,
+                      number: ch.chapter_number,
+                      title: ch.title,
+                      publishedDate: ch.published_date,
+                      specialTag: ch.special_tag,
+                      is18Plus: Boolean(ch.is_18_plus),
+                      images: Array.isArray(parsedImages) ? parsedImages : [parsedImages].filter(Boolean),
+                      content: ch.content,
+                      notice: ch.notice,
+                      createdAt: ch.created_at
+                    };
+                  });
                   return new Response(
                     JSON.stringify({
                       success: true,
@@ -1303,7 +1321,7 @@ ${seriesXml}
                       seriesId: targetSeriesId,
                       chapters: seriesChapters
                     }),
-                    { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
+                    { headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0' } }
                   );
                 }
 
