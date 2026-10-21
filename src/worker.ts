@@ -4630,9 +4630,37 @@ ${seriesXml}
         resHeaders.set('Pragma', 'no-cache');
         resHeaders.set('Expires', '0');
       } else if (isHtml) {
-        // HTML entrypoint must check for latest build hashes
+        // HTML entrypoint must check for latest build hashes and serve social share preview card
         resHeaders.set('Cache-Control', 'no-cache, no-store, must-revalidate, max-age=0');
         resHeaders.set('Pragma', 'no-cache');
+
+        let htmlBody = await assetRes.text();
+
+        // Check if custom site branding logo exists in D1 or memory
+        let customLogo = 'https://mikrokosmos.fans/og-image.png';
+        const activeDb = usersDb || db;
+        if (activeDb) {
+          try {
+            const row = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'site_branding'").first();
+            if (row && row.value) {
+              const parsed = JSON.parse(row.value);
+              if (parsed && parsed.logoUrl && parsed.logoUrl.trim()) {
+                customLogo = parsed.logoUrl.trim();
+              }
+            }
+          } catch {}
+        }
+
+        if (customLogo && customLogo !== 'https://mikrokosmos.fans/og-image.png') {
+          htmlBody = htmlBody
+            .replace(/https:\/\/mikrokosmos\.fans\/og-image\.png/g, customLogo);
+        }
+
+        return new Response(htmlBody, {
+          status: assetRes.status,
+          statusText: assetRes.statusText,
+          headers: resHeaders
+        });
       } else if (isStaticAsset) {
         // Hashed assets in /assets/ can be cached long-term
         resHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
