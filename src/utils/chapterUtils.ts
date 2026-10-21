@@ -700,7 +700,67 @@ export function isMonthlyDateSeries(releaseDay?: string): boolean {
 export function doesSeriesReleaseOnDay(series: { releaseDay?: string }, targetDayName: string): boolean {
   if (!series.releaseDay) return false;
   if (isMonthlyDateSeries(series.releaseDay)) return false;
-  const lower = series.releaseDay.trim().toLowerCase();
-  if (lower === 'her gün' || lower === 'hergun' || lower === 'her gun' || lower === 'hergün') return true;
-  return lower.includes(targetDayName.toLowerCase());
+
+  const raw = series.releaseDay.trim().toLowerCase();
+  if (
+    raw === 'her gün' ||
+    raw === 'hergun' ||
+    raw === 'her gun' ||
+    raw === 'hergün' ||
+    raw === 'günlük' ||
+    raw === 'gunluk'
+  ) {
+    return true;
+  }
+
+  const targetLower = targetDayName.trim().toLowerCase();
+
+  const normRaw = raw
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+
+  const normTarget = targetLower
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ü/g, 'u')
+    .replace(/ş/g, 's')
+    .replace(/ö/g, 'o')
+    .replace(/ç/g, 'c');
+
+  if (normRaw.includes('hafta sonu') || normRaw.includes('haftasonu')) {
+    if (normTarget === 'cumartesi' || normTarget === 'pazar') return true;
+  }
+  if (normRaw.includes('hafta ici') || normRaw.includes('haftaici')) {
+    if (['pazartesi', 'sali', 'carsamba', 'persembe', 'cuma'].includes(normTarget)) return true;
+  }
+
+  const tokens = normRaw.split(/[,/&\s]+/).map(t => t.trim()).filter(Boolean);
+
+  if (normTarget === 'cuma') {
+    return tokens.some(t => t === 'cuma' || t === 'cum');
+  }
+  if (normTarget === 'cumartesi') {
+    return tokens.some(t => t === 'cumartesi' || t === 'cmt');
+  }
+  if (normTarget === 'pazar') {
+    return tokens.some(t => t === 'pazar' || t === 'paz');
+  }
+  if (normTarget === 'pazartesi') {
+    return tokens.some(t => t === 'pazartesi' || t === 'pzt');
+  }
+  if (normTarget === 'sali') {
+    return tokens.some(t => t === 'sali' || t === 'sal');
+  }
+  if (normTarget === 'carsamba') {
+    return tokens.some(t => t === 'carsamba' || t === 'car');
+  }
+  if (normTarget === 'persembe') {
+    return tokens.some(t => t === 'persembe' || t === 'per');
+  }
+
+  return tokens.includes(normTarget);
 }
