@@ -1248,29 +1248,6 @@ ${seriesXml}
               });
             }
 
-            // FAST PATH 2: Serve single series/chapter query from in-memory Worker cache if present
-            if (targetSeriesId && cachedSeriesResponseJson) {
-              try {
-                const parsedCache = JSON.parse(cachedSeriesResponseJson);
-                if (parsedCache && Array.isArray(parsedCache.data)) {
-                  const matchedSeries = parsedCache.data.find(
-                    (s: any) => s.id === targetSeriesId || s.slug === targetSeriesId
-                  );
-                  if (matchedSeries && Array.isArray(matchedSeries.chapters) && matchedSeries.chapters.length > 0) {
-                    return new Response(
-                      JSON.stringify({
-                        success: true,
-                        storage: 'Cache',
-                        seriesId: targetSeriesId,
-                        chapters: matchedSeries.chapters
-                      }),
-                      { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
-                    );
-                  }
-                }
-              } catch (eCache) {}
-            }
-
             // Priority: Cloudflare D1 SQL Database (with Fail-Safe Try/Catch)
             if (db) {
               try {
@@ -1281,6 +1258,7 @@ ${seriesXml}
                       WHERE series_id = ? 
                          OR series_id = (SELECT id FROM series WHERE slug = ? OR id = ?)
                          OR series_id = (SELECT slug FROM series WHERE id = ? OR slug = ?)
+                      ORDER BY CAST(chapter_number AS REAL) ASC
                     `)
                     .bind(targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId, targetSeriesId)
                     .all();
@@ -1303,7 +1281,7 @@ ${seriesXml}
                       seriesId: targetSeriesId,
                       chapters: seriesChapters
                     }),
-                    { headers: { ...headers, 'Cache-Control': 'public, max-age=60, s-maxage=180' } }
+                    { headers: { ...headers, 'Cache-Control': 'no-cache, no-store, must-revalidate, max-age=0' } }
                   );
                 }
 

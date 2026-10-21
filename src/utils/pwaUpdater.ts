@@ -34,6 +34,22 @@ export function initPWARegistration() {
   if (isInitialized || typeof window === 'undefined') return;
   isInitialized = true;
 
+  // Bölüm ve harici resim önbelleklerini derhal temizle (sayfaların açılmama sorununu çözer)
+  if ('caches' in window) {
+    caches.keys().then(keys => {
+      keys.forEach(k => {
+        if (
+          k.includes('remote-images') ||
+          k.includes('static-images') ||
+          k.includes('images-cache') ||
+          k.includes('chapter-images')
+        ) {
+          caches.delete(k).catch(() => {});
+        }
+      });
+    }).catch(() => {});
+  }
+
   updateSWFn = registerSW({
     immediate: true,
     onNeedRefresh() {

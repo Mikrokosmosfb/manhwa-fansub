@@ -124,50 +124,51 @@ export const NovelReader: React.FC<NovelReaderProps> = ({ seriesId, chapterId })
     setHighlightedParaKey(null);
   }, [seriesId, chapterId]);
 
-  // If localStorage had a lightweight catalog without chapter.content, immediately hydrate from /api/series?seriesId=...
+  // Her bölümde roman içeriği ve görselleri belleğe takılmadan doğrudan sunucudan taze çekilir
   useEffect(() => {
-    if (currentChapter && (!currentChapter.content || !currentChapter.content.trim())) {
-      let cancelled = false;
-      setIsHydratingContent(true);
-      const targetQuery = (series && series.id) ? series.id : seriesId;
-      fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}`, { cache: 'no-store' })
-        .then(r => r.json())
-        .then(data => {
-          if (cancelled) return;
-          if (data && data.success && Array.isArray(data.chapters) && data.chapters.length > 0) {
-            setSeriesList(prev =>
-              prev.map(s => {
-                const isMatch = s.id === targetQuery || s.slug === targetQuery || s.id === seriesId || s.slug === seriesId || (series && s.id === series.id);
-                return isMatch ? { ...s, chapters: data.chapters } : s;
-              })
-            );
-            setIsHydratingContent(false);
-            return;
-          }
-          if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
-            setSeriesList(data.data);
-            setIsHydratingContent(false);
-            return;
-          }
-          // Fallback to full /api/series
-          return fetch('/api/series', { cache: 'no-store' })
-            .then(r2 => r2.json())
-            .then(fullData => {
-              if (cancelled) return;
-              if (fullData && fullData.success && Array.isArray(fullData.data) && fullData.data.length > 0) {
-                setSeriesList(fullData.data);
-              }
-            });
-        })
-        .catch(() => {})
-        .finally(() => {
-          if (!cancelled) setIsHydratingContent(false);
-        });
-      return () => {
-        cancelled = true;
-      };
-    }
-  }, [seriesId, chapterId, currentChapter?.id, currentChapter?.content]);
+    let cancelled = false;
+    setIsHydratingContent(true);
+    const targetQuery = (series && series.id) ? series.id : seriesId;
+    fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}&_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data && data.success && Array.isArray(data.chapters) && data.chapters.length > 0) {
+          setSeriesList(prev =>
+            prev.map(s => {
+              const isMatch = s.id === targetQuery || s.slug === targetQuery || s.id === seriesId || s.slug === seriesId || (series && s.id === series.id);
+              return isMatch ? { ...s, chapters: data.chapters } : s;
+            })
+          );
+          setIsHydratingContent(false);
+          return;
+        }
+        if (data && data.success && Array.isArray(data.data) && data.data.length > 0) {
+          setSeriesList(data.data);
+          setIsHydratingContent(false);
+          return;
+        }
+        // Fallback to full /api/series
+        return fetch('/api/series', { cache: 'no-store' })
+          .then(r2 => r2.json())
+          .then(fullData => {
+            if (cancelled) return;
+            if (fullData && fullData.success && Array.isArray(fullData.data) && fullData.data.length > 0) {
+              setSeriesList(fullData.data);
+            }
+          });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsHydratingContent(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [seriesId, chapterId, series?.id]);
 
   // Close dropdown on Escape key
   useEffect(() => {

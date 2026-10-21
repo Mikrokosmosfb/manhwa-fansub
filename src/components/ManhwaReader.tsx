@@ -257,45 +257,67 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
 
   const totalPages = chapterImageUrls.length;
 
-  // Hydrate full chapter images & content from Cloudflare D1 if missing
+  // State to track fresh chapter hydration from server
+  const [isHydratingImages, setIsHydratingImages] = useState(false);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
+
+  // Her bölümde sayfalar kesinlikle belleğe alınmadan doğrudan sunucudan/veritabanından taze çekilir
   useEffect(() => {
     let cancelled = false;
-    const needsFetch = !currentChapter || chapterImageUrls.length === 0;
-    if (needsFetch) {
-      const targetQuery = (series && series.id) ? series.id : seriesId;
-      fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}`, { cache: 'no-store' })
-        .then(r => r.json())
-        .then(data => {
-          if (cancelled) return;
-          if (data && data.success && Array.isArray(data.chapters)) {
-            setSeriesList(prev =>
-              prev.map(s => {
-                const isMatch = s.id === targetQuery || s.slug === targetQuery || s.id === seriesId || s.slug === seriesId || (series && s.id === series.id);
-                if (!isMatch) return s;
-                const incomingChapters = data.chapters;
-                const merged = s.chapters.map(ch => {
-                  const fresh = incomingChapters.find((fc: any) => fc.id === ch.id || fc.number === ch.number);
-                  if (fresh && ((fresh.images && fresh.images.length > 0) || fresh.content)) {
-                    return { ...ch, images: fresh.images || ch.images, content: fresh.content || ch.content };
-                  }
-                  return fresh || ch;
-                });
-                for (const fc of incomingChapters) {
-                  if (!merged.some(m => m.id === fc.id || m.number === fc.number)) {
-                    merged.push(fc);
-                  }
+    const targetQuery = (series && series.id) ? series.id : seriesId;
+    setIsHydratingImages(true);
+
+    fetch(`/api/series?seriesId=${encodeURIComponent(targetQuery)}&_t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        if (data && data.success && Array.isArray(data.chapters)) {
+          setSeriesList(prev =>
+            prev.map(s => {
+              const isMatch =
+                s.id === targetQuery ||
+                s.slug === targetQuery ||
+                s.id === seriesId ||
+                s.slug === seriesId ||
+                (series && s.id === series.id);
+              if (!isMatch) return s;
+              const incomingChapters = data.chapters;
+              const merged = (s.chapters || []).map(ch => {
+                const fresh = incomingChapters.find(
+                  (fc: any) => fc.id === ch.id || String(fc.number) === String(ch.number)
+                );
+                if (fresh) {
+                  return {
+                    ...ch,
+                    ...fresh,
+                    images: fresh.images && fresh.images.length > 0 ? fresh.images : ch.images,
+                    content: fresh.content || ch.content
+                  };
                 }
-                return { ...s, chapters: merged };
-              })
-            );
-          }
-        })
-        .catch(() => {});
-    }
+                return ch;
+              });
+              for (const fc of incomingChapters) {
+                if (!merged.some(m => m.id === fc.id || String(m.number) === String(fc.number))) {
+                  merged.push(fc);
+                }
+              }
+              return { ...s, chapters: merged };
+            })
+          );
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setIsHydratingImages(false);
+      });
+
     return () => {
       cancelled = true;
     };
-  }, [seriesId, chapterId, chapterImageUrls.length, series?.id]);
+  }, [seriesId, chapterId, series?.id, reloadTrigger]);
 
   // High-performance image preloader for initial chapter pages
   useEffect(() => {
@@ -1522,15 +1544,27 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                       <img
                         src={getChapterImageUrl(imgUrl, manhwaSettings.imageQuality)}
                         alt={`${currentChapter.title} - Sayfa ${idx + 1}`}
-                        className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none"
-                        loading={idx < 6 ? 'eager' : 'lazy'}
-                        fetchPriority={(idx < 3 ? 'high' : 'auto') as any}
+                        className="wt-img w-full block border-none rounded-none shadow-none bg-gray-900 select-none min-h-[240px]"
+                        loading={idx < 10 ? 'eager' : 'lazy'}
+                        fetchPriority={(idx < 5 ? 'high' : 'auto') as any}
                         decoding="async"
                         referrerPolicy="no-referrer"
                         onError={(e) => {
                           const target = e.currentTarget;
-                          if (target.src !== imgUrl) {
+                          const currentSrc = target.src;
+                          // 1. Orijinal ham URL'yi dene
+                          if (currentSrc !== imgUrl) {
                             target.src = imgUrl;
+                            return;
+                          }
+                          // 2. Blogger /s0/ hata verdiyse /s1600/ ile dene
+                          if (currentSrc.includes('/s0/')) {
+                            target.src = currentSrc.replace('/s0/', '/s1600/');
+                            return;
+                          }
+                          if (currentSrc.includes('=s0')) {
+                            target.src = currentSrc.replace(/=s0/g, '=s1600');
+                            return;
                           }
                         }}
                         style={{ display: 'block', margin: 0, padding: 0 }}
@@ -1582,8 +1616,24 @@ export const ManhwaReader: React.FC<ManhwaReaderProps> = ({ seriesId, chapterId 
                 })}
               </div>
             ) : (
-              <div className="p-12 text-center text-slate-500 dark:text-gray-400 bg-white dark:bg-gray-900 rounded-2xl border border-purple-200 dark:border-purple-500/20 w-full shadow-sm">
-                Bu bölümde henüz görsel içerik bulunmuyor veya dönüştürülüyor.
+              <div className="p-12 text-center text-slate-400 bg-gray-900/90 rounded-2xl border border-purple-500/30 w-full shadow-lg flex flex-col items-center justify-center gap-3">
+                {isHydratingImages ? (
+                  <>
+                    <div className="w-10 h-10 border-4 border-purple-500/30 border-t-purple-400 rounded-full animate-spin" />
+                    <span className="font-bold text-sm text-purple-300">Bölüm sayfaları yükleniyor, lütfen bekleyin...</span>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-300">Bu bölümde henüz görsel içerik bulunmuyor veya bağlantı gecikti.</p>
+                    <button
+                      onClick={() => setReloadTrigger(prev => prev + 1)}
+                      className="mt-2 inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition shadow cursor-pointer"
+                    >
+                      <RotateCcw size={14} />
+                      Sayfaları Yeniden Yükle
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
