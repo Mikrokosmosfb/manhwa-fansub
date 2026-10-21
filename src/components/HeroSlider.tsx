@@ -18,7 +18,7 @@ import {
 import { isSeries18Plus, isAuthorizedAdmin } from '../types';
 import { getSeriesLatestActivityTime } from '../utils/dateUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
-import { getSeriesAlertsAndCleanSynopsis } from '../utils/chapterUtils';
+import { getSeriesAlertsAndCleanSynopsis, sortChapters } from '../utils/chapterUtils';
 
 export const HeroSlider: React.FC = () => {
   const { seriesList, setView, showNsfw, isAdminLoggedIn, user } = useApp();
@@ -80,7 +80,7 @@ export const HeroSlider: React.FC = () => {
   }
 
   const current = featuredSeries[currentIndex] || featuredSeries[0];
-  const sortedChapters = [...(current.chapters || [])].sort((a, b) => (b.chapterNumber || 0) - (a.chapterNumber || 0));
+  const sortedChapters = sortChapters(current.chapters || [], 'desc');
   const firstChapter = sortedChapters[sortedChapters.length - 1];
   const latestChapter = sortedChapters[0];
 

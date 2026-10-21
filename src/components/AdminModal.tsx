@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { downloadProjectZip } from '../utils/exportZip';
 import { extractImageUrls } from '../utils/imageParser';
-import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata, parseChapterNumber, isExtraChapter } from '../utils/chapterUtils';
+import { extractMangaAlerts, getSeriesAlertsAndCleanSynopsis, mergeChapterNoticesFromSources, extractBloggerSeriesMetadata, parseChapterNumber, isExtraChapter, sortChapters } from '../utils/chapterUtils';
 import { MangaAlertStack } from './MangaAlertBox';
 import { Series, SeriesType, SeriesStatus, Chapter, isAuthorizedAdmin, isChapter18Plus } from '../types';
 import { GENRE_LIST } from '../data/mockData';
@@ -3499,7 +3499,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
             .filter(s => manageSearchQuery ? s.title.toLowerCase().includes(manageSearchQuery.toLowerCase()) : true)
             .map(s => {
               const isExpanded = expandedSeriesId === s.id;
-              const sortedChapters = [...s.chapters].sort((a, b) => b.number - a.number);
+              const sortedChapters = sortChapters(s.chapters, 'desc');
 
               return (
                 <div

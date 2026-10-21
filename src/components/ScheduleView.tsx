@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { SeriesType, isSeries18Plus, Series, isAuthorizedAdmin } from '../types';
 import { Calendar, CalendarDays, Clock, ChevronRight, Star, Megaphone, Search, X } from 'lucide-react';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
-import { doesSeriesReleaseOnDay, isMonthlyDateSeries } from '../utils/chapterUtils';
+import { doesSeriesReleaseOnDay, isMonthlyDateSeries, sortChapters } from '../utils/chapterUtils';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
 
 const DAYS_OF_WEEK = [
@@ -264,7 +264,7 @@ export const ScheduleView: React.FC = () => {
             ) : (
               selectedDaySeries.map((series, idx) => {
                 const latestChapter = series.chapters && series.chapters.length > 0
-                  ? [...series.chapters].sort((a, b) => b.number - a.number)[0]
+                  ? sortChapters(series.chapters, 'desc')[0]
                   : null;
                 const latestNumber = latestChapter?.number;
                 const nextNumber = latestNumber ? latestNumber + 1 : 1;
@@ -438,7 +438,7 @@ export const ScheduleView: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {filteredMonthlySeries.map(series => {
                 const latestChapter = series.chapters && series.chapters.length > 0 
-                  ? [...series.chapters].sort((a, b) => b.number - a.number)[0] 
+                  ? sortChapters(series.chapters, 'desc')[0] 
                   : null;
                 
                 return (

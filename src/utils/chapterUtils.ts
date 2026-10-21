@@ -43,47 +43,29 @@ export function isExtraChapter(ch: Chapter): boolean {
 export function sortChapters(chapters: Chapter[], order: 'asc' | 'desc' = 'asc'): Chapter[] {
   if (!chapters || !Array.isArray(chapters)) return [];
 
-  const prologueChapters: Chapter[] = [];
-  const mainChapters: Chapter[] = [];
-  const extraChapters: Chapter[] = [];
+  return [...chapters].sort((a, b) => {
+    let numA = typeof a.number === 'number' && !isNaN(a.number) ? a.number : parseChapterNumber(a.title, 0);
+    let numB = typeof b.number === 'number' && !isNaN(b.number) ? b.number : parseChapterNumber(b.title, 0);
 
-  for (const ch of chapters) {
-    if (isPrologueChapter(ch)) {
-      prologueChapters.push(ch);
-    } else if (isExtraChapter(ch)) {
-      extraChapters.push(ch);
-    } else {
-      mainChapters.push(ch);
-    }
-  }
+    if (isPrologueChapter(a) && numA > 0) numA = 0;
+    if (isPrologueChapter(b) && numB > 0) numB = 0;
 
-  const sortFn = (a: Chapter, b: Chapter) => {
-    if (a.number !== b.number) {
-      return order === 'desc' ? b.number - a.number : a.number - b.number;
+    if (numA !== numB) {
+      return order === 'desc' ? numB - numA : numA - numB;
     }
-    // If numbers are identical, sort strictly by publication date (publishedDate / createdAt) chronologically!
+
     const dateA = new Date(a.publishedDate || a.createdAt || 0).getTime();
     const dateB = new Date(b.publishedDate || b.createdAt || 0).getTime();
-    if (dateA !== dateB) {
-      return dateA - dateB;
+    if (dateA !== dateB && !isNaN(dateA) && !isNaN(dateB)) {
+      return order === 'desc' ? dateB - dateA : dateA - dateB;
     }
+
+    const titleA = a.title || `Bölüm ${a.number}`;
+    const titleB = b.title || `Bölüm ${b.number}`;
     return order === 'desc'
-      ? b.title.localeCompare(a.title, 'tr', { numeric: true })
-      : a.title.localeCompare(b.title, 'tr', { numeric: true });
-  };
-
-  prologueChapters.sort(sortFn);
-  mainChapters.sort(sortFn);
-  extraChapters.sort(sortFn);
-
-  // Kronolojik akış mantığı:
-  // ASC (1 -> Son): [Tanıtım / Prologue] -> [Bölüm 1, Bölüm 2...] -> [Ekstra / Yan Hikayeler 1, 2...]
-  // DESC (Son -> 1): [Ekstra / Yan Hikayeler 11, 10...] -> [Bölüm 3, Bölüm 2, Bölüm 1] -> [Tanıtım / Prologue]
-  if (order === 'desc') {
-    return [...extraChapters, ...mainChapters, ...prologueChapters];
-  }
-
-  return [...prologueChapters, ...mainChapters, ...extraChapters];
+      ? titleB.localeCompare(titleA, 'tr', { numeric: true })
+      : titleA.localeCompare(titleB, 'tr', { numeric: true });
+  });
 }
 
 export function formatChapterDate(ch?: Partial<Chapter> | null): string {

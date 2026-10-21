@@ -6,6 +6,7 @@ import { checkIsChapterNew } from '../utils/dateUtils';
 import { ChapterSpecialBadge } from './ChapterSpecialBadge';
 import { DiagonalStatusRibbon } from './DiagonalStatusRibbon';
 import { getOptimizedImageUrl, handleImageError } from '../utils/imageUtils';
+import { sortChapters } from '../utils/chapterUtils';
 
 interface SeriesCardProps {
   series: Series;
@@ -26,12 +27,7 @@ export const SeriesCard: React.FC<SeriesCardProps> = ({
   const isBookmarked = !!bookmarks[series.id];
 
   // Sort chapters numerically descending so highest chapter numbers appear first
-  const sortedChapters = [...(series.chapters || [])].sort((a, b) => {
-    const numA = Number(a.number) || 0;
-    const numB = Number(b.number) || 0;
-    if (numA !== numB) return numB - numA;
-    return (b.createdAt || 0) - (a.createdAt || 0);
-  });
+  const sortedChapters = sortChapters(series.chapters || [], 'desc');
   const recentChapters = sortedChapters.slice(0, maxChapters);
 
   const getTypeStyle = (type: Series['type']) => {
