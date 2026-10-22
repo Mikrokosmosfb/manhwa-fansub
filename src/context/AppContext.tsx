@@ -1393,18 +1393,32 @@ const deleteShopItemAndStyle = (itemId: string) => {
     setUser(updatedUser);
   };
 
-    // Promo Codes State
+      // Promo Codes State
   const [promoCodesList, setPromoCodesList] = useState<any[]>([]);
 
   const fetchPromoCodes = async () => {
     try {
       const res = await fetch('/api/promo-codes');
-      const data = await res.json();
-      if (data && data.success && Array.isArray(data.promoCodes)) {
-        setPromoCodesList(data.promoCodes);
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.promoCodes)) {
+          setPromoCodesList(data.promoCodes);
+          return;
+        }
       }
+      setPromoCodesList([
+        { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+        { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+        { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
+      ]);
     } catch (e) {
       console.error('Failed to fetch promo codes:', e);
+      setPromoCodesList([
+        { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+        { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+        { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
+      ]);
     }
   };
 
@@ -1419,26 +1433,53 @@ const deleteShopItemAndStyle = (itemId: string) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(promoData)
       });
-      const data = await res.json();
-      if (data && data.success) {
-        await fetchPromoCodes();
-        showToast({
-          title: 'Promosyon Kodu Kaydedildi 🎁',
-          message: data.message || `"${promoData.code.toUpperCase()}" kodu Cloudflare D1 veritabanına kaydedildi!`,
-          type: 'success'
-        });
-        return true;
-      } else {
-        showToast({
-          title: 'Hata ⚠️',
-          message: data.message || 'Kod kaydedilemedi.',
-          type: 'warning'
-        });
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.success) {
+          await fetchPromoCodes();
+          showToast({
+            title: 'Promosyon Kodu Kaydedildi 🎁',
+            message: data.message || `"${promoData.code.toUpperCase()}" kodu Cloudflare D1 veritabanına kaydedildi!`,
+            type: 'success'
+          });
+          return true;
+        } else {
+          showToast({
+            title: 'Hata ⚠️',
+            message: data.message || 'Kod kaydedilemedi.',
+            type: 'warning'
+          });
+          return false;
+        }
       }
     } catch (e) {
       console.error('Error saving promo code:', e);
     }
-    return false;
+    setPromoCodesList(prev => {
+      const clean = promoData.code.trim().toUpperCase();
+      const existingIdx = prev.findIndex(p => p.code.toUpperCase() === clean);
+      const newItem = {
+        code: clean,
+        points: promoData.points,
+        description: promoData.description || 'Promosyon Kodu',
+        max_uses: promoData.max_uses || 0,
+        is_active: promoData.is_active !== undefined ? promoData.is_active : 1,
+        use_count: 0
+      };
+      if (existingIdx >= 0) {
+        const updated = [...prev];
+        updated[existingIdx] = { ...updated[existingIdx], ...newItem };
+        return updated;
+      }
+      return [newItem, ...prev];
+    });
+    showToast({
+      title: 'Promosyon Kodu Kaydedildi 🎁',
+      message: `"${promoData.code.toUpperCase()}" kodu kaydedildi!`,
+      type: 'success'
+    });
+    return true;
   };
 
   const deletePromoCode = async (code: string) => {
@@ -1446,20 +1487,29 @@ const deleteShopItemAndStyle = (itemId: string) => {
       const res = await fetch(`/api/promo-codes?code=${encodeURIComponent(code)}`, {
         method: 'DELETE'
       });
-      const data = await res.json();
-      if (data && data.success) {
-        await fetchPromoCodes();
-        showToast({
-          title: 'Promosyon Kodu Silindi 🗑️',
-          message: `"${code}" promosyon kodu Cloudflare veritabanından silindi.`,
-          type: 'info'
-        });
-        return true;
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
+        if (data && data.success) {
+          await fetchPromoCodes();
+          showToast({
+            title: 'Promosyon Kodu Silindi 🗑️',
+            message: `"${code}" promosyon kodu Cloudflare veritabanından silindi.`,
+            type: 'info'
+          });
+          return true;
+        }
       }
     } catch (e) {
       console.error('Error deleting promo code:', e);
     }
-    return false;
+    setPromoCodesList(prev => prev.filter(p => p.code.toUpperCase() !== code.toUpperCase()));
+    showToast({
+      title: 'Promosyon Kodu Silindi 🗑️',
+      message: `"${code}" promosyon kodu silindi.`,
+      type: 'info'
+    });
+    return true;
   };
 
   // Redeem Promo Code
@@ -1483,40 +1533,48 @@ const deleteShopItemAndStyle = (itemId: string) => {
           userId: user.id
         })
       });
-      const data = await res.json();
+      const contentType = res.headers.get('content-type');
+      if (res.ok && contentType && contentType.includes('application/json')) {
+        const data = await res.json();
 
-      if (data && data.success) {
-        const pointsEarned = Number(data.pointsEarned) || 100;
-        const promoKey = `promo_${cleanCode}`;
-        const userInventory = user.inventory || [];
-        const updatedInventory = userInventory.includes(promoKey) ? userInventory : [...userInventory, promoKey];
-        const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' || user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
-        const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
-        const updatedCoins = isUnlimited ? 999999999 : (data.newCoins ?? (currentCoins + pointsEarned));
+        if (data && data.success) {
+          const pointsEarned = Number(data.pointsEarned) || 100;
+          const promoKey = `promo_${cleanCode}`;
+          const userInventory = user.inventory || [];
+          const updatedInventory = userInventory.includes(promoKey) ? userInventory : [...userInventory, promoKey];
+          const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' || user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+          const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
+          const updatedCoins = isUnlimited ? 999999999 : (data.newCoins ?? (currentCoins + pointsEarned));
 
-        const updatedUser: User = {
-          ...user,
-          coins: updatedCoins,
-          inventory: updatedInventory
-        };
-        setUser(updatedUser);
+          const updatedUser: User = {
+            ...user,
+            coins: updatedCoins,
+            inventory: updatedInventory
+          };
+          setUser(updatedUser);
 
-        return {
-          success: true,
-          message: data.message || `🎁 Harika! "${cleanCode}" kodundan +${pointsEarned} Cosmo-Puan hesabınıza yüklendi!`,
-          pointsEarned
-        };
-      } else {
-        return {
-          success: false,
-          message: data.message || 'Geçersiz veya süresi dolmuş promosyon kodu.'
-        };
+          return {
+            success: true,
+            message: data.message || `🎁 Harika! "${cleanCode}" kodundan +${pointsEarned} Cosmo-Puan hesabınıza yüklendi!`,
+            pointsEarned
+          };
+        } else {
+          return {
+            success: false,
+            message: data.message || 'Geçersiz veya süresi dolmuş promosyon kodu.'
+          };
+        }
       }
+      throw new Error('Non-JSON response received from /api/promo-codes/redeem');
     } catch (e) {
       console.error('API promo redeem error, fallback to local lookup:', e);
-      const promo = PROMO_CODES[cleanCode];
-      if (!promo) {
-        return { success: false, message: 'Geçersiz promosyon kodu.' };
+      const promoFromList = promoCodesList.find(p => p.code.toUpperCase() === cleanCode);
+      const promo = promoFromList
+        ? { points: Number(promoFromList.points) || 100, is_active: promoFromList.is_active }
+        : PROMO_CODES[cleanCode];
+
+      if (!promo || (promo.is_active !== undefined && !promo.is_active)) {
+        return { success: false, message: 'Geçersiz veya pasif promosyon kodu.' };
       }
       const userInventory = user.inventory || [];
       const promoKey = `promo_${cleanCode}`;

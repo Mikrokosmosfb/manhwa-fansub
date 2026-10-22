@@ -101,7 +101,11 @@ export const AdminPointsManager: React.FC = () => {
 
   const checkDaStatus = () => {
     fetch('/api/donationalerts/status')
-      .then(r => r.json())
+      .then(r => {
+        const ct = r.headers.get('content-type');
+        if (r.ok && ct && ct.includes('application/json')) return r.json();
+        return null;
+      })
       .then(d => {
         if (d && d.success) {
           setDaStatus(d);
@@ -117,7 +121,11 @@ export const AdminPointsManager: React.FC = () => {
   const fetchPaymentNotifications = () => {
     setIsLoadingNotifications(true);
     fetch('/api/payment-notifications')
-      .then(r => r.json())
+      .then(r => {
+        const ct = r.headers.get('content-type');
+        if (r.ok && ct && ct.includes('application/json')) return r.json();
+        return null;
+      })
       .then(data => {
         setIsLoadingNotifications(false);
         if (data && data.success && Array.isArray(data.notifications)) {
