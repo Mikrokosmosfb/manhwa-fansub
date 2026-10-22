@@ -829,12 +829,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('mk_user');
         return null;
       }
-      const isUnlimitedUser = parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
+      const isUnlimitedUser =
+        parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
+        parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
       let effectiveCoins = parsed.coins ?? 250;
       if (isUnlimitedUser) {
         effectiveCoins = 999999999;
-      } else if (parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com' && effectiveCoins >= 9999999) {
-        effectiveCoins = 10;
       }
       const normalized = normalizeShopInventory(
         [parsed.inventory, parsed.unlockedEmojiPacks],
@@ -1089,7 +1089,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
   const earnPoints = (amount: number, reason: string) => {
     setUser(prev => {
       if (!prev) return null;
-      if (prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') {
+      const isUnlimited =
+        prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
+        prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+      if (isUnlimited) {
         return { ...prev, coins: 999999999 };
       }
       const currentCoins = prev.coins ?? 10;
@@ -1102,12 +1105,15 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
   };
 
-  // Add Unlimited Points (+999.999 CP) - Only allowed for mikrokosmosfansub@gmail.com
+  // Add Unlimited Points (+999.999 CP) - Allowed for admin accounts
   const addUnlimitedPoints = () => {
     setUser(prev => {
       if (!prev) return null;
-      if (prev.email?.toLowerCase() !== 'mikrokosmosfansub@gmail.com') {
-        alert('Sınırsız Cosmo-Puan yetkisi sadece mikrokosmosfansub hesabına tanımlıdır!');
+      const isUnlimited =
+        prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
+        prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+      if (!isUnlimited) {
+        alert('Sınırsız Cosmo-Puan yetkisi yöneticilere tanımlıdır!');
         return prev;
       }
       return {
@@ -1116,18 +1122,6 @@ const deleteShopItemAndStyle = (itemId: string) => {
       };
     });
   };
-
-  // Auto-sanitize existing infinite coins on aseleliyeva77@gmail.com if set historically
-  useEffect(() => {
-    if (user && user.email?.toLowerCase() === 'aseleliyeva77@gmail.com' && (user.coins === 999999999 || (user.coins ?? 0) >= 9999999)) {
-      setUser(prev => {
-        if (!prev) return null;
-        const sanitized = { ...prev, coins: 10 };
-        try { localStorage.setItem('mk_user', JSON.stringify(sanitized)); } catch (e) {}
-        return sanitized;
-      });
-    }
-  }, [user?.email, user?.coins]);
 
   // 7-Day Starter Daily Check-in (5 - 20 CP)
   const claimDailyCheckin = () => {
@@ -1663,9 +1657,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
   useEffect(() => {
     if (user && user.email) {
       const cleanEmail = user.email.toLowerCase().trim();
+      const isUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanEmail === 'aseleliyeva77@gmail.com';
       const existingInRegistry = knownUsers.find(k => k.email.toLowerCase() === cleanEmail);
-      if (existingInRegistry) {
-        if (user.coins !== existingInRegistry.coins && cleanEmail !== 'mikrokosmosfansub@gmail.com') {
+      if (existingInRegistry && !isUnlimited) {
+        if (user.coins !== existingInRegistry.coins) {
           setUser(prev => prev ? { ...prev, coins: existingInRegistry.coins } : null);
         }
       }
