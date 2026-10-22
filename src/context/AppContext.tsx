@@ -829,9 +829,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.removeItem('mk_user');
         return null;
       }
-      const isUnlimitedUser =
-        parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
-        parsed.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+      const isUnlimitedUser = parsed.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
       let effectiveCoins = parsed.coins ?? 250;
       if (isUnlimitedUser) {
         effectiveCoins = 999999999;
@@ -1089,13 +1087,10 @@ const deleteShopItemAndStyle = (itemId: string) => {
   const earnPoints = (amount: number, reason: string) => {
     setUser(prev => {
       if (!prev) return null;
-      const isUnlimited =
-        prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
-        prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
-      if (isUnlimited) {
+      if (prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') {
         return { ...prev, coins: 999999999 };
       }
-      const currentCoins = prev.coins ?? 10;
+      const currentCoins = prev.coins ?? 250;
       const updated = {
         ...prev,
         coins: currentCoins + amount
@@ -1105,15 +1100,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
   };
 
-  // Add Unlimited Points (+999.999 CP) - Allowed for admin accounts
+  // Add Unlimited Points (+999.999 CP) - Only allowed for mikrokosmosfansub@gmail.com
   const addUnlimitedPoints = () => {
     setUser(prev => {
       if (!prev) return null;
-      const isUnlimited =
-        prev.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ||
-        prev.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
-      if (!isUnlimited) {
-        alert('Sınırsız Cosmo-Puan yetkisi yöneticilere tanımlıdır!');
+      if (prev.email?.toLowerCase() !== 'mikrokosmosfansub@gmail.com') {
+        alert('Sınırsız Cosmo-Puan yetkisi sadece mikrokosmosfansub hesabına tanımlıdır!');
         return prev;
       }
       return {
@@ -1569,7 +1561,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           const promoKey = `promo_${cleanCode}`;
           const userInventory = user.inventory || [];
           const updatedInventory = userInventory.includes(promoKey) ? userInventory : [...userInventory, promoKey];
-          const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' || user.email?.toLowerCase() === 'aseleliyeva77@gmail.com';
+          const isUnlimited = user.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com';
           const currentCoins = isUnlimited ? 999999999 : (user.coins ?? 250);
           const updatedCoins = isUnlimited ? 999999999 : (data.newCoins ?? (currentCoins + pointsEarned));
 
@@ -2061,7 +2053,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }
 
     // Special check for super admin account
-    const isTargetUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanEmail === 'aseleliyeva77@gmail.com';
+    const isTargetUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com';
 
     let previousBalance = 0;
     const existingUser = knownUsers.find(u => u.email.toLowerCase() === cleanEmail);
