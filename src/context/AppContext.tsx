@@ -1396,30 +1396,58 @@ const deleteShopItemAndStyle = (itemId: string) => {
       // Promo Codes State
   const [promoCodesList, setPromoCodesList] = useState<any[]>([]);
 
+  const getDeletedPromoCodes = (): Set<string> => {
+    try {
+      const raw = localStorage.getItem('mk_deleted_promo_codes');
+      return new Set(raw ? JSON.parse(raw) : []);
+    } catch {
+      return new Set();
+    }
+  };
+
+  const markPromoCodeAsDeleted = (code: string) => {
+    try {
+      const set = getDeletedPromoCodes();
+      set.add(code.trim().toUpperCase());
+      localStorage.setItem('mk_deleted_promo_codes', JSON.stringify(Array.from(set)));
+    } catch {}
+  };
+
+  const unmarkPromoCodeAsDeleted = (code: string) => {
+    try {
+      const set = getDeletedPromoCodes();
+      const clean = code.trim().toUpperCase();
+      if (set.has(clean)) {
+        set.delete(clean);
+        localStorage.setItem('mk_deleted_promo_codes', JSON.stringify(Array.from(set)));
+      }
+    } catch {}
+  };
+
   const fetchPromoCodes = async () => {
+    const deletedCodes = getDeletedPromoCodes();
     try {
       const res = await fetch('/api/promo-codes');
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         if (data && data.success && Array.isArray(data.promoCodes)) {
-          setPromoCodesList(data.promoCodes);
+          const filtered = data.promoCodes.filter((p: any) => p && !deletedCodes.has((p.code || '').toUpperCase()));
+          setPromoCodesList(filtered);
           return;
         }
       }
-      setPromoCodesList([
-        { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
-        { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
-        { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
-      ]);
     } catch (e) {
       console.error('Failed to fetch promo codes:', e);
-      setPromoCodesList([
-        { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
-        { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
-        { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
-      ]);
     }
+
+    const defaultCodes = [
+      { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+      { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+      { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
+    ].filter(p => !deletedCodes.has(p.code.toUpperCase()));
+
+    setPromoCodesList(defaultCodes);
   };
 
   useEffect(() => {
@@ -1427,6 +1455,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
   }, []);
 
   const addOrUpdatePromoCode = async (promoData: { code: string; points: number; description?: string; max_uses?: number; is_active?: number }) => {
+    const cleanCode = promoData.code.trim().toUpperCase();
+    unmarkPromoCodeAsDeleted(cleanCode);
+
     try {
       const res = await fetch('/api/promo-codes', {
         method: 'POST',
@@ -1440,7 +1471,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           await fetchPromoCodes();
           showToast({
             title: 'Promosyon Kodu Kaydedildi 🎁',
-            message: data.message || `"${promoData.code.toUpperCase()}" kodu Cloudflare D1 veritabanına kaydedildi!`,
+            message: data.message || `"${cleanCode}" kodu Cloudflare D1 veritabanına kaydedildi!`,
             type: 'success'
           });
           return true;
@@ -1457,10 +1488,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
       console.error('Error saving promo code:', e);
     }
     setPromoCodesList(prev => {
-      const clean = promoData.code.trim().toUpperCase();
-      const existingIdx = prev.findIndex(p => p.code.toUpperCase() === clean);
+      const existingIdx = prev.findIndex(p => p.code.toUpperCase() === cleanCode);
       const newItem = {
-        code: clean,
+        code: cleanCode,
         points: promoData.points,
         description: promoData.description || 'Promosyon Kodu',
         max_uses: promoData.max_uses || 0,
@@ -1476,25 +1506,29 @@ const deleteShopItemAndStyle = (itemId: string) => {
     });
     showToast({
       title: 'Promosyon Kodu Kaydedildi 🎁',
-      message: `"${promoData.code.toUpperCase()}" kodu kaydedildi!`,
+      message: `"${cleanCode}" kodu kaydedildi!`,
       type: 'success'
     });
     return true;
   };
 
   const deletePromoCode = async (code: string) => {
+    const cleanCode = code.trim().toUpperCase();
+    markPromoCodeAsDeleted(cleanCode);
+
+    setPromoCodesList(prev => prev.filter(p => (p.code || '').toUpperCase() !== cleanCode));
+
     try {
-      const res = await fetch(`/api/promo-codes?code=${encodeURIComponent(code)}`, {
+      const res = await fetch(`/api/promo-codes?code=${encodeURIComponent(cleanCode)}`, {
         method: 'DELETE'
       });
       const contentType = res.headers.get('content-type');
       if (res.ok && contentType && contentType.includes('application/json')) {
         const data = await res.json();
         if (data && data.success) {
-          await fetchPromoCodes();
           showToast({
             title: 'Promosyon Kodu Silindi 🗑️',
-            message: `"${code}" promosyon kodu Cloudflare veritabanından silindi.`,
+            message: `"${cleanCode}" promosyon kodu silindi.`,
             type: 'info'
           });
           return true;
@@ -1503,10 +1537,9 @@ const deleteShopItemAndStyle = (itemId: string) => {
     } catch (e) {
       console.error('Error deleting promo code:', e);
     }
-    setPromoCodesList(prev => prev.filter(p => p.code.toUpperCase() !== code.toUpperCase()));
     showToast({
       title: 'Promosyon Kodu Silindi 🗑️',
-      message: `"${code}" promosyon kodu silindi.`,
+      message: `"${cleanCode}" promosyon kodu silindi.`,
       type: 'info'
     });
     return true;

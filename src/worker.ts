@@ -2645,15 +2645,20 @@ ${seriesXml}
           // GET: List Promo Codes
           if (request.method === 'GET') {
             let list = [];
+            let isInitialized = false;
             if (activeDb) {
               try {
+                const initCheck = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_initialized'").first().catch(() => null);
+                if (initCheck && initCheck.value === '1') {
+                  isInitialized = true;
+                }
                 const rows = await activeDb.prepare("SELECT * FROM promo_codes ORDER BY created_at DESC").all().catch(() => null);
-                if (rows && rows.results && rows.results.length > 0) {
+                if (rows && rows.results) {
                   list = rows.results;
                 }
               } catch (e) {}
 
-              if (list.length === 0) {
+              if (list.length === 0 && !isInitialized) {
                 try {
                   const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
                   if (sRow && sRow.value) {
@@ -2664,12 +2669,18 @@ ${seriesXml}
               }
             }
 
-            if (list.length === 0) {
+            if (list.length === 0 && !isInitialized) {
               list = [
                 { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
                 { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
                 { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
               ];
+              if (activeDb) {
+                for (const item of list) {
+                  await activeDb.prepare("INSERT OR IGNORE INTO promo_codes (code, points, description, max_uses, use_count, is_active, created_at) VALUES (?, ?, ?, ?, 0, 1, ?)").bind(item.code, item.points, item.description, 0, new Date().toISOString()).run().catch(() => {});
+                }
+                await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('promo_codes_initialized', '1')").run().catch(() => {});
+              }
             }
 
             return new Response(JSON.stringify({ success: true, promoCodes: list }), { headers });
@@ -2702,12 +2713,13 @@ ${seriesXml}
                   is_active = excluded.is_active
               `).bind(cleanCode, pts, desc, maxU, active, createdAt).run().catch(() => null);
 
-              // Also sync to site_settings dictionary
+              // Also sync to site_settings dictionary and mark initialized
               try {
                 const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
                 let dict = (sRow && sRow.value) ? JSON.parse(sRow.value) : {};
                 dict[cleanCode] = { points: pts, description: desc, max_uses: maxU, is_active: active, created_at: createdAt };
                 await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind('promo_codes_dict', JSON.stringify(dict)).run().catch(() => null);
+                await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('promo_codes_initialized', '1')").run().catch(() => {});
               } catch (e) {}
             }
 
@@ -2733,6 +2745,7 @@ ${seriesXml}
                   delete dict[cleanCode];
                   await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind('promo_codes_dict', JSON.stringify(dict)).run().catch(() => null);
                 }
+                await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES ('promo_codes_initialized', '1')").run().catch(() => {});
               } catch (e) {}
             }
 
