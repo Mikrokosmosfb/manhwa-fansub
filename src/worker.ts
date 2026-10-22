@@ -3483,10 +3483,15 @@ ${seriesXml}
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).bind(logId, cleanEmail, numAmount, mode || 'add', note || 'Manuel Yönetici Yüklemesi', adminEmail || 'admin', dateStr, numPrevBalance, numNewBalance).run();
 
-                  const userRecord = await activeDb.prepare("SELECT * FROM users WHERE email = ?").bind(cleanEmail).first();
-                  if (userRecord && userRecord.uid) {
-                    const uid = userRecord.uid;
-                    const libRecord = await activeDb.prepare("SELECT notifications, cosmo_points FROM user_library WHERE uid = ?").bind(uid).first();
+                  const userRecord = await activeDb.prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)").bind(cleanEmail).first();
+                  let uid = userRecord?.uid;
+                  if (!uid) {
+                    const libRec = await activeDb.prepare("SELECT uid FROM user_library WHERE LOWER(email) = LOWER(?)").bind(cleanEmail).first();
+                    if (libRec?.uid) uid = libRec.uid;
+                  }
+
+                  if (uid) {
+                    const libRecord = await activeDb.prepare("SELECT notifications, cosmo_points FROM user_library WHERE uid = ? OR LOWER(email) = LOWER(?)").bind(uid, cleanEmail).first();
                     let currentNotifs = [];
                     if (libRecord && libRecord.notifications) {
                       try { currentNotifs = JSON.parse(libRecord.notifications); } catch (e) {}
@@ -3503,12 +3508,13 @@ ${seriesXml}
                     currentNotifs.unshift(sysNotif);
 
                     await activeDb.prepare(`
-                      INSERT INTO user_library (uid, cosmo_points, notifications)
-                      VALUES (?, ?, ?)
+                      INSERT INTO user_library (uid, email, cosmo_points, notifications)
+                      VALUES (?, ?, ?, ?)
                       ON CONFLICT(uid) DO UPDATE SET
-                      cosmo_points = ?,
-                      notifications = ?
-                    `).bind(uid, numNewBalance, JSON.stringify(currentNotifs.slice(0, 50)), numNewBalance, JSON.stringify(currentNotifs.slice(0, 50))).run();
+                      cosmo_points = excluded.cosmo_points,
+                      notifications = excluded.notifications,
+                      email = excluded.email
+                    `).bind(uid, cleanEmail, numNewBalance, JSON.stringify(currentNotifs.slice(0, 50))).run();
                   } else {
                     const newUid = 'u-' + Date.now();
                     await activeDb.prepare(`
@@ -3526,12 +3532,13 @@ ${seriesXml}
                     };
 
                     await activeDb.prepare(`
-                      INSERT INTO user_library (uid, cosmo_points, notifications)
-                      VALUES (?, ?, ?)
+                      INSERT INTO user_library (uid, email, cosmo_points, notifications)
+                      VALUES (?, ?, ?, ?)
                       ON CONFLICT(uid) DO UPDATE SET
-                      cosmo_points = ?,
-                      notifications = ?
-                    `).bind(newUid, numNewBalance, JSON.stringify([sysNotif]), numNewBalance, JSON.stringify([sysNotif])).run();
+                      cosmo_points = excluded.cosmo_points,
+                      notifications = excluded.notifications,
+                      email = excluded.email
+                    `).bind(newUid, cleanEmail, numNewBalance, JSON.stringify([sysNotif])).run();
                   }
                 } catch (e) {
                   console.error('Error in grant-points worker:', e);
@@ -3684,30 +3691,38 @@ ${seriesXml}
                 const { results } = await activeDb.prepare(`
                   SELECT u.uid, u.email, u.name, u.avatar, u.provider, u.created_at, l.cosmo_points
                   FROM users u
-                  LEFT JOIN user_library l ON u.uid = l.uid
+                  LEFT JOIN user_library l ON (u.uid = l.uid OR LOWER(u.email) = LOWER(l.email))
                 `).all();
-                const usersList = (results || []).map((r: any) => ({
-                  uid: r.uid,
-                  email: r.email,
-                  name: r.name,
-                  avatar: r.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.email)}`,
-                  coins: r.cosmo_points !== null && r.cosmo_points !== undefined ? r.cosmo_points : (r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 999999999 : 10),
-                  role: (r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 'admin' : 'user',
-                  created_at: r.created_at
-                }));
-                return new Response(JSON.stringify({ success: true, users: usersList }), { headers });
-              } catch (e) {
-                try {
-                  const { results } = await activeDb.prepare("SELECT uid, email, name, avatar, provider, created_at FROM users").all();
-                  const usersList = (results || []).map((r: any) => ({
+                const usersList = (results || []).map((r: any) => {
+                  const cleanE = (r.email || '').toLowerCase().trim();
+                  const isAdmin = cleanE === 'mikrokosmosfansub@gmail.com' || cleanE === 'aseleliyeva77@gmail.com';
+                  return {
                     uid: r.uid,
                     email: r.email,
                     name: r.name,
                     avatar: r.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.email)}`,
-                    coins: (r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') ? 999999999 : 10,
-                    role: (r.email?.toLowerCase() === 'aseleliyeva77@gmail.com' || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com') || r.email?.toLowerCase() === 'mikrokosmosfansub@gmail.com' ? 'admin' : 'user',
+                    coins: isAdmin ? 999999999 : (r.cosmo_points !== null && r.cosmo_points !== undefined ? Number(r.cosmo_points) : 250),
+                    role: isAdmin ? 'admin' : 'user',
                     created_at: r.created_at
-                  }));
+                  };
+                });
+                return new Response(JSON.stringify({ success: true, users: usersList }), { headers });
+              } catch (e) {
+                try {
+                  const { results } = await activeDb.prepare("SELECT uid, email, name, avatar, provider, created_at FROM users").all();
+                  const usersList = (results || []).map((r: any) => {
+                    const cleanE = (r.email || '').toLowerCase().trim();
+                    const isAdmin = cleanE === 'mikrokosmosfansub@gmail.com' || cleanE === 'aseleliyeva77@gmail.com';
+                    return {
+                      uid: r.uid,
+                      email: r.email,
+                      name: r.name,
+                      avatar: r.avatar || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(r.email)}`,
+                      coins: isAdmin ? 999999999 : 250,
+                      role: isAdmin ? 'admin' : 'user',
+                      created_at: r.created_at
+                    };
+                  });
                   return new Response(JSON.stringify({ success: true, users: usersList }), { headers });
                 } catch (err) {}
               }

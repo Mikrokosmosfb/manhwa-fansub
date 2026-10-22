@@ -2061,16 +2061,16 @@ const deleteShopItemAndStyle = (itemId: string) => {
     }
 
     // Special check for super admin account
-    const isTargetUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com';
+    const isTargetUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanEmail === 'aseleliyeva77@gmail.com';
 
     let previousBalance = 0;
     const existingUser = knownUsers.find(u => u.email.toLowerCase() === cleanEmail);
     if (existingUser) {
-      previousBalance = isTargetUnlimited ? 999999999 : (existingUser.coins ?? 10);
+      previousBalance = isTargetUnlimited ? 999999999 : (existingUser.coins ?? 250);
     } else if (user?.email?.toLowerCase() === cleanEmail) {
-      previousBalance = isTargetUnlimited ? 999999999 : (user.coins ?? 10);
+      previousBalance = isTargetUnlimited ? 999999999 : (user.coins ?? 250);
     } else {
-      previousBalance = 10;
+      previousBalance = 250;
     }
 
     let calculatedNewBalance = previousBalance;
@@ -2115,12 +2115,12 @@ const deleteShopItemAndStyle = (itemId: string) => {
       } else {
         return [
           {
-            uid: 'u-' + Date.now(),
+            uid: existingUser?.uid || (user?.email?.toLowerCase() === cleanEmail ? user.uid : ('u-' + Date.now())),
             email: cleanEmail,
             name: cleanEmail.split('@')[0],
             avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanEmail)}`,
             coins: calculatedNewBalance,
-            role: (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') || cleanEmail === 'mikrokosmosfansub@gmail.com' ? 'admin' : 'user',
+            role: (cleanEmail === 'aseleliyeva77@gmail.com' || cleanEmail === 'mikrokosmosfansub@gmail.com') ? 'admin' : 'user',
             lastActive: 'Az önce'
           },
           ...prev
@@ -2152,6 +2152,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         targetEmail: cleanEmail,
+        targetUid: existingUser?.uid || (user?.email?.toLowerCase() === cleanEmail ? user.uid : undefined),
         amount: numAmount,
         mode,
         note,
