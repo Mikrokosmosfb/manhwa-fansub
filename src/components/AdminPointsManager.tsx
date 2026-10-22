@@ -38,6 +38,10 @@ export const AdminPointsManager: React.FC = () => {
     grantCosmoPoints,
     deletePointGrantLog,
     showToast,
+    promoCodesList,
+    fetchPromoCodes,
+    addOrUpdatePromoCode,
+    deletePromoCode,
     getUserTeamRoles
   } = useApp();
 
@@ -49,7 +53,47 @@ export const AdminPointsManager: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [historySearchQuery, setHistorySearchQuery] = useState('');
-  const [adminTab, setAdminTab] = useState<'grant' | 'notifications'>('grant');
+  const [adminTab, setAdminTab] = useState<'grant' | 'notifications' | 'promo'>('grant');
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoPointsInput, setPromoPointsInput] = useState<number | string>(250);
+  const [promoDescInput, setPromoDescInput] = useState('Promosyon Kodu Bonusu');
+  const [promoMaxUsesInput, setPromoMaxUsesInput] = useState<number | string>(0);
+  const [promoIsActive, setPromoIsActive] = useState(true);
+  const [isSavingPromo, setIsSavingPromo] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCreatePromoCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoCodeInput.trim()) {
+      showToast({ title: 'Eksik Bilgi', message: 'Lütfen bir promosyon kodu giriniz.', type: 'warning' });
+      return;
+    }
+    const cleanCode = promoCodeInput.trim().toUpperCase();
+    const pts = Math.max(1, Number(promoPointsInput) || 100);
+
+    setIsSavingPromo(true);
+    const ok = await addOrUpdatePromoCode({
+      code: cleanCode,
+      points: pts,
+      description: promoDescInput.trim() || 'Promosyon Kodu Bonusu',
+      max_uses: Math.max(0, Number(promoMaxUsesInput) || 0),
+      is_active: promoIsActive ? 1 : 0
+    });
+    setIsSavingPromo(false);
+
+    if (ok) {
+      setPromoCodeInput('');
+    }
+  };
+
+  const handleCopyCode = (c: string) => {
+    try {
+      navigator.clipboard.writeText(c);
+      setCopiedCode(c);
+      setTimeout(() => setCopiedCode(null), 2000);
+      showToast({ title: 'Kopyalandı 📋', message: `"${c}" kodu panoya kopyalandı.`, type: 'info' });
+    } catch {}
+  };
   const [paymentNotifications, setPaymentNotifications] = useState<any[]>([]);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
   const [processingNotifId, setProcessingNotifId] = useState<string | null>(null);
@@ -421,6 +465,26 @@ export const AdminPointsManager: React.FC = () => {
           <button
             type="button"
             onClick={() => {
+              setAdminTab('promo');
+              fetchPromoCodes();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'promo'
+                ? 'bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white border border-rose-400'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Gift size={16} />
+            <span>Promosyon Kodları Yönetimi</span>
+            {promoCodesList && promoCodesList.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/30 text-rose-200 border border-rose-400/40">
+                {promoCodesList.length} Kod
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
               setAdminTab('notifications');
               fetchPaymentNotifications();
             }}
@@ -441,7 +505,280 @@ export const AdminPointsManager: React.FC = () => {
         </div>
       </div>
 
-      {adminTab === 'notifications' ? (
+      {adminTab === 'promo' ? (
+        /* ===================== PROMOSYON KODLARI YÖNETİMİ (CLOUDFLARE D1) ===================== */
+        <div className="space-y-8 animate-fadeIn">
+          {/* Create Promo Code Form Card */}
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-500/20 border border-rose-500/30 rounded-2xl text-rose-400 shrink-0">
+                  <Gift size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>Yeni Promosyon / Kupon Kodu Oluştur</span>
+                    <span className="text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                      Cloudflare D1 Canlı
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Burada oluşturduğunuz kodlar doğrudan Cloudflare veritabanına kaydedilir. Kullanıcı mağazadan yazınca belirttiğiniz CP yüklenir.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPromoCodes}
+                className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold border border-gray-700 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>Kodları Yenile</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePromoCode} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Promo Code Input */}
+                <div>
+                  <label className="block text-purple-300 font-extrabold text-xs mb-1.5">
+                    🎁 Promosyon Kodu
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: MIKROKOSMOS2026"
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value.toUpperCase())}
+                    className="w-full bg-gray-950 border border-purple-500/40 focus:border-rose-400 text-white font-mono font-black text-sm rounded-xl px-3.5 py-2.5 focus:outline-none uppercase placeholder-gray-600 shadow-inner"
+                  />
+                </div>
+
+                {/* CP Amount */}
+                <div>
+                  <label className="block text-amber-300 font-extrabold text-xs mb-1.5">
+                    ⚡ Verilecek Cosmo-Puan (CP)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    placeholder="Örn: 250"
+                    value={promoPointsInput}
+                    onChange={e => setPromoPointsInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-amber-500/40 focus:border-amber-400 text-amber-300 font-mono font-black text-sm rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600 shadow-inner"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-gray-300 font-extrabold text-xs mb-1.5">
+                    📝 Açıklama / Etkinlik Adı
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Örn: 2026 Hoş Geldin Bonusu"
+                    value={promoDescInput}
+                    onChange={e => setPromoDescInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-800 focus:border-purple-400 text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600"
+                  />
+                </div>
+
+                {/* Max Uses */}
+                <div>
+                  <label className="block text-gray-300 font-extrabold text-xs mb-1.5">
+                    🔢 Limit (0 = Sınırsız)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0 = Sınırsız"
+                    value={promoMaxUsesInput}
+                    onChange={e => setPromoMaxUsesInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-800 focus:border-purple-400 text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] font-bold text-gray-400">Hızlı Kodlar:</span>
+                {[
+                  { code: 'HOSGELDIN250', pts: 250, desc: 'Yeni Üyelik Hoş Geldin Bonusu' },
+                  { code: 'DISCORD100', pts: 100, desc: 'Discord Sunucusu Katılım Bonusu' },
+                  { code: 'ETKINLIK500', pts: 500, desc: 'Özel Haftalık Seri Okuma Ödülü' },
+                  { code: 'VIP1000', pts: 1000, desc: 'Süper VIP Üye Promosyonu' }
+                ].map(p => (
+                  <button
+                    key={p.code}
+                    type="button"
+                    onClick={() => {
+                      setPromoCodeInput(p.code);
+                      setPromoPointsInput(p.pts);
+                      setPromoDescInput(p.desc);
+                    }}
+                    className="text-[11px] bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-700/50 px-2.5 py-1 rounded-lg transition font-mono font-bold cursor-pointer"
+                  >
+                    + {p.code} ({p.pts} CP)
+                  </button>
+                ))}
+              </div>
+
+              {/* Actions & Status */}
+              <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-800/80 flex-wrap">
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={promoIsActive}
+                    onChange={e => setPromoIsActive(e.target.checked)}
+                    className="rounded bg-gray-950 border-gray-700 text-rose-500 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Kod Anında Aktif Olsun (Sitede Kullanılabilir)</span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={isSavingPromo || !promoCodeInput.trim()}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center gap-2 transition shadow-lg cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles size={16} />
+                  <span>{isSavingPromo ? 'Kaydediliyor...' : 'Promosyon Kodunu Oluştur & Cloudflare Veritabanına Kaydet'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Existing Promo Codes Table Card */}
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-300">
+                  <Award size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Cloudflare Veritabanındaki Aktif Promosyon Kodları</h3>
+                  <p className="text-xs text-gray-400">Kullanıcılar mağaza ekranındaki kupon kutusundan bu kodları yazarak CP alabilir.</p>
+                </div>
+              </div>
+              <span className="text-xs font-black bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-xl">
+                {promoCodesList?.length || 0} Aktif Kod
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-300">
+                <thead>
+                  <tr className="border-b border-gray-800 text-[11px] text-gray-400 uppercase font-black">
+                    <th className="py-3 px-3">Promosyon Kodu</th>
+                    <th className="py-3 px-3">Verilen CP</th>
+                    <th className="py-3 px-3">Açıklama</th>
+                    <th className="py-3 px-3">Kullanım / Limit</th>
+                    <th className="py-3 px-3">Durum</th>
+                    <th className="py-3 px-3 text-right">Aksiyonlar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/60">
+                  {promoCodesList && promoCodesList.map((p: any) => {
+                    const codeStr = (p.code || '').toUpperCase();
+                    const isCopied = copiedCode === codeStr;
+                    const isActive = p.is_active !== 0;
+                    const maxU = Number(p.max_uses) || 0;
+                    const useC = Number(p.use_count) || 0;
+
+                    return (
+                      <tr key={codeStr} className="hover:bg-purple-950/20 transition">
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm text-amber-300 bg-gray-950 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                              {codeStr}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCode(codeStr)}
+                              className="p-1 rounded-lg bg-gray-800 hover:bg-purple-900 text-gray-300 hover:text-white transition cursor-pointer"
+                              title="Kodu Kopyala"
+                            >
+                              {isCopied ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Gift size={13} />}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className="font-black text-emerald-400 font-mono text-sm">
+                            +{p.points} CP
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-gray-200 font-medium">
+                          {p.description || '-'}
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap font-mono text-xs">
+                          {maxU > 0 ? (
+                            <span className={useC >= maxU ? 'text-red-400 font-bold' : 'text-gray-300'}>
+                              {useC} / {maxU}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-400 font-bold">
+                              {useC} kullanım (Sınırsız)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                              isActive
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                                : 'bg-red-950 text-red-300 border-red-500/40'
+                            }`}
+                          >
+                            {isActive ? 'Aktif' : 'Pasif'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                addOrUpdatePromoCode({
+                                  code: codeStr,
+                                  points: p.points,
+                                  description: p.description,
+                                  max_uses: p.max_uses,
+                                  is_active: isActive ? 0 : 1
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-bold border border-gray-700 transition cursor-pointer"
+                            >
+                              {isActive ? 'Pasife Al' : 'Aktif Et'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`"${codeStr}" promosyon kodunu silmek istediğinizden emin misiniz?`)) {
+                                  deletePromoCode(codeStr);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 transition cursor-pointer"
+                              title="Kodu Sil"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(!promoCodesList || promoCodesList.length === 0) && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-gray-500 text-xs">
+                        Henüz kayıtlı bir promosyon kodu bulunmamaktadır.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : adminTab === 'notifications' ? (
         /* ===================== DONATIONALERTS ÖDEME BİLDİRİMLERİ GÖRÜNÜMÜ ===================== */
         <div className="space-y-6">
           <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">

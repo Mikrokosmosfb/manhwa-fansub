@@ -477,7 +477,7 @@ export const ShopContent: React.FC = () => {
   };
 
   // 2. Resmi Promosyon / Hediye Kodu Kullanımı
-  const handleRedeemPromo = (e: React.FormEvent) => {
+  const handleRedeemPromo = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!promoCodeInput.trim()) return;
     if (!user) {
@@ -486,9 +486,9 @@ export const ShopContent: React.FC = () => {
       return;
     }
     setIsRedeemingPromo(true);
-    setTimeout(() => {
+    try {
+      const res = await redeemPromoCode(promoCodeInput.trim());
       setIsRedeemingPromo(false);
-      const res = redeemPromoCode(promoCodeInput.trim());
       if (res.success) {
         triggerPurchaseConfetti();
         setStatusMessage({ type: 'success', text: res.message });
@@ -496,7 +496,10 @@ export const ShopContent: React.FC = () => {
       } else {
         setStatusMessage({ type: 'error', text: res.message || 'Geçersiz veya süresi dolmuş kod!' });
       }
-    }, 600);
+    } catch {
+      setIsRedeemingPromo(false);
+      setStatusMessage({ type: 'error', text: 'İşlem sırasında bir hata oluştu.' });
+    }
   };
 
   const handleSaveLemonUrl = (e: React.FormEvent) => {
@@ -550,15 +553,20 @@ export const ShopContent: React.FC = () => {
     }, 1200);
   };
 
-  const handleRedeemCode = (e: React.FormEvent) => {
+  const handleRedeemCode = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!promoInput.trim()) return;
-    const res = redeemPromoCode(promoInput);
-    if (res.success) {
-      setStatusMessage({ type: 'success', text: res.message });
-      setPromoInput('');
-    } else {
-      setStatusMessage({ type: 'error', text: res.message });
+    try {
+      const res = await redeemPromoCode(promoInput);
+      if (res.success) {
+        triggerPurchaseConfetti();
+        setStatusMessage({ type: 'success', text: res.message });
+        setPromoInput('');
+      } else {
+        setStatusMessage({ type: 'error', text: res.message });
+      }
+    } catch {
+      setStatusMessage({ type: 'error', text: 'İşlem sırasında bir hata oluştu.' });
     }
   };
 

@@ -1055,6 +1055,17 @@ ${seriesXml}
                   );
                 `),
                 usersDb.prepare(`
+                  CREATE TABLE IF NOT EXISTS promo_codes (
+                    code TEXT PRIMARY KEY,
+                    points INTEGER NOT NULL DEFAULT 100,
+                    description TEXT,
+                    max_uses INTEGER DEFAULT 0,
+                    use_count INTEGER DEFAULT 0,
+                    is_active INTEGER DEFAULT 1,
+                    created_at TEXT
+                  );
+                `),
+                usersDb.prepare(`
                   CREATE TABLE IF NOT EXISTS user_library (
                     uid TEXT PRIMARY KEY,
                     name TEXT,
@@ -2496,6 +2507,237 @@ ${seriesXml}
             }
           }
           return new Response(JSON.stringify({ success: false }), { headers });
+        }
+
+        // PROMO CODES MANAGEMENT & REDEMPTION API (CLOUDFLARE D1)
+        if (path.startsWith('/api/promo-codes') || path.startsWith('/api/admin/promo-codes')) {
+          const activeDb = usersDb || db;
+
+          // REDEEM PROMO CODE
+          if ((path === '/api/promo-codes/redeem' || path === '/api/admin/promo-codes/redeem') && request.method === 'POST') {
+            const body = await request.json().catch(() => ({}));
+            const codeInput = body.code;
+            const email = body.email;
+            const userId = body.userId;
+
+            if (!codeInput || typeof codeInput !== 'string') {
+              return new Response(JSON.stringify({ success: false, message: 'Geçersiz promosyon kodu.' }), { headers });
+            }
+
+            const cleanCode = codeInput.trim().toUpperCase();
+            if (!cleanCode) {
+              return new Response(JSON.stringify({ success: false, message: 'Geçersiz promosyon kodu.' }), { headers });
+            }
+
+            // Fetch promo code details from D1 or site_settings
+            let promo = null;
+
+            if (activeDb) {
+              try {
+                const row = await activeDb.prepare("SELECT * FROM promo_codes WHERE UPPER(code) = ?").bind(cleanCode).first().catch(() => null);
+                if (row) {
+                  promo = {
+                    code: row.code,
+                    points: Number(row.points) || 100,
+                    description: row.description || '',
+                    max_uses: Number(row.max_uses) || 0,
+                    use_count: Number(row.use_count) || 0,
+                    is_active: row.is_active !== undefined ? Number(row.is_active) : 1
+                  };
+                }
+              } catch (e) {}
+
+              if (!promo) {
+                try {
+                  const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
+                  if (sRow && sRow.value) {
+                    const dict = JSON.parse(sRow.value);
+                    if (dict[cleanCode]) {
+                      promo = { code: cleanCode, ...dict[cleanCode] };
+                    }
+                  }
+                } catch (e) {}
+              }
+            }
+
+            // Fallback default codes if DB empty
+            if (!promo) {
+              const DEFAULT_CODES = {
+                MANHWA100: { points: 100, description: 'Seri Okuma Promosyon Bonusu' },
+                MIKROKOSMOS2026: { points: 250, description: '2026 Hoş Geldin Bonusu' },
+                HOSGELDIN: { points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu' }
+              };
+              if (DEFAULT_CODES[cleanCode]) {
+                promo = { code: cleanCode, ...DEFAULT_CODES[cleanCode], is_active: 1, max_uses: 0, use_count: 0 };
+              }
+            }
+
+            if (!promo) {
+              return new Response(JSON.stringify({ success: false, message: 'Geçersiz veya bulunamayan promosyon kodu.' }), { headers });
+            }
+
+            if (promo.is_active === 0) {
+              return new Response(JSON.stringify({ success: false, message: 'Bu promosyon kodu pasif duruma getirilmiştir.' }), { headers });
+            }
+
+            if (promo.max_uses && promo.max_uses > 0 && (promo.use_count || 0) >= promo.max_uses) {
+              return new Response(JSON.stringify({ success: false, message: 'Bu promosyon kodunun kullanım limiti dolmuştur.' }), { headers });
+            }
+
+            // Check target user in DB
+            const cleanEmail = email ? String(email).trim().toLowerCase() : '';
+            const promoKey = 'promo_' + cleanCode;
+            let targetUserRow = null;
+
+            if (activeDb) {
+              if (cleanEmail) {
+                targetUserRow = await activeDb.prepare("SELECT * FROM users WHERE LOWER(email) = ?").bind(cleanEmail).first().catch(() => null);
+              } else if (userId) {
+                targetUserRow = await activeDb.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first().catch(() => null);
+              }
+            }
+
+            if (targetUserRow) {
+              let currentCoins = Number(targetUserRow.coins) || 0;
+              let inventory = [];
+              try {
+                inventory = typeof targetUserRow.inventory === 'string' ? JSON.parse(targetUserRow.inventory) : (targetUserRow.inventory || []);
+              } catch (e) {
+                inventory = [];
+              }
+
+              if (inventory.includes(promoKey)) {
+                return new Response(JSON.stringify({ success: false, message: 'Bu promosyon kodunu daha önce kullandınız.' }), { headers });
+              }
+
+              const isUnlimited = cleanEmail === 'mikrokosmosfansub@gmail.com' || cleanEmail === 'aseleliyeva77@gmail.com';
+              const pointsEarned = Number(promo.points) || 100;
+              const updatedCoins = isUnlimited ? 999999999 : (currentCoins + pointsEarned);
+              const updatedInventory = [...inventory, promoKey];
+
+              // Update user row in D1
+              await activeDb.prepare("UPDATE users SET coins = ?, inventory = ? WHERE id = ?")
+                .bind(updatedCoins, JSON.stringify(updatedInventory), targetUserRow.id)
+                .run().catch(() => null);
+
+              // Increment use_count in promo_codes table
+              await activeDb.prepare("UPDATE promo_codes SET use_count = COALESCE(use_count, 0) + 1 WHERE UPPER(code) = ?")
+                .bind(cleanCode)
+                .run().catch(() => null);
+
+              return new Response(JSON.stringify({
+                success: true,
+                message: `🎁 Harika! "${cleanCode}" kodundan +${pointsEarned} Cosmo-Puan hesabınıza yüklendi! (${promo.description || 'Promosyon Bonusu'})`,
+                pointsEarned,
+                newCoins: updatedCoins
+              }), { headers });
+            }
+
+            // Fallback for client-only session user
+            const pointsEarned = Number(promo.points) || 100;
+            return new Response(JSON.stringify({
+              success: true,
+              message: `🎁 Harika! "${cleanCode}" kodundan +${pointsEarned} Cosmo-Puan hesabınıza yüklendi! (${promo.description || 'Promosyon Bonusu'})`,
+              pointsEarned
+            }), { headers });
+          }
+
+          // GET: List Promo Codes
+          if (request.method === 'GET') {
+            let list = [];
+            if (activeDb) {
+              try {
+                const rows = await activeDb.prepare("SELECT * FROM promo_codes ORDER BY created_at DESC").all().catch(() => null);
+                if (rows && rows.results && rows.results.length > 0) {
+                  list = rows.results;
+                }
+              } catch (e) {}
+
+              if (list.length === 0) {
+                try {
+                  const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
+                  if (sRow && sRow.value) {
+                    const dict = JSON.parse(sRow.value);
+                    list = Object.keys(dict).map(k => ({ code: k, ...dict[k] }));
+                  }
+                } catch (e) {}
+              }
+            }
+
+            if (list.length === 0) {
+              list = [
+                { code: 'MANHWA100', points: 100, description: 'Seri Okuma Promosyon Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+                { code: 'MIKROKOSMOS2026', points: 250, description: '2026 Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 },
+                { code: 'HOSGELDIN', points: 150, description: 'Yeni Üyelik Hoş Geldin Bonusu', use_count: 0, max_uses: 0, is_active: 1 }
+              ];
+            }
+
+            return new Response(JSON.stringify({ success: true, promoCodes: list }), { headers });
+          }
+
+          // POST: Add or Update Promo Code (Admin)
+          if (request.method === 'POST') {
+            const body = await request.json().catch(() => ({}));
+            const { code, points, description, max_uses, is_active } = body;
+
+            if (!code || typeof code !== 'string' || !code.trim()) {
+              return new Response(JSON.stringify({ success: false, message: 'Geçerli bir promosyon kodu giriniz.' }), { headers });
+            }
+
+            const cleanCode = code.trim().toUpperCase();
+            const pts = Math.max(1, Number(points) || 100);
+            const desc = (description || 'Promosyon Kodu Ödülü').trim();
+            const maxU = Math.max(0, Number(max_uses) || 0);
+            const active = is_active !== undefined ? (is_active ? 1 : 0) : 1;
+            const createdAt = new Date().toISOString();
+
+            if (activeDb) {
+              await activeDb.prepare(`
+                INSERT INTO promo_codes (code, points, description, max_uses, use_count, is_active, created_at)
+                VALUES (?, ?, ?, ?, 0, ?, ?)
+                ON CONFLICT(code) DO UPDATE SET
+                  points = excluded.points,
+                  description = excluded.description,
+                  max_uses = excluded.max_uses,
+                  is_active = excluded.is_active
+              `).bind(cleanCode, pts, desc, maxU, active, createdAt).run().catch(() => null);
+
+              // Also sync to site_settings dictionary
+              try {
+                const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
+                let dict = (sRow && sRow.value) ? JSON.parse(sRow.value) : {};
+                dict[cleanCode] = { points: pts, description: desc, max_uses: maxU, is_active: active, created_at: createdAt };
+                await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind('promo_codes_dict', JSON.stringify(dict)).run().catch(() => null);
+              } catch (e) {}
+            }
+
+            return new Response(JSON.stringify({
+              success: true,
+              message: `"${cleanCode}" promosyon kodu (+${pts} CP) Cloudflare D1 veritabanına başarıyla kaydedildi!`,
+              code: cleanCode,
+              points: pts
+            }), { headers });
+          }
+
+          // DELETE: Delete Promo Code (Admin)
+          if (request.method === 'DELETE') {
+            const urlObj = new URL(request.url);
+            const codeToDelete = urlObj.searchParams.get('code') || '';
+            if (codeToDelete && activeDb) {
+              const cleanCode = codeToDelete.trim().toUpperCase();
+              await activeDb.prepare("DELETE FROM promo_codes WHERE UPPER(code) = ?").bind(cleanCode).run().catch(() => null);
+              try {
+                const sRow = await activeDb.prepare("SELECT value FROM site_settings WHERE key = 'promo_codes_dict'").first().catch(() => null);
+                if (sRow && sRow.value) {
+                  let dict = JSON.parse(sRow.value);
+                  delete dict[cleanCode];
+                  await activeDb.prepare("INSERT OR REPLACE INTO site_settings (key, value) VALUES (?, ?)").bind('promo_codes_dict', JSON.stringify(dict)).run().catch(() => null);
+                }
+              } catch (e) {}
+            }
+
+            return new Response(JSON.stringify({ success: true, message: 'Promosyon kodu silindi.' }), { headers });
+          }
         }
 
         if (path.startsWith('/api/admin/coin-packages') || path.startsWith('/api/coin-packages')) {
