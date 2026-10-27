@@ -81,8 +81,8 @@ export default defineConfig(() => {
               },
             },
             {
-              // External Manga/Novel image CDNs and hosts (Blogger, Google, Imgur, Discord, Unsplash, etc.)
-              urlPattern: /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:unsplash\.com|googleusercontent\.com|blogspot\.com|imgur\.com|discordapp\.(?:com|net)|discord\.net|cloudinary\.com|dicebear\.com|google\.com|postimg\.(?:cc|org)|postimages\.org|hizliresim\.com)\/.*/i,
+              // External Manga/Novel image CDNs and hosts (Blogger, Google, Imgur, Discord, Unsplash, Cloudflare Worker, etc.)
+              urlPattern: /^https?:\/\/(?:[a-zA-Z0-9-]+\.)?(?:unsplash\.com|googleusercontent\.com|blogspot\.com|imgur\.com|discordapp\.(?:com|net)|discord\.net|cloudinary\.com|dicebear\.com|google\.com|postimg\.(?:cc|org)|postimages\.org|hizliresim\.com|workers\.dev)\/.*/i,
               handler: 'CacheFirst',
               options: {
                 cacheName: 'remote-images-cache',
@@ -116,8 +116,7 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
     ],

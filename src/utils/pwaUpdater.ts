@@ -32,6 +32,7 @@ function notifyUpdateListeners(status: boolean) {
  */
 export function initPWARegistration() {
   if (isInitialized || typeof window === 'undefined') return;
+  if (import.meta.env.DEV) return;
   isInitialized = true;
 
   updateSWFn = registerSW({
