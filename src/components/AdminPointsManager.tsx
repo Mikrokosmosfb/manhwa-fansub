@@ -1,0 +1,1437 @@
+import React, { useState, useMemo } from 'react';
+import { useApp } from '../context/AppContext';
+import {
+  Sparkles,
+  Zap,
+  Coins,
+  Send,
+  UserCheck,
+  Search,
+  Plus,
+  Minus,
+  Equal,
+  Clock,
+  Trash2,
+  RotateCcw,
+  CheckCircle2,
+  AlertCircle,
+  Users,
+  Shield,
+  Crown,
+  History,
+  Download,
+  Gift,
+  Award,
+  ArrowRight,
+  TrendingUp,
+  MessageSquare,
+  Sparkle
+} from 'lucide-react';
+import { KnownUserRecord, PointGrantLog } from '../types';
+import { TeamBadges } from './TeamBadge';
+
+export const AdminPointsManager: React.FC = () => {
+  const {
+    user,
+    knownUsers,
+    pointGrantLogs,
+    grantCosmoPoints,
+    deletePointGrantLog,
+    showToast,
+    promoCodesList,
+    fetchPromoCodes,
+    addOrUpdatePromoCode,
+    deletePromoCode,
+    getUserTeamRoles
+  } = useApp();
+
+  const [targetEmail, setTargetEmail] = useState('');
+  const [amount, setAmount] = useState<number | string>(250);
+  const [mode, setMode] = useState<'add' | 'subtract' | 'set'>('add');
+  const [note, setNote] = useState('🎁 Etkinlik / Yarışma Ödülü');
+  const [sendNotification, setSendNotification] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+  const [adminTab, setAdminTab] = useState<'grant' | 'notifications' | 'promo'>('grant');
+  const [promoCodeInput, setPromoCodeInput] = useState('');
+  const [promoPointsInput, setPromoPointsInput] = useState<number | string>(250);
+  const [promoDescInput, setPromoDescInput] = useState('Promosyon Kodu Bonusu');
+  const [promoMaxUsesInput, setPromoMaxUsesInput] = useState<number | string>(0);
+  const [promoIsActive, setPromoIsActive] = useState(true);
+  const [isSavingPromo, setIsSavingPromo] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  const handleCreatePromoCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoCodeInput.trim()) {
+      showToast({ title: 'Eksik Bilgi', message: 'Lütfen bir promosyon kodu giriniz.', type: 'warning' });
+      return;
+    }
+    const cleanCode = promoCodeInput.trim().toUpperCase();
+    const pts = Math.max(1, Number(promoPointsInput) || 100);
+
+    setIsSavingPromo(true);
+    const ok = await addOrUpdatePromoCode({
+      code: cleanCode,
+      points: pts,
+      description: promoDescInput.trim() || 'Promosyon Kodu Bonusu',
+      max_uses: Math.max(0, Number(promoMaxUsesInput) || 0),
+      is_active: promoIsActive ? 1 : 0
+    });
+    setIsSavingPromo(false);
+
+    if (ok) {
+      setPromoCodeInput('');
+    }
+  };
+
+  const handleCopyCode = (c: string) => {
+    try {
+      navigator.clipboard.writeText(c);
+      setCopiedCode(c);
+      setTimeout(() => setCopiedCode(null), 2000);
+      showToast({ title: 'Kopyalandı 📋', message: `"${c}" kodu panoya kopyalandı.`, type: 'info' });
+    } catch {}
+  };
+  const [paymentNotifications, setPaymentNotifications] = useState<any[]>([]);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [processingNotifId, setProcessingNotifId] = useState<string | null>(null);
+  const [daStatus, setDaStatus] = useState<{ connected: boolean; connect_url: string } | null>(null);
+
+  const checkDaStatus = () => {
+    fetch('/api/donationalerts/status')
+      .then(r => {
+        const ct = r.headers.get('content-type');
+        if (r.ok && ct && ct.includes('application/json')) return r.json();
+        return null;
+      })
+      .then(d => {
+        if (d && d.success) {
+          setDaStatus(d);
+        }
+      })
+      .catch(() => {});
+  };
+
+  React.useEffect(() => {
+    checkDaStatus();
+  }, []);
+
+  const fetchPaymentNotifications = () => {
+    setIsLoadingNotifications(true);
+    fetch('/api/payment-notifications')
+      .then(r => {
+        const ct = r.headers.get('content-type');
+        if (r.ok && ct && ct.includes('application/json')) return r.json();
+        return null;
+      })
+      .then(data => {
+        setIsLoadingNotifications(false);
+        if (data && data.success && Array.isArray(data.notifications)) {
+          setPaymentNotifications(data.notifications);
+        }
+      })
+      .catch(() => setIsLoadingNotifications(false));
+  };
+
+  React.useEffect(() => {
+    fetchPaymentNotifications();
+  }, []);
+
+  const pendingNotifCount = useMemo(() => {
+    return paymentNotifications.filter(n => n.status === 'pending').length;
+  }, [paymentNotifications]);
+
+  const duplicateRefCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const n of paymentNotifications) {
+      const key = (n.reference_code || '').trim().toLowerCase();
+      if (key) counts[key] = (counts[key] || 0) + 1;
+    }
+    return counts;
+  }, [paymentNotifications]);
+
+  const handleReviewNotification = async (notif: any, status: 'approved' | 'rejected') => {
+    if (status === 'approved') {
+      const key = (notif.reference_code || '').trim().toLowerCase();
+      const isDup = (duplicateRefCounts[key] || 0) > 1;
+      if (isDup) {
+        const confirmed = window.confirm(
+          `⚠️ DİKKAT: "${notif.reference_code}" adına birden fazla bildirim bulunuyor!\n\nBu kullanıcının ödemesi zaten daha önce onaylanmış olabilir.\n\nBu bildirimi onaylayıp hesaba +${notif.amount_cp} CP daha yüklemek istediğinize emin misiniz?`
+        );
+        if (!confirmed) return;
+      }
+    }
+    setProcessingNotifId(notif.id);
+    try {
+      if (status === 'approved') {
+        // Automatically grant the EXACT amount of Cosmo-Points for the package
+        await grantCosmoPoints(
+          notif.user_email,
+          notif.amount_cp,
+          'add',
+          `DonationAlerts: ${notif.package_name} (#${notif.reference_code})`,
+          true
+        );
+      }
+
+      await fetch('/api/payment-notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'review',
+          id: notif.id,
+          status,
+          admin_email: user?.email || 'admin'
+        })
+      });
+
+      setProcessingNotifId(null);
+      fetchPaymentNotifications();
+
+      if (status === 'approved') {
+        showToast({
+          title: 'Ödeme Onaylandı! 🎉',
+          message: `${notif.user_email} kullanıcısına ${notif.amount_cp.toLocaleString('tr-TR')} CP başarıyla yüklendi!`,
+          type: 'success'
+        });
+      } else {
+        showToast({
+          title: 'Bildirim Reddedildi ❌',
+          message: 'Ödeme bildirimi reddedildi.',
+          type: 'warning'
+        });
+      }
+    } catch (err: any) {
+      setProcessingNotifId(null);
+      showToast({
+        title: 'Hata ⚠️',
+        message: 'İşlem sırasında bir hata oluştu.',
+        type: 'warning'
+      });
+    }
+  };
+
+  // Selected user preview
+  const selectedUser = useMemo(() => {
+    const clean = targetEmail.trim().toLowerCase();
+    if (!clean) return null;
+    return knownUsers.find(u => u.email.toLowerCase() === clean) || null;
+  }, [targetEmail, knownUsers]);
+
+  // Total points distributed calculation
+  const totalPointsDistributed = useMemo(() => {
+    return pointGrantLogs.reduce((acc, log) => {
+      if (log.mode === 'add') return acc + log.amount;
+      return acc;
+    }, 0);
+  }, [pointGrantLogs]);
+
+  // Quick preset amount values
+  const presetAmounts = [50, 100, 250, 300, 500, 1000, 1250, 3000, 4000, 10000, 14000, 999999];
+
+  // Quick preset notes
+  const presetNotes = [
+    '💳 DonationAlerts Paket Yüklemesi ($ USD)',
+    '🎁 Etkinlik / Yarışma Ödülü',
+    '✨ Sadakat & Destekçi Teşekkür Hediyesi',
+    '💬 Değerli Yorum & Katkı Bonusu',
+    '🛠️ Sistem Hatası & Bakım Telafisi',
+    '👑 Özel VIP Üyelik Tanımlaması',
+    '⚡ Manuel Yönetici Yüklemesi'
+  ];
+
+  // Filtered users for table
+  const filteredUsers = useMemo(() => {
+    const query = userSearchQuery.trim().toLowerCase();
+    if (!query) return knownUsers;
+    return knownUsers.filter(
+      u =>
+        u.email.toLowerCase().includes(query) ||
+        u.name.toLowerCase().includes(query) ||
+        (u.role && u.role.toLowerCase().includes(query))
+    );
+  }, [knownUsers, userSearchQuery]);
+
+  // Filtered history logs
+  const filteredLogs = useMemo(() => {
+    const query = historySearchQuery.trim().toLowerCase();
+    if (!query) return pointGrantLogs;
+    return pointGrantLogs.filter(
+      l =>
+        l.targetEmail.toLowerCase().includes(query) ||
+        (l.note && l.note.toLowerCase().includes(query)) ||
+        l.adminEmail.toLowerCase().includes(query)
+    );
+  }, [pointGrantLogs, historySearchQuery]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanEmail = targetEmail.trim().toLowerCase();
+    if (!cleanEmail) {
+      showToast({
+        title: 'E-posta Eksik ⚠️',
+        message: 'Lütfen Cosmo-Puan yüklemek istediğiniz kullanıcının e-posta adresini girin.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    const numAmount = Math.abs(Number(amount)) || 0;
+    if (numAmount <= 0 && mode !== 'set') {
+      showToast({
+        title: 'Miktar Geçersiz ⚠️',
+        message: 'Lütfen 0\'dan büyük geçerli bir Cosmo-Puan miktarı belirleyin.',
+        type: 'warning'
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await grantCosmoPoints(cleanEmail, numAmount, mode, note, sendNotification);
+      if (res.success) {
+        // Clear amount or keep for another
+      }
+    } catch (err: any) {
+      showToast({
+        title: 'Yükleme Başarısız ❌',
+        message: err?.message || 'Puan yüklenirken bir hata oluştu.',
+        type: 'warning'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSelectUserQuick = (userRecord: KnownUserRecord) => {
+    setTargetEmail(userRecord.email);
+    window.scrollTo({ top: 150, behavior: 'smooth' });
+  };
+
+  const handleExportLogs = () => {
+    const jsonStr = JSON.stringify(pointGrantLogs, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mikrokosmos_cosmo_puan_loglari_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast({
+      title: 'Loglar İndirildi 📥',
+      message: 'Cosmo-Puan yükleme geçmişi JSON olarak kaydedildi.',
+      type: 'info'
+    });
+  };
+
+  return (
+    <div className="space-y-8 animate-fadeIn">
+      {/* Top Banner Header */}
+      <div className="bg-gradient-to-r from-purple-950/90 via-purple-900/60 to-amber-950/80 border border-purple-500/30 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-purple-600 border border-amber-400/50 flex items-center justify-center text-black shadow-xl shadow-amber-900/40 shrink-0">
+              <Sparkles size={30} className="text-white" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  Yönetici Kontrolü
+                </span>
+                <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
+                  <Coins size={13} className="text-amber-400" />
+                  Cosmo-Puan Sistemi
+                </span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white mt-1 flex items-center gap-2">
+                <span>Manuel Cosmo-Puan Yükleme & Bakiye Yönetimi</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-purple-200/80 mt-1 max-w-2xl leading-relaxed">
+                İstediğiniz kullanıcı e-posta adresine doğrudan <strong>Cosmo-Puan</strong> tanımlayabilir, bakiye düşürebilir veya özel bakiye atayabilirsiniz. Yüklenen puanlar kullanıcının hesabına anında yansır.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-start lg:self-center">
+            <button
+              onClick={handleExportLogs}
+              className="px-4 py-2.5 rounded-xl bg-gray-900/80 hover:bg-gray-800 border border-purple-500/30 text-purple-200 text-xs font-bold flex items-center gap-2 transition shadow cursor-pointer active:scale-95"
+              title="Tüm puan geçmişini JSON olarak indir"
+            >
+              <Download size={14} className="text-amber-400" />
+              <span>Logları İndir</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-6 border-t border-purple-500/20">
+          <div className="bg-gray-950/60 rounded-2xl p-3 border border-purple-500/20">
+            <p className="text-[10px] text-gray-400 font-bold uppercase truncate">Kayıtlı Kullanıcı</p>
+            <p className="text-lg font-black text-white flex items-center gap-1.5 mt-0.5">
+              <Users size={16} className="text-purple-400" />
+              {knownUsers.length}
+            </p>
+          </div>
+
+          <div className="bg-gray-950/60 rounded-2xl p-3 border border-purple-500/20">
+            <p className="text-[10px] text-gray-400 font-bold uppercase truncate">Dağıtılan Manuel CP</p>
+            <p className="text-lg font-black text-amber-300 flex items-center gap-1.5 mt-0.5">
+              <Coins size={16} className="text-amber-400" />
+              {totalPointsDistributed.toLocaleString()} CP
+            </p>
+          </div>
+
+          <div className="bg-gray-950/60 rounded-2xl p-3 border border-purple-500/20">
+            <p className="text-[10px] text-gray-400 font-bold uppercase truncate">Toplam İşlem Logu</p>
+            <p className="text-lg font-black text-white flex items-center gap-1.5 mt-0.5">
+              <History size={16} className="text-indigo-400" />
+              {pointGrantLogs.length}
+            </p>
+          </div>
+
+          <div className="bg-gray-950/60 rounded-2xl p-3 border border-purple-500/20">
+            <p className="text-[10px] text-gray-400 font-bold uppercase truncate">Yetkili Yönetici</p>
+            <p className="text-xs font-black text-emerald-400 flex items-center gap-1.5 mt-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              {user?.email || 'aseleliyeva77@gmail.com'}
+            </p>
+          </div>
+        </div>
+
+        {/* DONATIONALERTS OAUTH BAĞLANTI DURUMU BİLGİ KUTUSU */}
+        <div className="mt-6 p-4 rounded-2xl bg-gray-950/80 border border-purple-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
+              daStatus?.connected
+                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse'
+            }`}>
+              ⚡
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-white">DonationAlerts API Otomasyonu (OAuth v1)</span>
+                {daStatus?.connected ? (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1">
+                    <CheckCircle2 size={11} /> Aktif & Bağlı
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                    <AlertCircle size={11} /> Yetkilendirme Bekleniyor
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {daStatus?.connected
+                  ? 'Siteniz DonationAlerts hesabınıza bağlı! Kullanıcıların yaptığı ödemeler kuruşu kuruşuna tespit edilip CP anında yüklenir.'
+                  : 'Otomatik CP yükleme sisteminin çalışabilmesi için DonationAlerts hesabınızı sitemize yetkilendirmeniz gerekir.'}
+              </p>
+            </div>
+          </div>
+
+          {!daStatus?.connected ? (
+            <a
+              href="/api/auth/donationalerts/connect"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-black font-black text-xs flex items-center gap-1.5 transition shadow-lg shrink-0 cursor-pointer"
+            >
+              <Zap size={14} />
+              <span>DonationAlerts Hesabını Bağla (İzin Ver)</span>
+            </a>
+          ) : (
+            <button
+              type="button"
+              onClick={checkDaStatus}
+              className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold border border-gray-700 transition flex items-center gap-1 shrink-0 cursor-pointer"
+            >
+              <RotateCcw size={12} />
+              <span>Bağlantıyı Yenile</span>
+            </button>
+          )}
+        </div>
+
+        {/* Tab Switcher: Manuel Puan Yükleme vs DonationAlerts Bildirimleri */}
+        <div className="flex items-center gap-3 mt-6 pt-6 border-t border-purple-500/20 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setAdminTab('grant')}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'grant'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-black border border-amber-300'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Zap size={16} />
+            <span>Manuel Puan Yükleme</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('promo');
+              fetchPromoCodes();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'promo'
+                ? 'bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 text-white border border-rose-400'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Gift size={16} />
+            <span>Promosyon Kodları Yönetimi</span>
+            {promoCodesList && promoCodesList.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500/30 text-rose-200 border border-rose-400/40">
+                {promoCodesList.length} Kod
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdminTab('notifications');
+              fetchPaymentNotifications();
+            }}
+            className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black flex items-center gap-2 transition cursor-pointer shadow-md ${
+              adminTab === 'notifications'
+                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white border border-purple-400'
+                : 'bg-gray-900/90 hover:bg-gray-800 text-gray-300 border border-purple-500/30'
+            }`}
+          >
+            <Coins size={16} />
+            <span>DonationAlerts Ödeme Bildirimleri</span>
+            {pendingNotifCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-black animate-pulse">
+                {pendingNotifCount} Bekliyor
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {adminTab === 'promo' ? (
+        /* ===================== PROMOSYON KODLARI YÖNETİMİ (CLOUDFLARE D1) ===================== */
+        <div className="space-y-8 animate-fadeIn">
+          {/* Create Promo Code Form Card */}
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-rose-500/20 border border-rose-500/30 rounded-2xl text-rose-400 shrink-0">
+                  <Gift size={24} />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                    <span>Yeni Promosyon / Kupon Kodu Oluştur</span>
+                    <span className="text-[10px] font-black bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                      Cloudflare D1 Canlı
+                    </span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    Burada oluşturduğunuz kodlar doğrudan Cloudflare veritabanına kaydedilir. Kullanıcı mağazadan yazınca belirttiğiniz CP yüklenir.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPromoCodes}
+                className="px-3 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold border border-gray-700 transition flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+              >
+                <RotateCcw size={13} />
+                <span>Kodları Yenile</span>
+              </button>
+            </div>
+
+            <form onSubmit={handleCreatePromoCode} className="space-y-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Promo Code Input */}
+                <div>
+                  <label className="block text-purple-300 font-extrabold text-xs mb-1.5">
+                    🎁 Promosyon Kodu
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Örn: MIKROKOSMOS2026"
+                    value={promoCodeInput}
+                    onChange={e => setPromoCodeInput(e.target.value.toUpperCase())}
+                    className="w-full bg-gray-950 border border-purple-500/40 focus:border-rose-400 text-white font-mono font-black text-sm rounded-xl px-3.5 py-2.5 focus:outline-none uppercase placeholder-gray-600 shadow-inner"
+                  />
+                </div>
+
+                {/* CP Amount */}
+                <div>
+                  <label className="block text-amber-300 font-extrabold text-xs mb-1.5">
+                    ⚡ Verilecek Cosmo-Puan (CP)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    placeholder="Örn: 250"
+                    value={promoPointsInput}
+                    onChange={e => setPromoPointsInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-amber-500/40 focus:border-amber-400 text-amber-300 font-mono font-black text-sm rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600 shadow-inner"
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-gray-300 font-extrabold text-xs mb-1.5">
+                    📝 Açıklama / Etkinlik Adı
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Örn: 2026 Hoş Geldin Bonusu"
+                    value={promoDescInput}
+                    onChange={e => setPromoDescInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-800 focus:border-purple-400 text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600"
+                  />
+                </div>
+
+                {/* Max Uses */}
+                <div>
+                  <label className="block text-gray-300 font-extrabold text-xs mb-1.5">
+                    🔢 Limit (0 = Sınırsız)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="0 = Sınırsız"
+                    value={promoMaxUsesInput}
+                    onChange={e => setPromoMaxUsesInput(e.target.value)}
+                    className="w-full bg-gray-950 border border-gray-800 focus:border-purple-400 text-white text-xs rounded-xl px-3.5 py-2.5 focus:outline-none placeholder-gray-600"
+                  />
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="text-[11px] font-bold text-gray-400">Hızlı Kodlar:</span>
+                {[
+                  { code: 'HOSGELDIN250', pts: 250, desc: 'Yeni Üyelik Hoş Geldin Bonusu' },
+                  { code: 'DISCORD100', pts: 100, desc: 'Discord Sunucusu Katılım Bonusu' },
+                  { code: 'ETKINLIK500', pts: 500, desc: 'Özel Haftalık Seri Okuma Ödülü' },
+                  { code: 'VIP1000', pts: 1000, desc: 'Süper VIP Üye Promosyonu' }
+                ].map(p => (
+                  <button
+                    key={p.code}
+                    type="button"
+                    onClick={() => {
+                      setPromoCodeInput(p.code);
+                      setPromoPointsInput(p.pts);
+                      setPromoDescInput(p.desc);
+                    }}
+                    className="text-[11px] bg-purple-950/80 hover:bg-purple-900 text-purple-200 border border-purple-700/50 px-2.5 py-1 rounded-lg transition font-mono font-bold cursor-pointer"
+                  >
+                    + {p.code} ({p.pts} CP)
+                  </button>
+                ))}
+              </div>
+
+              {/* Actions & Status */}
+              <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-800/80 flex-wrap">
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={promoIsActive}
+                    onChange={e => setPromoIsActive(e.target.checked)}
+                    className="rounded bg-gray-950 border-gray-700 text-rose-500 focus:ring-rose-500 w-4 h-4 cursor-pointer"
+                  />
+                  <span>Kod Anında Aktif Olsun (Sitede Kullanılabilir)</span>
+                </label>
+
+                <button
+                  type="submit"
+                  disabled={isSavingPromo || !promoCodeInput.trim()}
+                  className="px-6 py-3 rounded-2xl bg-gradient-to-r from-rose-600 via-purple-600 to-indigo-600 hover:from-rose-500 hover:to-indigo-500 text-white font-extrabold text-xs flex items-center gap-2 transition shadow-lg cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles size={16} />
+                  <span>{isSavingPromo ? 'Kaydediliyor...' : 'Promosyon Kodunu Oluştur & Cloudflare Veritabanına Kaydet'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Existing Promo Codes Table Card */}
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3 border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-xl text-purple-300">
+                  <Award size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Cloudflare Veritabanındaki Aktif Promosyon Kodları</h3>
+                  <p className="text-xs text-gray-400">Kullanıcılar mağaza ekranındaki kupon kutusundan bu kodları yazarak CP alabilir.</p>
+                </div>
+              </div>
+              <span className="text-xs font-black bg-purple-950 text-purple-300 border border-purple-800 px-3 py-1 rounded-xl">
+                {promoCodesList?.length || 0} Aktif Kod
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-gray-300">
+                <thead>
+                  <tr className="border-b border-gray-800 text-[11px] text-gray-400 uppercase font-black">
+                    <th className="py-3 px-3">Promosyon Kodu</th>
+                    <th className="py-3 px-3">Verilen CP</th>
+                    <th className="py-3 px-3">Açıklama</th>
+                    <th className="py-3 px-3">Kullanım / Limit</th>
+                    <th className="py-3 px-3">Durum</th>
+                    <th className="py-3 px-3 text-right">Aksiyonlar</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800/60">
+                  {promoCodesList && promoCodesList.map((p: any) => {
+                    const codeStr = (p.code || '').toUpperCase();
+                    const isCopied = copiedCode === codeStr;
+                    const isActive = p.is_active !== 0;
+                    const maxU = Number(p.max_uses) || 0;
+                    const useC = Number(p.use_count) || 0;
+
+                    return (
+                      <tr key={codeStr} className="hover:bg-purple-950/20 transition">
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono font-black text-sm text-amber-300 bg-gray-950 border border-amber-500/30 px-2.5 py-1 rounded-lg">
+                              {codeStr}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCode(codeStr)}
+                              className="p-1 rounded-lg bg-gray-800 hover:bg-purple-900 text-gray-300 hover:text-white transition cursor-pointer"
+                              title="Kodu Kopyala"
+                            >
+                              {isCopied ? <CheckCircle2 size={13} className="text-emerald-400" /> : <Gift size={13} />}
+                            </button>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span className="font-black text-emerald-400 font-mono text-sm">
+                            +{p.points} CP
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-gray-200 font-medium">
+                          {p.description || '-'}
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap font-mono text-xs">
+                          {maxU > 0 ? (
+                            <span className={useC >= maxU ? 'text-red-400 font-bold' : 'text-gray-300'}>
+                              {useC} / {maxU}
+                            </span>
+                          ) : (
+                            <span className="text-emerald-400 font-bold">
+                              {useC} kullanım (Sınırsız)
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-3 whitespace-nowrap">
+                          <span
+                            className={`text-[10px] font-black px-2.5 py-0.5 rounded-full border ${
+                              isActive
+                                ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                                : 'bg-red-950 text-red-300 border-red-500/40'
+                            }`}
+                          >
+                            {isActive ? 'Aktif' : 'Pasif'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                addOrUpdatePromoCode({
+                                  code: codeStr,
+                                  points: p.points,
+                                  description: p.description,
+                                  max_uses: p.max_uses,
+                                  is_active: isActive ? 0 : 1
+                                });
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 text-[11px] font-bold border border-gray-700 transition cursor-pointer"
+                            >
+                              {isActive ? 'Pasife Al' : 'Aktif Et'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (confirm(`"${codeStr}" promosyon kodunu silmek istediğinizden emin misiniz?`)) {
+                                  deletePromoCode(codeStr);
+                                }
+                              }}
+                              className="p-1.5 rounded-lg bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800 transition cursor-pointer"
+                              title="Kodu Sil"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {(!promoCodesList || promoCodesList.length === 0) && (
+                    <tr>
+                      <td colSpan={6} className="text-center py-8 text-gray-500 text-xs">
+                        Henüz kayıtlı bir promosyon kodu bulunmamaktadır.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : adminTab === 'notifications' ? (
+        /* ===================== DONATIONALERTS ÖDEME BİLDİRİMLERİ GÖRÜNÜMÜ ===================== */
+        <div className="space-y-6">
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-5 sm:p-7 shadow-xl space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-gray-800 pb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
+                  <Coins className="text-amber-400" size={20} />
+                  <span>Kullanıcı DonationAlerts Ödeme Bildirimleri</span>
+                </h3>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Kullanıcıların DonationAlerts üzerinden yaptıkları bağış/ödeme taleplerini buradan inceleyip tek tıkla onaylayabilirsiniz.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchPaymentNotifications}
+                disabled={isLoadingNotifications}
+                className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-bold rounded-xl border border-gray-700 flex items-center gap-1.5 transition cursor-pointer"
+              >
+                <RotateCcw size={13} className={isLoadingNotifications ? 'animate-spin' : ''} />
+                <span>Yenile</span>
+              </button>
+            </div>
+
+            {paymentNotifications.length === 0 ? (
+              <div className="text-center py-12 text-gray-400 text-xs sm:text-sm">
+                Henüz kayıtlı bir ödeme bildirimi bulunmuyor.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-gray-300">
+                  <thead className="text-[11px] uppercase bg-gray-950/80 text-gray-400 border-b border-gray-800">
+                    <tr>
+                      <th className="py-3 px-3">Tarih</th>
+                      <th className="py-3 px-3">Kullanıcı (E-posta)</th>
+                      <th className="py-3 px-3">Paket & Yüklenecek CP</th>
+                      <th className="py-3 px-3">DonationAlerts İsmi / Dekont</th>
+                      <th className="py-3 px-3">Durum</th>
+                      <th className="py-3 px-3 text-right">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-800/60 font-medium">
+                    {paymentNotifications.map(notif => {
+                      const isPending = notif.status === 'pending';
+                      const isApproved = notif.status === 'approved';
+                      const isRejected = notif.status === 'rejected';
+
+                      return (
+                        <tr key={notif.id} className="hover:bg-purple-950/20 transition">
+                          <td className="py-3 px-3 text-gray-400 text-[11px] whitespace-nowrap">
+                            {new Date(notif.created_at).toLocaleString('tr-TR')}
+                          </td>
+                          <td className="py-3 px-3 font-bold text-white whitespace-nowrap">
+                            <div>{notif.user_name || notif.user_email}</div>
+                            <div className="text-[10px] text-purple-300 font-mono font-normal">{notif.user_email}</div>
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <span className="font-extrabold text-amber-300 block">
+                              {notif.package_name}
+                            </span>
+                            <span className="text-[11px] text-emerald-400 font-black">
+                              +{Number(notif.amount_cp).toLocaleString('tr-TR')} CP
+                            </span>
+                            <span className="text-[10px] text-gray-500 block">
+                              ({notif.price_text})
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="bg-black/50 border border-gray-800 px-2.5 py-1 rounded-lg text-white font-mono text-[11px] inline-block max-w-xs break-all">
+                              {notif.reference_code}
+                            </div>
+                            {(duplicateRefCounts[(notif.reference_code || '').trim().toLowerCase()] || 0) > 1 && (
+                              <div className="mt-1">
+                                <span className="text-[10px] text-amber-300 bg-amber-950/80 border border-amber-500/40 px-2 py-0.5 rounded-md inline-flex items-center gap-1 font-extrabold">
+                                  ⚠️ Mükerrer Bildirim!
+                                </span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            {isPending && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                                <Clock size={11} /> Bekliyor
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 inline-flex items-center gap-1">
+                                <CheckCircle2 size={11} /> Onaylandı
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-red-500/20 text-red-300 border border-red-500/40 inline-flex items-center gap-1">
+                                <AlertCircle size={11} /> Reddedildi
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right whitespace-nowrap">
+                            {isPending ? (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  type="button"
+                                  disabled={processingNotifId === notif.id}
+                                  onClick={() => handleReviewNotification(notif, 'approved')}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow transition flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  title="Ödemeyi Onayla ve Kullanıcıya CP Yükle"
+                                >
+                                  <CheckCircle2 size={14} />
+                                  <span>Onayla (+{notif.amount_cp} CP)</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  disabled={processingNotifId === notif.id}
+                                  onClick={() => handleReviewNotification(notif, 'rejected')}
+                                  className="px-2.5 py-1.5 bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
+                                  title="Bildirimi Reddet"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-500">
+                                {notif.reviewed_at ? new Date(notif.reviewed_at).toLocaleDateString('tr-TR') : 'Tamamlandı'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* ===================== MANUEL PUAN YÜKLEME GÖRÜNÜMÜ ===================== */
+        <div className="space-y-8">
+      {/* Main Grid: Form + User Quick Picker */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* ===================== LEFT: GRANT POINTS FORM (7 cols) ===================== */}
+        <div className="lg:col-span-7 space-y-6">
+          <form
+            onSubmit={handleSubmit}
+            className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl space-y-6"
+          >
+            <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-400">
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white">Puan Yükleme Formu</h3>
+                  <p className="text-xs text-gray-400">Hedef hesap ve yüklenecek Cosmo-Puan miktarını belirleyin.</p>
+                </div>
+              </div>
+
+              {selectedUser && (
+                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-black px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={12} /> Hesap Bulundu
+                </span>
+              )}
+            </div>
+
+            {/* Target Email Input */}
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-gray-300 flex items-center justify-between">
+                <span>Hedef E-Posta Adresi <span className="text-red-400">*</span></span>
+                {selectedUser && (
+                  <span className="text-amber-300 text-[11px] font-bold">
+                    Mevcut Bakiye: <strong>{selectedUser.coins?.toLocaleString()} CP</strong>
+                  </span>
+                )}
+              </label>
+              <div className="relative">
+                <input
+                  type="email"
+                  required
+                  value={targetEmail}
+                  onChange={e => setTargetEmail(e.target.value)}
+                  placeholder="ornek: kullanici@gmail.com"
+                  className="w-full bg-gray-950 border border-purple-500/40 text-white placeholder-gray-500 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 transition"
+                />
+              </div>
+
+              {/* Quick Select Chips */}
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                <span className="text-[11px] text-gray-400 mr-1">Hızlı Seç:</span>
+                {knownUsers.slice(0, 4).map(u => (
+                  <button
+                    key={u.uid}
+                    type="button"
+                    onClick={() => setTargetEmail(u.email)}
+                    className={`text-[11px] px-2.5 py-1 rounded-xl border transition cursor-pointer flex items-center gap-1.5 ${
+                      targetEmail.toLowerCase() === u.email.toLowerCase()
+                        ? 'bg-amber-500 text-black font-extrabold border-amber-400 shadow-md'
+                        : 'bg-gray-950 text-gray-300 hover:text-white hover:bg-gray-800 border-gray-800'
+                    }`}
+                  >
+                    <img
+                      src={u.avatar}
+                      alt={u.name}
+                      className="w-3.5 h-3.5 rounded-full object-cover"
+                    />
+                    <span>{u.name}</span>
+                    <span className="text-[10px] opacity-70">({u.coins} CP)</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* User Live Preview Card */}
+            {selectedUser && (
+              <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/30 flex items-center justify-between gap-3 animate-fadeIn">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={selectedUser.avatar}
+                    alt={selectedUser.name}
+                    className="w-11 h-11 rounded-2xl border-2 border-purple-400 object-cover shadow"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-black text-white truncate">{selectedUser.name}</p>
+                      {selectedUser.role === 'admin' && (
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded border border-amber-500/30 font-bold">
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-400 truncate">{selectedUser.email}</p>
+                  </div>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">Mevcut CP</p>
+                  <p className="text-sm font-black text-amber-300">{selectedUser.coins?.toLocaleString()} CP</p>
+                </div>
+              </div>
+            )}
+
+            {/* Operation Mode Selector */}
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-gray-300">
+                İşlem Türü
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMode('add')}
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition cursor-pointer ${
+                    mode === 'add'
+                      ? 'bg-emerald-950/80 border-emerald-400 text-emerald-200 shadow-lg shadow-emerald-950/50'
+                      : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-900'
+                  }`}
+                >
+                  <Plus size={16} className={mode === 'add' ? 'text-emerald-400' : ''} />
+                  <span>Puan Ekle (+)</span>
+                  <span className="text-[10px] font-normal opacity-70">Bakiyeye ilave et</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('subtract')}
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition cursor-pointer ${
+                    mode === 'subtract'
+                      ? 'bg-red-950/80 border-red-400 text-red-200 shadow-lg shadow-red-950/50'
+                      : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-900'
+                  }`}
+                >
+                  <Minus size={16} className={mode === 'subtract' ? 'text-red-400' : ''} />
+                  <span>Puan Çıkar (-)</span>
+                  <span className="text-[10px] font-normal opacity-70">Bakiyeden düş</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('set')}
+                  className={`p-3 rounded-2xl border text-xs font-bold flex flex-col items-center gap-1 transition cursor-pointer ${
+                    mode === 'set'
+                      ? 'bg-indigo-950/80 border-indigo-400 text-indigo-200 shadow-lg shadow-indigo-950/50'
+                      : 'bg-gray-950 border-gray-800 text-gray-400 hover:text-gray-200 hover:bg-gray-900'
+                  }`}
+                >
+                  <Equal size={16} className={mode === 'set' ? 'text-indigo-400' : ''} />
+                  <span>Sabit Bakiye (=)</span>
+                  <span className="text-[10px] font-normal opacity-70">Tam tutara ayarla</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Amount Input & Preset Pills */}
+            <div className="space-y-3">
+              <label className="block text-xs font-extrabold text-gray-300">
+                Cosmo-Puan (CP) Miktarı
+              </label>
+
+              {/* Amount Numeric Input */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-amber-400 font-black">
+                  <Coins size={18} />
+                </div>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={amount}
+                  onChange={e => setAmount(e.target.value)}
+                  className="w-full bg-gray-950 border border-purple-500/40 text-white font-mono font-black text-lg pl-11 pr-16 py-3 rounded-2xl focus:outline-none focus:ring-2 focus:ring-amber-400 transition"
+                  placeholder="250"
+                />
+                <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-xs font-bold text-gray-400">
+                  CP
+                </div>
+              </div>
+
+              {/* Preset Amount Pills */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {presetAmounts.map(preset => {
+                  const isSelected = Number(amount) === preset;
+                  return (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAmount(preset)}
+                      className={`text-xs px-3 py-1.5 rounded-xl border transition cursor-pointer font-bold ${
+                        isSelected
+                          ? 'bg-amber-500 text-black border-amber-400 shadow-md shadow-amber-950/60'
+                          : 'bg-gray-950 text-gray-300 hover:text-white hover:bg-gray-800 border-gray-800'
+                      }`}
+                    >
+                      {preset >= 999999 ? '👑 VIP Sınırsız' : `+${preset.toLocaleString()} CP`}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Reason Note */}
+            <div className="space-y-2">
+              <label className="block text-xs font-extrabold text-gray-300">
+                Yönetici Notu & Açıklama
+              </label>
+              <input
+                type="text"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="Örn: 1. Sezon Manhwa Yarışması 1.si"
+                className="w-full bg-gray-950 border border-gray-800 text-white placeholder-gray-500 rounded-2xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-400 transition"
+              />
+
+              <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                {presetNotes.map(pn => (
+                  <button
+                    key={pn}
+                    type="button"
+                    onClick={() => setNote(pn)}
+                    className={`text-[10px] px-2.5 py-1 rounded-lg border transition cursor-pointer ${
+                      note === pn
+                        ? 'bg-purple-900/60 text-purple-200 border-purple-400 font-bold'
+                        : 'bg-gray-950 text-gray-400 hover:text-gray-200 border-gray-800'
+                    }`}
+                  >
+                    {pn}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Notification Checkbox */}
+            <label className="flex items-center gap-3 p-3.5 rounded-2xl bg-gray-950 border border-gray-800/80 cursor-pointer hover:bg-gray-900 transition">
+              <input
+                type="checkbox"
+                checked={sendNotification}
+                onChange={e => setSendNotification(e.target.checked)}
+                className="w-4 h-4 rounded text-amber-500 bg-gray-900 border-gray-700 focus:ring-amber-400"
+              />
+              <div className="text-xs">
+                <span className="font-bold text-white">Kullanıcıya Otomatik Bildirim Gönder</span>
+                <p className="text-[11px] text-gray-400">Puan yüklendiğinde kullanıcının bildirim çubuğunda tebrik mesajı yayınlanır.</p>
+              </div>
+            </label>
+
+            {/* Submit Action */}
+            <button
+              type="submit"
+              disabled={isSubmitting || !targetEmail.trim()}
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-purple-600 hover:from-amber-400 hover:to-purple-500 text-black font-black text-sm shadow-xl shadow-amber-950/80 flex items-center justify-center gap-2 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isSubmitting ? (
+                <>
+                  <RotateCcw size={18} className="animate-spin text-black" />
+                  <span>İşlem Uygulanıyor...</span>
+                </>
+              ) : (
+                <>
+                  <Send size={18} className="text-black" />
+                  <span>
+                    {targetEmail ? `${targetEmail} Hesabına` : 'Hesaba'}{' '}
+                    {mode === 'add' ? `+${amount} CP Yükle` : mode === 'subtract' ? `-${amount} CP Düşür` : `${amount} CP Ayarla`}{' '}
+                    ⚡
+                  </span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* ===================== RIGHT: REGISTERED USERS DIRECTORY (5 cols) ===================== */}
+        <div className="lg:col-span-5 space-y-6">
+          <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl space-y-4 flex flex-col h-full">
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users size={18} className="text-purple-400" />
+                <h3 className="text-sm font-black text-white">Kayıtlı Kullanıcılar</h3>
+              </div>
+              <span className="text-[11px] text-gray-400 font-bold">
+                {filteredUsers.length} Kullanıcı
+              </span>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={userSearchQuery}
+                onChange={e => setUserSearchQuery(e.target.value)}
+                placeholder="E-posta veya kullanıcı adı ara..."
+                className="w-full bg-gray-950 border border-gray-800 text-white placeholder-gray-500 rounded-xl pl-9 pr-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 transition"
+              />
+            </div>
+
+            {/* User List Scroll Area */}
+            <div className="flex-1 overflow-y-auto max-h-[480px] space-y-2 pr-1 custom-scrollbar">
+              {filteredUsers.map(u => {
+                const isSelected = targetEmail.toLowerCase() === u.email.toLowerCase();
+                return (
+                  <div
+                    key={u.uid}
+                    className={`p-3 rounded-2xl border transition flex items-center justify-between gap-3 ${
+                      isSelected
+                        ? 'bg-purple-950/80 border-amber-400 shadow-md shadow-amber-950/40'
+                        : 'bg-gray-950/70 border-gray-800/80 hover:bg-gray-900 hover:border-purple-500/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={u.avatar}
+                        alt={u.name}
+                        className="w-8 h-8 rounded-xl object-cover border border-purple-500/30 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-bold text-white truncate">{u.name}</p>
+                          <TeamBadges roles={getUserTeamRoles(u)} size="xs" />
+                          {u.role === 'admin' && (
+                            <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 rounded border border-amber-500/30 font-bold shrink-0">
+                              Admin
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-400 truncate">{u.email}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <span className="text-xs font-black text-amber-300">
+                          {u.coins?.toLocaleString()}
+                        </span>
+                        <span className="text-[10px] text-gray-400 ml-0.5">CP</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleSelectUserQuick(u)}
+                        className={`p-1.5 rounded-lg border text-xs font-bold transition cursor-pointer ${
+                          isSelected
+                            ? 'bg-amber-500 text-black border-amber-400'
+                            : 'bg-purple-900/40 text-purple-300 hover:bg-purple-800 border-purple-500/30'
+                        }`}
+                        title="Bu hesaba puan yükle"
+                      >
+                        <Zap size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-500 text-xs">
+                  Aramanızla eşleşen kullanıcı bulunamadı.
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-purple-950/30 rounded-2xl border border-purple-500/20 text-[11px] text-purple-200/80 leading-relaxed">
+              💡 <strong>İpucu:</strong> Kullanıcı listesinde kayıtlı olmasa bile yukarıdaki kutuya dilediğiniz herhangi bir e-posta adresi yazıp doğrudan puan yükleyebilirsiniz!
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ===================== BOTTOM: TRANSACTION AUDIT LOGS ===================== */}
+      <div className="bg-gray-900/90 border border-purple-500/20 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xl space-y-4">
+        
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-800 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-indigo-500/20 border border-indigo-500/30 rounded-xl text-indigo-400">
+              <History size={20} />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-white">Yükleme Geçmişi & İşlem Kayıtları</h3>
+              <p className="text-xs text-gray-400">Yönetici tarafından yapılan tüm manuel puan transferleri.</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={historySearchQuery}
+                onChange={e => setHistorySearchQuery(e.target.value)}
+                placeholder="Loglarda e-posta ara..."
+                className="w-full bg-gray-950 border border-gray-800 text-white placeholder-gray-500 rounded-xl pl-9 pr-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 transition"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Logs Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-gray-300">
+            <thead>
+              <tr className="border-b border-gray-800 text-[11px] text-gray-400 uppercase font-black">
+                <th className="py-3 px-3">Tarih</th>
+                <th className="py-3 px-3">Hedef Hesap</th>
+                <th className="py-3 px-3">İşlem</th>
+                <th className="py-3 px-3">Miktar</th>
+                <th className="py-3 px-3">Bakiye Değişimi</th>
+                <th className="py-3 px-3">Yönetici Notu</th>
+                <th className="py-3 px-3">Yönetici</th>
+                <th className="py-3 px-3 text-right">Aksiyon</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/60">
+              {filteredLogs.map(log => {
+                const isAdd = log.mode === 'add';
+                const isSub = log.mode === 'subtract';
+                return (
+                  <tr key={log.id} className="hover:bg-purple-950/20 transition">
+                    <td className="py-3 px-3 whitespace-nowrap text-gray-400 font-mono text-[11px]">
+                      {log.date}
+                    </td>
+
+                    <td className="py-3 px-3 font-bold text-white">
+                      {log.targetEmail}
+                    </td>
+
+                    <td className="py-3 px-3">
+                      <span
+                        className={`text-[10px] font-black px-2 py-0.5 rounded-full border ${
+                          isAdd
+                            ? 'bg-emerald-950 text-emerald-300 border-emerald-500/40'
+                            : isSub
+                            ? 'bg-red-950 text-red-300 border-red-500/40'
+                            : 'bg-indigo-950 text-indigo-300 border-indigo-500/40'
+                        }`}
+                      >
+                        {isAdd ? 'Puan Eklendi (+)' : isSub ? 'Puan Düşüldü (-)' : 'Sabit Ayarlandı (=)'}
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-3 font-mono font-black">
+                      <span className={isAdd ? 'text-emerald-400' : isSub ? 'text-red-400' : 'text-indigo-300'}>
+                        {isAdd ? `+${log.amount}` : isSub ? `-${log.amount}` : `${log.amount}`} CP
+                      </span>
+                    </td>
+
+                    <td className="py-3 px-3 font-mono text-[11px] text-gray-400">
+                      {log.previousBalance !== undefined && log.newBalance !== undefined ? (
+                        <span>
+                          {log.previousBalance} CP → <strong className="text-amber-300">{log.newBalance} CP</strong>
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+
+                    <td className="py-3 px-3 text-gray-300 max-w-xs truncate">
+                      {log.note || '-'}
+                    </td>
+
+                    <td className="py-3 px-3 text-gray-400 font-mono text-[10px]">
+                      {log.adminEmail.split('@')[0]}
+                    </td>
+
+                    <td className="py-3 px-3 text-right">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          onClick={() => {
+                            setTargetEmail(log.targetEmail);
+                            setAmount(log.amount);
+                            setMode(log.mode);
+                            if (log.note) setNote(log.note);
+                            window.scrollTo({ top: 150, behavior: 'smooth' });
+                          }}
+                          className="p-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-purple-300 hover:text-white transition cursor-pointer"
+                          title="Bu işlemi tekrar yükleme formuna aktar"
+                        >
+                          <RotateCcw size={13} />
+                        </button>
+
+                        <button
+                          onClick={() => deletePointGrantLog(log.id)}
+                          className="p-1.5 rounded-lg bg-red-950/40 hover:bg-red-900 text-red-400 hover:text-red-200 transition cursor-pointer"
+                          title="Log kaydını sil"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+
+              {filteredLogs.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-gray-500">
+                    Henüz kayıtlı bir puan transferi bulunmamaktadır.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+      )}
+    </div>
+  );
+};
