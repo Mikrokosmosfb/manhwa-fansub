@@ -572,30 +572,30 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
   return (
     <div className="w-full animate-fadeIn flex flex-col pb-16">
       {/* 🌌 CINEMATIC FULL-WIDTH PROFILE HERO BANNER */}
-      <div className="relative w-full overflow-hidden bg-slate-950 border-b border-purple-500/20 pt-32 sm:pt-48 pb-20 sm:pb-32 px-4 flex flex-col items-center justify-center text-center shadow-2xl">
+      <div className="relative w-full overflow-hidden bg-slate-950 border-b border-purple-500/20 pt-16 sm:pt-28 pb-12 sm:pb-24 px-4 flex flex-col items-center justify-center text-center shadow-2xl">
         
         {/* Admin Button (Floating Top Right) */}
         {isAuthorizedAdmin(user.email) && (
           <button
             type="button"
             onClick={() => setView({ type: 'management' })}
-            className="absolute top-4 right-4 sm:top-6 sm:right-8 z-30 px-3.5 py-1.5 bg-rose-500/15 hover:bg-rose-500/30 border border-rose-500/40 text-rose-300 hover:text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 transition-all shadow-xl backdrop-blur-md"
+            className="absolute top-4 right-4 sm:top-6 sm:right-8 z-30 px-3.5 py-1.5 bg-rose-500/25 hover:bg-rose-500/40 border border-rose-500/50 text-rose-200 hover:text-white font-bold text-xs sm:text-sm rounded-xl flex items-center gap-2 transition-all shadow-xl backdrop-blur-md"
           >
             <ShieldCheck size={16} className="text-rose-400" />
             <span className="hidden sm:inline">Yönetim Paneli</span>
           </button>
         )}
 
-        {/* 🎨 Theme Background Image (Full Span Cover - Clear & Bright) */}
+        {/* 🎨 Theme Background Image / GIF / Video (Full Crisp Clarity) */}
         {activeThemeStyle?.cardBgImageUrl && (
           <ThemeBackgroundMedia
             url={activeThemeStyle.cardBgImageUrl}
-            opacity={0.75}
+            opacity={1}
             className="transition-all duration-700 z-0"
           />
         )}
         
-        {/* 🔮 Atmospheric Glow Gradient */}
+        {/* 🔮 Atmospheric Glow Gradient (Only when no custom background media) */}
         {!activeThemeStyle?.cardBgImageUrl && (
           <div
             className="absolute inset-0 pointer-events-none"
@@ -631,13 +631,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
           />
         ))}
 
-        {/* 🎬 MÜKEMMEL SİNEMATİK GEÇİŞ (Light Soft Vignette & Smooth Bottom Fade) */}
-        {/* Soft Top Tint */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
-        {/* Bottom Seamless Gradient Fade into Page */}
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
-        {/* Center Backing for Text Contrast */}
-        <div className="absolute inset-0 bg-radial from-black/30 via-transparent to-black/40 pointer-events-none" />
+        {/* 🎬 Subtle Bottom Edge Blend (Leaves background media crisp & bright without a dark curtain) */}
+        {activeThemeStyle?.cardBgImageUrl ? (
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-gray-950/90 to-transparent pointer-events-none z-[1]" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/35 to-transparent pointer-events-none" />
+          </>
+        )}
 
         {/* 👤 Center Profile Info */}
         <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
@@ -656,7 +658,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
             <div className="flex flex-col items-center justify-center gap-1">
               <div className="flex items-center justify-center gap-2.5 flex-wrap">
                 <h2
-                  className={`text-2xl sm:text-3xl font-black tracking-tight ${
+                  className={`text-2xl sm:text-3xl font-black tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${
                     activeThemeStyle ? activeThemeStyle.nameClass : 'text-white'
                   }`}
                 >
@@ -665,15 +667,15 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
                 <TeamBadges roles={getUserTeamRoles(user)} size="sm" />
               </div>
               {/* Benzersiz Kullanıcı Adı @kullanici */}
-              <span className="text-xs sm:text-sm text-purple-300 font-mono font-bold bg-purple-950/70 border border-purple-500/40 px-3 py-0.5 rounded-full shadow-sm">
+              <span className="text-xs sm:text-sm text-purple-200 font-mono font-bold bg-purple-950/80 border border-purple-500/40 px-3 py-0.5 rounded-full shadow-md">
                 {formatUserHandle(user.username || toCanonicalUsername(user.name))}
               </span>
             </div>
             
-            <p className="text-xs sm:text-sm text-gray-400 font-medium flex items-center justify-center gap-2">
-              <span className="text-purple-300 font-bold">{getLevelTitle(userLevel)}</span>
+            <p className="text-xs sm:text-sm text-gray-200 font-medium flex items-center justify-center gap-2 drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)]">
+              <span className="text-purple-200 font-bold bg-black/45 px-2.5 py-0.5 rounded-md border border-white/10">{getLevelTitle(userLevel)}</span>
               <span>•</span>
-              <span className="font-mono bg-white/5 border border-white/10 px-2 py-0.5 rounded-md text-[11px] sm:text-xs text-gray-300">{user.email}</span>
+              <span className="font-mono bg-black/45 border border-white/15 px-2 py-0.5 rounded-md text-[11px] sm:text-xs text-gray-200">{user.email}</span>
             </p>
 
             {bioQuote && (

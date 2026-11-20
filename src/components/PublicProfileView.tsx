@@ -343,13 +343,13 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
   return (
     <div className="w-full animate-fadeIn flex flex-col pb-16">
       {/* 🌌 CINEMATIC FULL-WIDTH PROFILE HERO BANNER */}
-      <div className="relative w-full overflow-hidden bg-slate-950 border-b border-purple-500/20 pt-32 sm:pt-48 pb-20 sm:pb-32 px-4 flex flex-col items-center justify-center text-center shadow-2xl">
+      <div className="relative w-full overflow-hidden bg-slate-950 border-b border-purple-500/20 pt-16 sm:pt-28 pb-12 sm:pb-24 px-4 flex flex-col items-center justify-center text-center shadow-2xl">
         
-        {/* 🎨 Theme Background Image */}
+        {/* 🎨 Theme Background Image / GIF / Video (Full Crisp Clarity) */}
         {activeThemeStyle?.cardBgImageUrl && (
           <ThemeBackgroundMedia
             url={activeThemeStyle.cardBgImageUrl}
-            opacity={0.75}
+            opacity={1}
             className="transition-all duration-700 z-0"
           />
         )}
@@ -391,10 +391,15 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
           />
         ))}
 
-        {/* 🎬 Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-radial from-black/30 via-transparent to-black/40 pointer-events-none" />
+        {/* 🎬 Subtle Bottom Edge Blend (Leaves background media crisp & bright without a dark curtain) */}
+        {activeThemeStyle?.cardBgImageUrl ? (
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-gray-950/90 to-transparent pointer-events-none z-[1]" />
+        ) : (
+          <>
+            <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/35 to-transparent pointer-events-none" />
+          </>
+        )}
 
         {/* 👤 Center Profile Info */}
         <div className="relative z-10 w-full max-w-4xl mx-auto flex flex-col items-center text-center">
@@ -411,13 +416,13 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
 
           <div className="mt-5 flex flex-col items-center justify-center gap-1">
             <div className="flex items-center justify-center gap-2.5 flex-wrap">
-              <h1 className={`text-3xl sm:text-4xl font-black tracking-tight ${activeThemeStyle?.nameClass || 'text-white'}`}>
+              <h1 className={`text-3xl sm:text-4xl font-black tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${activeThemeStyle?.nameClass || 'text-white'}`}>
                 {profile.name}
               </h1>
               <TeamBadges roles={getUserTeamRoles(profile)} size="sm" />
             </div>
             {/* Benzersiz Kullanıcı Adı @kullanici */}
-            <span className="text-xs sm:text-sm text-purple-300 font-mono font-bold bg-purple-950/60 border border-purple-500/30 px-3 py-0.5 rounded-full shadow-sm">
+            <span className="text-xs sm:text-sm text-purple-200 font-mono font-bold bg-purple-950/80 border border-purple-500/40 px-3 py-0.5 rounded-full shadow-md">
               {formatUserHandle(profile.username || toCanonicalUsername(profile.name))}
             </span>
           </div>

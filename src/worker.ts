@@ -2354,10 +2354,13 @@ ${seriesXml}
               return new Response(JSON.stringify({ success: true, mediaUrl: pinGif, mediaType: 'image' }), { headers });
             }
 
-            // 2. Check for Pinterest MP4 video streams (many Pinterest animated pins are MP4 videos!)
-            const pinMp4Match = html.match(/https:\/\/v\d*\.pinimg\.com\/videos\/[^"'\s\\<>()]+\.mp4/i);
-            if (pinMp4Match) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: pinMp4Match[0], mediaType: 'video', posterUrl }), { headers });
+            // 2. Check for Pinterest MP4 video streams (prefer highest resolution such as 1080p/720p)
+            const allMp4Matches = html.match(/https:\/\/v\d*\.pinimg\.com\/videos\/[^"'\s\\<>()]+\.mp4/gi) || [];
+            if (allMp4Matches.length > 0) {
+              const scoreMp4 = (u: string) =>
+                u.includes('1080') ? 3 : (u.includes('720') ? 2 : (u.includes('480') || u.includes('540') ? 1 : 0));
+              const bestMp4 = [...allMp4Matches].sort((a, b) => scoreMp4(b) - scoreMp4(a))[0];
+              return new Response(JSON.stringify({ success: true, mediaUrl: bestMp4, mediaType: 'video', posterUrl }), { headers });
             }
 
             // 2b. Some Pinterest video pins expose HLS (.m3u8) first; derive 720p MP4 if available

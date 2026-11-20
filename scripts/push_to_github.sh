@@ -5,6 +5,6 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-git remote set-url origin "https://x-access-token:${TOKEN}@github.com/Mikrokosmosfb/manhwa-fansub.git"
+git remote set-url origin "https://${TOKEN}@github.com/Mikrokosmosfb/manhwa-fansub.git"
 git push origin master
 git push origin master:main

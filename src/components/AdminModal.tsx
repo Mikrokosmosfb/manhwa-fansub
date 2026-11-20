@@ -4662,7 +4662,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       {item.category === 'theme' && style && (
                         <div className="relative rounded-xl overflow-hidden p-3 border border-gray-800 bg-gray-900 my-2 min-h-[100px] flex flex-col justify-end">
                           {style.cardBgImageUrl && (
-                            <ThemeBackgroundMedia url={style.cardBgImageUrl} opacity={0.8} className="z-0" />
+                            <ThemeBackgroundMedia url={style.cardBgImageUrl} opacity={1} className="z-0" />
                           )}
                           <ThemeBackgroundEffects effectOverlay={style.effectOverlay} />
 
@@ -5669,7 +5669,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                     {editingThemeStyle.cardBgImageUrl && (
                       <ThemeBackgroundMedia
                         url={editingThemeStyle.cardBgImageUrl}
-                        opacity={0.9}
+                        opacity={1}
                         className="z-0"
                         onMediaLoad={() => setThemeBgPreviewError(false)}
                         onMediaError={() => setThemeBgPreviewError(true)}
@@ -5880,12 +5880,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   </label>
                   <p className="text-[10px] text-gray-400">💡 İpucu: Profil dekorasyonlarını fare veya parmağınızla tutup sürükleyerek yerini kolayca ayarlayabilirsiniz.</p>
                   
-                  <div className="relative min-h-[450px] sm:min-h-[550px] flex flex-col items-center justify-center pt-32 sm:pt-48 pb-20 sm:pb-32 px-4 overflow-hidden rounded-3xl isolate border border-white/5 bg-gray-950 shadow-2xl mt-3">
+                  <div className="relative min-h-[380px] sm:min-h-[460px] flex flex-col items-center justify-center pt-16 sm:pt-28 pb-12 sm:pb-24 px-4 overflow-hidden rounded-3xl isolate border border-white/5 bg-gray-950 shadow-2xl mt-3">
                     {/* Background Layer */}
                     {editingThemeStyle.cardBgImageUrl && (
                       <ThemeBackgroundMedia
                         url={editingThemeStyle.cardBgImageUrl}
-                        opacity={0.75}
+                        opacity={1}
                         className="transition-all duration-700 z-0"
                       />
                     )}
@@ -5905,8 +5905,14 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       <ThemeBackgroundEffects effectOverlay={editingThemeStyle.effectOverlay} isHero={true} />
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none z-0" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/40 to-transparent pointer-events-none z-0" />
+                    {editingThemeStyle.cardBgImageUrl ? (
+                      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-gray-950/90 to-transparent pointer-events-none z-[1]" />
+                    ) : (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent pointer-events-none z-0" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/35 to-transparent pointer-events-none z-0" />
+                      </>
+                    )}
 
                     {/* Profile Decorations Preview (Draggable) */}
                     {editingThemeStyle.profileDecorations?.map((dec, idx) => (
