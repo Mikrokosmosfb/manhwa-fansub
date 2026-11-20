@@ -306,6 +306,7 @@ interface AppContextType {
   themeStyles: Record<string, ThemeStyle>;
   updateShopItem: (itemId: string, updated: Partial<ShopItem>) => void;
   updateThemeStyle: (themeId: string, updated: Partial<ThemeStyle>) => void;
+  saveShopItemAndStyle: (item: ShopItem, style?: ThemeStyle | null) => Promise<boolean>;
   addShopItemAndStyle: (item: ShopItem, style?: ThemeStyle) => void;
   deleteShopItemAndStyle: (itemId: string) => void;
   resetShopToDefault: () => void;
@@ -1006,6 +1007,61 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   
   
+  const saveShopItemAndStyle = async (item: ShopItem, style?: ThemeStyle | null): Promise<boolean> => {
+    const oldItem = shopItems.find(i => i.id === item.id);
+    if (oldItem && oldItem.frameImageUrl !== item.frameImageUrl) {
+      if (oldItem.frameImageUrl && oldItem.frameImageUrl.includes('/api/r2/file/')) {
+        fetch(oldItem.frameImageUrl, { method: 'DELETE' }).catch(() => {});
+      }
+    }
+
+    if (style) {
+      const oldStyle = themeStyles[item.id];
+      if (oldStyle && oldStyle.cardBgImageUrl !== style.cardBgImageUrl) {
+        if (oldStyle.cardBgImageUrl && oldStyle.cardBgImageUrl.includes('/api/r2/file/')) {
+          fetch(oldStyle.cardBgImageUrl, { method: 'DELETE' }).catch(() => {});
+        }
+      }
+    }
+
+    const mergedItems = shopItems.some(i => i.id === item.id)
+      ? shopItems.map(i => (i.id === item.id ? { ...i, ...item } : i))
+      : [item, ...shopItems];
+
+    let mergedStyles = { ...themeStyles };
+    if (style) {
+      mergedStyles = {
+        ...mergedStyles,
+        [item.id]: {
+          ...(mergedStyles[item.id] || {}),
+          ...style,
+          id: item.id,
+          name: item.name,
+          themeType: item.themeType ?? style.themeType,
+        },
+      };
+    } else if (mergedStyles[item.id]) {
+      mergedStyles[item.id] = { ...mergedStyles[item.id], name: item.name };
+    }
+
+    setShopItems(mergedItems);
+    setThemeStyles(mergedStyles);
+
+    try {
+      const res = await safeFetchJson('/api/shop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopItems: mergedItems,
+          themeStyles: mergedStyles,
+        }),
+      });
+      return Boolean(res && res.success);
+    } catch {
+      return false;
+    }
+  };
+
   const addShopItemAndStyle = (item: ShopItem, style?: ThemeStyle) => {
     try {
       const deletedStr = localStorage.getItem('mk_deleted_shop_items') || '[]';
@@ -4728,6 +4784,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
         themeStyles,
         updateShopItem,
         updateThemeStyle,
+        saveShopItemAndStyle,
         addShopItemAndStyle,
         deleteShopItemAndStyle,
         resetShopToDefault,

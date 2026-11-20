@@ -4,6 +4,7 @@ import { useApp } from '../context/AppContext';
 import { ReadingProgress, isAuthorizedAdmin, DAILY_STARTER_REWARDS } from '../types';
 import { ProfileReadingLists, ProfileKosmosPins } from './ProfileReadingLists';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
+import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
 import { SeriesCard } from './SeriesCard';
 import { THEME_STYLES, ThemeStyle } from '../data/shopData';
 import { DailyRewardModal } from './DailyRewardModal';
@@ -586,13 +587,13 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({ isOpen, onCl
         )}
 
         {/* 🎨 Theme Background Image (Full Span Cover - Clear & Bright) */}
-        <div 
-          className="absolute inset-0 pointer-events-none transition-all duration-700 bg-cover bg-center"
-          style={{
-            backgroundImage: activeThemeStyle?.cardBgImageUrl ? `url(${activeThemeStyle.cardBgImageUrl})` : undefined,
-            opacity: activeThemeStyle?.cardBgImageUrl ? 0.75 : 1
-          }}
-        />
+        {activeThemeStyle?.cardBgImageUrl && (
+          <ThemeBackgroundMedia
+            url={activeThemeStyle.cardBgImageUrl}
+            opacity={0.75}
+            className="transition-all duration-700 z-0"
+          />
+        )}
         
         {/* 🔮 Atmospheric Glow Gradient */}
         {!activeThemeStyle?.cardBgImageUrl && (

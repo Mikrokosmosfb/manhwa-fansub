@@ -61,6 +61,7 @@ import {
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
+import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
 import { ShopItem, ThemeStyle } from '../data/shopData';
 import { AdminNotificationsManager } from './AdminNotificationsManager';
 import { ImageUploadField } from './ImageUploadField';
@@ -160,6 +161,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({
     themeStyles,
     updateShopItem,
     updateThemeStyle,
+    saveShopItemAndStyle,
     addShopItemAndStyle,
     deleteShopItemAndStyle,
     resetShopToDefault,
@@ -249,6 +251,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({
   const [shopAdminMessage, setShopAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isShopR2Uploading, setIsShopR2Uploading] = useState(false);
   const [shopR2UploadMessage, setShopR2UploadMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isResolvingThemeMedia, setIsResolvingThemeMedia] = useState(false);
+  const [themeMediaResolveMsg, setThemeMediaResolveMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [themeBgPreviewError, setThemeBgPreviewError] = useState(false);
 
   
   const handleUploadDecorationToR2 = async (e: React.ChangeEvent<HTMLInputElement>, type: 'profileDecorations' | 'decorations', idx: number) => {
@@ -372,7 +377,65 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     }
   ];
 
+  const resolveExternalMediaUrl = async (rawUrl: string) => {
+    const trimmed = (rawUrl || '').trim();
+    if (!trimmed) return;
+    setIsResolvingThemeMedia(true);
+    setThemeMediaResolveMsg({ type: 'info', text: 'Pinterest / medya bağlantısı çözümleniyor...' });
+    try {
+      const res = await fetch(`/api/resolve-media?url=${encodeURIComponent(trimmed)}`);
+      const data = await res.json();
+      if (data && data.success && data.mediaUrl) {
+        setThemeBgPreviewError(false);
+        setEditingThemeStyle(prev => (prev ? { ...prev, cardBgImageUrl: data.mediaUrl } : prev));
+        setThemeMediaResolveMsg({
+          type: 'success',
+          text: data.mediaType === 'video'
+            ? '🎬 Hareketli video (MP4) bağlantısı otomatik çıkarıldı!'
+            : '✨ Doğrudan görsel / hareketli GIF bağlantısı otomatik çıkarıldı!'
+        });
+      } else {
+        setThemeMediaResolveMsg({
+          type: 'error',
+          text: data?.message || 'Doğrudan GIF/resim linki çıkarılamadı. Pinterest\'ten "Resmi yeni sekmede aç" veya "Görsel adresini kopyala" ile i.pinimg.com linkini yapıştırın.'
+        });
+      }
+    } catch {
+      setThemeMediaResolveMsg({
+        type: 'error',
+        text: 'Bağlantı çözümlenemedi. Doğrudan .gif, .webp veya .mp4 linki yapıştırın.'
+      });
+    } finally {
+      setIsResolvingThemeMedia(false);
+    }
+  };
+
+  const handleThemeBgUrlInputChange = (val: string) => {
+    setThemeBgPreviewError(false);
+    setThemeMediaResolveMsg(null);
+    if (editingThemeStyle) {
+      setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: val });
+    }
+    const trimmed = val.trim();
+    if (!trimmed.startsWith('http')) return;
+    const lower = trimmed.toLowerCase();
+    const isAlreadyDirect =
+      lower.includes('i.pinimg.com') ||
+      lower.includes('v1.pinimg.com') ||
+      /\.(gif|webp|png|jpe?g|mp4|webm|svg)(\?.*)?$/i.test(lower);
+    const isResolvablePage =
+      lower.includes('pinterest.') ||
+      lower.includes('pin.it/') ||
+      lower.includes('tenor.com/view/') ||
+      lower.includes('giphy.com/gifs/');
+    if (!isAlreadyDirect && isResolvablePage) {
+      resolveExternalMediaUrl(trimmed);
+    }
+  };
+
   const handleOpenShopEdit = (item: ShopItem) => {
+    setThemeBgPreviewError(false);
+    setThemeMediaResolveMsg(null);
     setEditingShopItem({ ...item });
     if (item.category === 'theme' && themeStyles[item.id]) {
       setEditingThemeStyle({ ...themeStyles[item.id] });
@@ -388,7 +451,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
         accentText: 'text-purple-300',
         cardBgImageUrl: '',
         effectOverlay: 'saturn',
-        themeType: item.themeType || 'aura'
+        themeType: item.themeType || 'photo'
       });
     } else {
       setEditingThemeStyle(null);
@@ -396,22 +459,27 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     setShowShopEditModal(true);
   };
 
-  const handleSaveShopEdit = () => {
+  const handleSaveShopEdit = async () => {
     if (!editingShopItem) return;
-    
-    updateShopItem(editingShopItem.id, editingShopItem);
 
-    if (editingShopItem.category === 'theme' && editingThemeStyle) {
-      updateThemeStyle(editingShopItem.id, {
-        ...editingThemeStyle,
-        name: editingShopItem.name,
-        themeType: editingShopItem.themeType
-      });
-    }
+    const styleToSave =
+      editingShopItem.category === 'theme' && editingThemeStyle
+        ? {
+            ...editingThemeStyle,
+            name: editingShopItem.name,
+            themeType: editingShopItem.themeType
+          }
+        : null;
 
-    setShopAdminMessage({ type: 'success', text: `"${editingShopItem.name}" başarıyla güncellendi!` });
+    const saved = await saveShopItemAndStyle(editingShopItem, styleToSave);
+
+    setShopAdminMessage(
+      saved
+        ? { type: 'success', text: `"${editingShopItem.name}" başarıyla veritabanına kaydedildi!` }
+        : { type: 'error', text: `"${editingShopItem.name}" yerel olarak güncellendi ancak sunucu kaydı doğrulanamadı.` }
+    );
     setShowShopEditModal(false);
-    setTimeout(() => setShopAdminMessage(null), 4000);
+    setTimeout(() => setShopAdminMessage(null), 4500);
   };
 
   const handleCreateNewTheme = () => {
@@ -4527,7 +4595,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       <div className="flex items-center justify-between gap-2 mb-2">
                         <div className="flex items-center gap-2">
                           {item.icon?.startsWith('http') || item.icon?.startsWith('/') ? (
-                            <img src={item.icon} alt="icon" className="w-6 h-6 object-cover rounded-md" />
+                            <img src={item.icon} alt="icon" referrerPolicy="no-referrer" className="w-6 h-6 object-cover rounded-md" />
                           ) : (
                             <span className="text-xl">{item.icon}</span>
                           )}
@@ -4581,10 +4649,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       {item.category === 'theme' && style && (
                         <div className="relative rounded-xl overflow-hidden p-3 border border-gray-800 bg-gray-900 my-2 min-h-[100px] flex flex-col justify-end">
                           {style.cardBgImageUrl && (
-                            <div
-                              className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-80"
-                              style={{ backgroundImage: `url(${style.cardBgImageUrl})` }}
-                            />
+                            <ThemeBackgroundMedia url={style.cardBgImageUrl} opacity={0.8} className="z-0" />
                           )}
                           <ThemeBackgroundEffects effectOverlay={style.effectOverlay} />
 
@@ -4700,7 +4765,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 <label className="block text-amber-300 font-bold mb-1">Ürün Simgesi / Görseli *</label>
                 <div className="flex items-center gap-2">
                   {(editingShopItem.icon?.startsWith('http') || editingShopItem.icon?.startsWith('/')) && (
-                    <img src={editingShopItem.icon} alt="preview" className="w-10 h-10 object-cover rounded-lg border border-gray-700 bg-black/50 shrink-0" />
+                    <img src={editingShopItem.icon} alt="preview" referrerPolicy="no-referrer" className="w-10 h-10 object-cover rounded-lg border border-gray-700 bg-black/50 shrink-0" />
                   )}
                   <input
                     type="text"
@@ -5180,22 +5245,37 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                 </div>
 
                 {/* Manuel Arka Plan Görsel URL Input */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-200 mb-1">
-                    🔗 Veya Harici Görsel Linki (Image URL)
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-gray-200">
+                    🔗 Veya Harici Görsel / GIF / Pinterest Linki (Image / Video URL)
                   </label>
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="https://... veya Cloudflare R2 dosya linki"
+                      placeholder="https://i.pinimg.com/...gif, pinterest.com/pin/... veya R2 linki"
                       value={editingThemeStyle.cardBgImageUrl || ''}
-                      onChange={e => setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: e.target.value })}
+                      onChange={e => handleThemeBgUrlInputChange(e.target.value)}
                       className="w-full bg-gray-950 border border-amber-500/40 text-amber-200 text-xs rounded-xl p-2.5 focus:outline-none focus:ring-1 focus:ring-amber-400 font-mono"
                     />
                     {editingThemeStyle.cardBgImageUrl && (
                       <button
                         type="button"
-                        onClick={() => setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: '' })}
+                        disabled={isResolvingThemeMedia}
+                        onClick={() => resolveExternalMediaUrl(editingThemeStyle.cardBgImageUrl || '')}
+                        className="bg-purple-600/80 hover:bg-purple-500 text-white px-2.5 py-2.5 rounded-xl text-[11px] font-bold whitespace-nowrap transition cursor-pointer shrink-0"
+                        title="Pinterest veya sayfa linkinden doğrudan GIF/MP4 linkini çıkar"
+                      >
+                        {isResolvingThemeMedia ? 'Çözülüyor...' : 'Linki Çöz'}
+                      </button>
+                    )}
+                    {editingThemeStyle.cardBgImageUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setThemeBgPreviewError(false);
+                          setThemeMediaResolveMsg(null);
+                          setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: '' });
+                        }}
                         className="bg-gray-800 text-gray-400 hover:text-red-400 p-2.5 rounded-xl text-xs border border-gray-700 transition"
                         title="Resmi Kaldır"
                       >
@@ -5203,6 +5283,25 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                       </button>
                     )}
                   </div>
+                  <p className="text-[10px] text-gray-400">
+                    💡 Pinterest hareketli GIF/Video linkini doğrudan yapıştırabilirsiniz (<span className="text-amber-300 font-mono">i.pinimg.com/...gif</span>, <span className="text-amber-300 font-mono">pin.it/...</span> veya <span className="text-amber-300 font-mono">pinterest.com/pin/...</span>).
+                  </p>
+                  {themeMediaResolveMsg && (
+                    <div className={`p-2 rounded-xl text-[11px] font-bold border ${
+                      themeMediaResolveMsg.type === 'success'
+                        ? 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300'
+                        : themeMediaResolveMsg.type === 'error'
+                        ? 'bg-red-950/80 border-red-500/40 text-red-300'
+                        : 'bg-purple-950/80 border-purple-500/40 text-purple-200'
+                    }`}>
+                      {themeMediaResolveMsg.text}
+                    </div>
+                  )}
+                  {themeBgPreviewError && editingThemeStyle.cardBgImageUrl && !isResolvingThemeMedia && (
+                    <div className="p-2 rounded-xl text-[11px] font-bold bg-amber-950/80 border border-amber-500/50 text-amber-200">
+                      ⚠️ Bu bağlantı doğrudan resim/GIF olarak yüklenemedi. Eğer bir Pinterest sayfa linki ise yanındaki <strong>"Linki Çöz"</strong> butonuna basın veya Pinterest'ten <em>"Görsel adresini kopyala"</em> ile <span className="font-mono">i.pinimg.com</span> linkini alın.
+                    </div>
+                  )}
                 </div>
 
                 {/* Quick Preset Background Images */}
@@ -5555,9 +5654,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
 
                   <div className={`relative rounded-2xl overflow-hidden p-4 border border-purple-500/30 bg-gray-950 shadow-xl space-y-3 min-h-[120px] flex flex-col justify-end ${editingThemeStyle.cardClass || ''}`}>
                     {editingThemeStyle.cardBgImageUrl && (
-                      <div
-                        className="absolute inset-0 bg-cover bg-center pointer-events-none opacity-90"
-                        style={{ backgroundImage: `url(${editingThemeStyle.cardBgImageUrl})` }}
+                      <ThemeBackgroundMedia
+                        url={editingThemeStyle.cardBgImageUrl}
+                        opacity={0.9}
+                        className="z-0"
+                        onMediaLoad={() => setThemeBgPreviewError(false)}
+                        onMediaError={() => setThemeBgPreviewError(true)}
                       />
                     )}
 
@@ -5767,13 +5869,13 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   
                   <div className="relative min-h-[450px] sm:min-h-[550px] flex flex-col items-center justify-center pt-32 sm:pt-48 pb-20 sm:pb-32 px-4 overflow-hidden rounded-3xl isolate border border-white/5 bg-gray-950 shadow-2xl mt-3">
                     {/* Background Layer */}
-                    <div 
-                      className="absolute inset-0 pointer-events-none transition-all duration-700 bg-cover bg-center z-0"
-                      style={{
-                        backgroundImage: editingThemeStyle.cardBgImageUrl ? `url(${editingThemeStyle.cardBgImageUrl})` : undefined,
-                        opacity: editingThemeStyle.cardBgImageUrl ? 0.75 : 1
-                      }}
-                    />
+                    {editingThemeStyle.cardBgImageUrl && (
+                      <ThemeBackgroundMedia
+                        url={editingThemeStyle.cardBgImageUrl}
+                        opacity={0.75}
+                        className="transition-all duration-700 z-0"
+                      />
+                    )}
                     
                     {!editingThemeStyle.cardBgImageUrl && (
                       <div

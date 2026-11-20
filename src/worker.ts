@@ -1129,6 +1129,14 @@ ${seriesXml}
                 `),
               ]).catch((e: any) => console.error('Error initializing Users DB table:', e))
             );
+            // Safe column migrations for existing theme_styles tables
+            initTasks.push(
+              usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN corner_mascot_url TEXT;`).run().catch(() => {}),
+              usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN corner_mascot_position TEXT;`).run().catch(() => {}),
+              usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN avatar_companion_url TEXT;`).run().catch(() => {}),
+              usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN decorations TEXT;`).run().catch(() => {}),
+              usersDb.prepare(`ALTER TABLE theme_styles ADD COLUMN profile_decorations TEXT;`).run().catch(() => {})
+            );
           }
 
           await Promise.all(initTasks);
@@ -2277,6 +2285,100 @@ ${seriesXml}
           }
         }
 
+        // MEDIA LINK RESOLVER (Pinterest, Pin.it, Tenor, Giphy, Imgur page -> direct GIF/MP4/Image URL)
+        if (path === '/api/resolve-media' && request.method === 'GET') {
+          try {
+            const urlObj = new URL(request.url);
+            const targetUrl = (urlObj.searchParams.get('url') || '').trim();
+            if (!targetUrl || (!targetUrl.startsWith('https://') && !targetUrl.startsWith('http://'))) {
+              return new Response(JSON.stringify({ success: false, message: 'Geçersiz URL' }), { status: 400, headers });
+            }
+
+            const parsedTarget = new URL(targetUrl);
+            const host = parsedTarget.hostname.toLowerCase();
+            // SSRF protection: only allow public hostnames
+            if (host === 'localhost' || host.startsWith('127.') || host.startsWith('10.') || host.startsWith('192.168.') || host === '0.0.0.0') {
+              return new Response(JSON.stringify({ success: false, message: 'İzin verilmeyen adres' }), { status: 400, headers });
+            }
+
+            // Already a direct image or video file URL
+            const cleanPath = parsedTarget.pathname.toLowerCase();
+            if (/\.(gif|webp|png|jpe?g|avif|svg)$/i.test(cleanPath) || host === 'i.pinimg.com') {
+              return new Response(JSON.stringify({ success: true, mediaUrl: targetUrl, mediaType: 'image' }), { headers });
+            }
+            if (/\.(mp4|webm|mov|m4v)$/i.test(cleanPath) || host.includes('v1.pinimg.com')) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: targetUrl, mediaType: 'video' }), { headers });
+            }
+
+            const pageRes = await fetch(targetUrl, {
+              redirect: 'follow',
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+              }
+            });
+
+            if (!pageRes.ok) {
+              return new Response(JSON.stringify({ success: false, message: 'Bağlantı okunamadı (' + pageRes.status + ')' }), { status: 400, headers });
+            }
+
+            const contentType = (pageRes.headers.get('content-type') || '').toLowerCase();
+            if (contentType.startsWith('image/')) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pageRes.url || targetUrl, mediaType: 'image' }), { headers });
+            }
+            if (contentType.startsWith('video/')) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pageRes.url || targetUrl, mediaType: 'video' }), { headers });
+            }
+
+            const html = await pageRes.text();
+
+            // 1. Prefer direct animated GIF from Pinterest/Tenor/Giphy
+            const pinGifMatch = html.match(/https:\/\/i\.pinimg\.com\/originals\/[^"'\s\\]+\.gif/i)
+              || html.match(/https:\/\/i\.pinimg\.com\/[^"'\s\\]+\.gif/i);
+            if (pinGifMatch) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pinGifMatch[0], mediaType: 'image' }), { headers });
+            }
+
+            // 2. Check for Pinterest MP4 video streams (many Pinterest animated pins are MP4 videos!)
+            const pinMp4Match = html.match(/https:\/\/v1\.pinimg\.com\/videos\/[^"'\s\\]+\.mp4/i)
+              || html.match(/https:\/\/v\.pinimg\.com\/videos\/[^"'\s\\]+\.mp4/i);
+            if (pinMp4Match) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pinMp4Match[0], mediaType: 'video' }), { headers });
+            }
+
+            // 3. Generic og:video / twitter:player:stream mp4 or og:image
+            const ogVideoMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+\.mp4[^"']*)["'][^>]+(?:property|name)=["']og:video/i);
+            if (ogVideoMatch && ogVideoMatch[1] && /\.mp4/i.test(ogVideoMatch[1])) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: ogVideoMatch[1].replace(/&amp;/g, '&'), mediaType: 'video' }), { headers });
+            }
+
+            // 4. Generic animated gif in HTML (Tenor, Giphy, etc.)
+            const genericGifMatch = html.match(/https:\/\/media\.tenor\.com\/[^"'\s\\]+\.gif/i)
+              || html.match(/https:\/\/media\d*\.giphy\.com\/[^"'\s\\]+\.gif/i);
+            if (genericGifMatch) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: genericGifMatch[0], mediaType: 'image' }), { headers });
+            }
+
+            // 5. Fallback to Pinterest originals image or og:image
+            const pinOrigMatch = html.match(/https:\/\/i\.pinimg\.com\/originals\/[^"'\s\\]+\.(?:webp|png|jpe?g)/i);
+            if (pinOrigMatch) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pinOrigMatch[0], mediaType: 'image' }), { headers });
+            }
+
+            const ogImgMatch = html.match(/<meta[^>]+(?:property|name)=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image["']/i);
+            if (ogImgMatch && ogImgMatch[1]) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: ogImgMatch[1].replace(/&amp;/g, '&'), mediaType: 'image' }), { headers });
+            }
+
+            return new Response(JSON.stringify({ success: false, message: 'Bu sayfada doğrudan görsel/GIF bulunamadı.' }), { status: 404, headers });
+          } catch (err: any) {
+            return new Response(JSON.stringify({ success: false, message: err?.message || 'Medya çözümlenemedi' }), { status: 500, headers });
+          }
+        }
+
         // SHOP & THEMES API
         if (path.startsWith('/api/shop')) {
           if (request.method === 'DELETE') {
@@ -2400,18 +2502,20 @@ ${seriesXml}
               }
 
               for (const ts of Object.values(themeStylesInput) as any[]) {
+                if (!ts || !ts.id) continue;
                 statements.push(
                   usersDb.prepare(`
                     INSERT OR REPLACE INTO theme_styles (
                       id, name, card_class, avatar_border_class, name_class, badge_bg_class,
                       glow_color, accent_text, card_bg_image_url, effect_overlay, theme_type,
-                      corner_mascot_url, corner_mascot_position, avatar_companion_url, decorations
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                      corner_mascot_url, corner_mascot_position, avatar_companion_url, decorations, profile_decorations
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                   `).bind(
-                    ts.id, ts.name, ts.cardClass || '', ts.avatarBorderClass || '', ts.nameClass || '',
+                    ts.id, ts.name || '', ts.cardClass || '', ts.avatarBorderClass || '', ts.nameClass || '',
                     ts.badgeBgClass || '', ts.glowColor || '', ts.accentText || '',
                     ts.cardBgImageUrl || '', ts.effectOverlay || '', ts.themeType || '',
-                    ts.cornerMascotUrl || '', ts.cornerMascotPosition || '', ts.avatarCompanionUrl || '', ts.decorations ? JSON.stringify(ts.decorations) : '',
+                    ts.cornerMascotUrl || '', ts.cornerMascotPosition || '', ts.avatarCompanionUrl || '',
+                    ts.decorations ? JSON.stringify(ts.decorations) : '',
                     ts.profileDecorations ? JSON.stringify(ts.profileDecorations) : ''
                   )
                 );

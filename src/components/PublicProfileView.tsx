@@ -3,6 +3,7 @@ import React
 import { useApp } from '../context/AppContext';
 import { ReadingProgress } from '../types';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
+import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
 import { THEME_STYLES, SHOP_ITEMS } from '../data/shopData';
 import { UserAvatar } from './UserAvatar';
 import { TeamBadges } from './TeamBadge';
@@ -345,13 +346,13 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
       <div className="relative w-full overflow-hidden bg-slate-950 border-b border-purple-500/20 pt-32 sm:pt-48 pb-20 sm:pb-32 px-4 flex flex-col items-center justify-center text-center shadow-2xl">
         
         {/* 🎨 Theme Background Image */}
-        <div 
-          className="absolute inset-0 pointer-events-none transition-all duration-700 bg-cover bg-center"
-          style={{
-            backgroundImage: activeThemeStyle?.cardBgImageUrl ? `url(${activeThemeStyle.cardBgImageUrl})` : undefined,
-            opacity: activeThemeStyle?.cardBgImageUrl ? 0.75 : 1
-          }}
-        />
+        {activeThemeStyle?.cardBgImageUrl && (
+          <ThemeBackgroundMedia
+            url={activeThemeStyle.cardBgImageUrl}
+            opacity={0.75}
+            className="transition-all duration-700 z-0"
+          />
+        )}
         
         {/* 🔮 Atmospheric Glow Gradient */}
         {!activeThemeStyle?.cardBgImageUrl && (

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { THEME_STYLES, SHOP_ITEMS, ShopItem, ChibiEmoji } from '../data/shopData';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
+import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
 import { UserAvatar } from './UserAvatar';
 import { normalizeShopInventory, formatRemainingDuration } from '../utils/shopExpiration';
 import {
@@ -723,15 +724,6 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
     return (
       <div
         key={c.id}
-        style={
-          themeStyle?.cardBgImageUrl
-            ? {
-                backgroundImage: `url(${themeStyle.cardBgImageUrl})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center'
-              }
-            : undefined
-        }
         className={`relative rounded-2xl transition-all duration-300 shadow-lg overflow-hidden ${
           isReply ? 'p-3.5 sm:p-4 space-y-3' : 'p-4 sm:p-5 space-y-3.5'
         } ${
@@ -742,6 +734,9 @@ export const CommentsSection: React.FC<CommentsSectionProps> = ({
             : 'bg-gray-900/90 border border-purple-500/20'
         }`}
       >
+        {themeStyle?.cardBgImageUrl && (
+          <ThemeBackgroundMedia url={themeStyle.cardBgImageUrl} className="z-0" />
+        )}
         {/* EXTREME ANIMATED AURA BACKGROUND EFFECT */}
         <ThemeBackgroundEffects effectOverlay={themeStyle?.effectOverlay} />
 

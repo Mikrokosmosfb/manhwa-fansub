@@ -10,6 +10,7 @@ import {
 } from '../data/shopData';
 import { isAuthorizedAdmin } from '../types';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
+import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
 import { ChibiThemeCreator } from './ChibiThemeCreator';
 import { DailyRewardModal } from './DailyRewardModal';
 import { UserAvatar } from './UserAvatar';
@@ -1134,7 +1135,7 @@ export const ShopContent: React.FC = () => {
                   <div className="flex items-center gap-2.5">
                     {item.icon?.startsWith('http') || item.icon?.startsWith('/') ? (
                       <div className="p-1.5 bg-gray-800/80 rounded-xl border border-gray-700/50 shadow-inner">
-                        <img src={item.icon} alt={item.name} className="w-8 h-8 object-cover rounded-md" />
+                        <img src={item.icon} alt={item.name} referrerPolicy="no-referrer" className="w-8 h-8 object-cover rounded-md" />
                       </div>
                     ) : (
                       <span className="text-2xl p-2 bg-gray-800/80 rounded-xl border border-gray-700/50 shadow-inner">
@@ -1187,21 +1188,15 @@ export const ShopContent: React.FC = () => {
                     </div>
 
                     <div
-                      style={
-                        themeStyle.cardBgImageUrl
-                          ? {
-                              backgroundImage: `url(${themeStyle.cardBgImageUrl})`,
-                              backgroundSize: 'cover',
-                              backgroundPosition: 'center'
-                            }
-                          : undefined
-                      }
                       className={`relative p-4 sm:p-5 flex flex-col gap-3 transition-colors rounded-2xl ${
                         themeStyle.cardBgImageUrl
                           ? 'bg-transparent overflow-hidden'
                           : 'bg-gray-900/90 border border-purple-500/20'
                       } ${themeStyle.cardClass || ''}`}
                     >
+                      {themeStyle.cardBgImageUrl && (
+                        <ThemeBackgroundMedia url={themeStyle.cardBgImageUrl} className="z-0" />
+                      )}
                       {/* ANIMATED BACKGROUND EFFECT PREVIEW */}
                       <ThemeBackgroundEffects effectOverlay={themeStyle.effectOverlay} />
 
