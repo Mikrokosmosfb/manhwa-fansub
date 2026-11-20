@@ -2289,7 +2289,9 @@ ${seriesXml}
         if (path === '/api/resolve-media' && request.method === 'GET') {
           try {
             const urlObj = new URL(request.url);
-            const targetUrl = (urlObj.searchParams.get('url') || '').trim();
+            const rawParam = (urlObj.searchParams.get('url') || '').trim();
+            const extractedUrlMatch = rawParam.match(/https?:\/\/[^\s<>"']+/i);
+            const targetUrl = extractedUrlMatch ? extractedUrlMatch[0] : rawParam;
             if (!targetUrl || (!targetUrl.startsWith('https://') && !targetUrl.startsWith('http://'))) {
               return new Response(JSON.stringify({ success: false, message: 'Geçersiz URL' }), { status: 400, headers });
             }
@@ -2303,11 +2305,11 @@ ${seriesXml}
 
             // Already a direct image or video file URL
             const cleanPath = parsedTarget.pathname.toLowerCase();
-            if (/\.(gif|webp|png|jpe?g|avif|svg)$/i.test(cleanPath) || host === 'i.pinimg.com') {
-              return new Response(JSON.stringify({ success: true, mediaUrl: targetUrl, mediaType: 'image' }), { headers });
-            }
             if (/\.(mp4|webm|mov|m4v)$/i.test(cleanPath) || host.includes('v1.pinimg.com')) {
               return new Response(JSON.stringify({ success: true, mediaUrl: targetUrl, mediaType: 'video' }), { headers });
+            }
+            if (/\.(gif|webp|png|jpe?g|avif|svg)$/i.test(cleanPath) || host === 'i.pinimg.com') {
+              return new Response(JSON.stringify({ success: true, mediaUrl: targetUrl, mediaType: 'image' }), { headers });
             }
 
             const pageRes = await fetch(targetUrl, {
@@ -2333,44 +2335,78 @@ ${seriesXml}
 
             const html = await pageRes.text();
 
-            // 1. Prefer direct animated GIF from Pinterest/Tenor/Giphy
-            const pinGifMatch = html.match(/https:\/\/i\.pinimg\.com\/originals\/[^"'\s\\]+\.gif/i)
-              || html.match(/https:\/\/i\.pinimg\.com\/[^"'\s\\]+\.gif/i);
-            if (pinGifMatch) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: pinGifMatch[0], mediaType: 'image' }), { headers });
+            // Known Pinterest CSS / UI static asset hashes that appear on every Pinterest HTML page
+            const isPinterestUiBoilerplate = (u: string) =>
+              u.includes('d53b014d86a6b6761bf649a0ed813c2b') ||
+              u.includes('pinterest-logo') ||
+              u.includes('favicon');
+
+            // Extract og:image early so it can serve as video poster or primary image pin fallback
+            const ogImgMatch = html.match(/<meta[^>]+(?:property|name)=["']og:image["'][^>]+content=["']([^"']+)["']/i)
+              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image["']/i);
+            const rawOgImg = ogImgMatch && ogImgMatch[1] ? ogImgMatch[1].replace(/&amp;/g, '&').trim() : '';
+            const posterUrl = rawOgImg && !isPinterestUiBoilerplate(rawOgImg) ? rawOgImg : undefined;
+
+            // 1. Prefer direct animated GIF from Pinterest
+            const allGifMatches = html.match(/https:\/\/i\.pinimg\.com\/(?:originals\/)?[^"'\s\\<>()]+\.gif/gi) || [];
+            const pinGif = allGifMatches.find((u) => !isPinterestUiBoilerplate(u));
+            if (pinGif) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: pinGif, mediaType: 'image' }), { headers });
             }
 
             // 2. Check for Pinterest MP4 video streams (many Pinterest animated pins are MP4 videos!)
-            const pinMp4Match = html.match(/https:\/\/v1\.pinimg\.com\/videos\/[^"'\s\\]+\.mp4/i)
-              || html.match(/https:\/\/v\.pinimg\.com\/videos\/[^"'\s\\]+\.mp4/i);
+            const pinMp4Match = html.match(/https:\/\/v\d*\.pinimg\.com\/videos\/[^"'\s\\<>()]+\.mp4/i);
             if (pinMp4Match) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: pinMp4Match[0], mediaType: 'video' }), { headers });
+              return new Response(JSON.stringify({ success: true, mediaUrl: pinMp4Match[0], mediaType: 'video', posterUrl }), { headers });
             }
 
-            // 3. Generic og:video / twitter:player:stream mp4 or og:image
+            // 2b. Some Pinterest video pins expose HLS (.m3u8) first; derive 720p MP4 if available
+            const pinHlsMatch = html.match(/https:\/\/(v\d*\.pinimg\.com)\/videos\/([^/]+)\/hls\/([^"'\s\\<>()]+)\.m3u8/i);
+            if (pinHlsMatch) {
+              const mp4Candidate = `https://${pinHlsMatch[1]}/videos/${pinHlsMatch[2]}/720p/${pinHlsMatch[3]}.mp4`;
+              try {
+                const probe = await fetch(mp4Candidate, { method: 'HEAD' });
+                if (probe.ok) {
+                  return new Response(JSON.stringify({ success: true, mediaUrl: mp4Candidate, mediaType: 'video', posterUrl }), { headers });
+                }
+              } catch {}
+            }
+
+            // 3. Generic og:video / twitter:player:stream mp4/webm
             const ogVideoMatch = html.match(/<meta[^>]+(?:property|name)=["'](?:og:video(?::url|:secure_url)?|twitter:player:stream)["'][^>]+content=["']([^"']+)["']/i)
-              || html.match(/<meta[^>]+content=["']([^"']+\.mp4[^"']*)["'][^>]+(?:property|name)=["']og:video/i);
-            if (ogVideoMatch && ogVideoMatch[1] && /\.mp4/i.test(ogVideoMatch[1])) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: ogVideoMatch[1].replace(/&amp;/g, '&'), mediaType: 'video' }), { headers });
+              || html.match(/<meta[^>]+content=["']([^"']+\.(?:mp4|webm)[^"']*)["'][^>]+(?:property|name)=["']og:video/i);
+            if (ogVideoMatch && ogVideoMatch[1] && /\.(?:mp4|webm)/i.test(ogVideoMatch[1])) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: ogVideoMatch[1].replace(/&amp;/g, '&'), mediaType: 'video', posterUrl }), { headers });
             }
 
-            // 4. Generic animated gif in HTML (Tenor, Giphy, etc.)
-            const genericGifMatch = html.match(/https:\/\/media\.tenor\.com\/[^"'\s\\]+\.gif/i)
-              || html.match(/https:\/\/media\d*\.giphy\.com\/[^"'\s\\]+\.gif/i);
-            if (genericGifMatch) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: genericGifMatch[0], mediaType: 'image' }), { headers });
+            // 4. Generic animated gif / mp4 in HTML (Tenor, Giphy, Imgur)
+            const genericMediaMatch = html.match(/https:\/\/media\.tenor\.com\/[^"'\s\\<>()]+\.(?:gif|mp4)/i)
+              || html.match(/https:\/\/media\d*\.giphy\.com\/[^"'\s\\<>()]+\.(?:gif|mp4)/i)
+              || html.match(/https:\/\/i\.imgur\.com\/[^"'\s\\<>()]+\.(?:gif|mp4)/i);
+            if (genericMediaMatch) {
+              const mUrl = genericMediaMatch[0];
+              const mType = /\.mp4$/i.test(mUrl) ? 'video' : 'image';
+              return new Response(JSON.stringify({ success: true, mediaUrl: mUrl, mediaType: mType, posterUrl }), { headers });
             }
 
-            // 5. Fallback to Pinterest originals image or og:image
-            const pinOrigMatch = html.match(/https:\/\/i\.pinimg\.com\/originals\/[^"'\s\\]+\.(?:webp|png|jpe?g)/i);
-            if (pinOrigMatch) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: pinOrigMatch[0], mediaType: 'image' }), { headers });
+            // 5. If og:image points to Pinterest 736x/564x/474x, try to match the higher-res originals URL for the same hash
+            if (posterUrl) {
+              const hashMatch = posterUrl.match(/i\.pinimg\.com\/[^/]+\/([a-f0-9]{2}\/[a-f0-9]{2}\/[a-f0-9]{2}\/[a-f0-9]+)/i);
+              if (hashMatch) {
+                const origRegex = new RegExp(`https:\\/\\/i\\.pinimg\\.com\\/originals\\/${hashMatch[1].replace(/\//g, '\\/')}\\.(?:gif|webp|png|jpe?g)`, 'i');
+                const origMatched = html.match(origRegex);
+                if (origMatched && !isPinterestUiBoilerplate(origMatched[0])) {
+                  return new Response(JSON.stringify({ success: true, mediaUrl: origMatched[0], mediaType: 'image' }), { headers });
+                }
+              }
+              return new Response(JSON.stringify({ success: true, mediaUrl: posterUrl, mediaType: 'image' }), { headers });
             }
 
-            const ogImgMatch = html.match(/<meta[^>]+(?:property|name)=["']og:image["'][^>]+content=["']([^"']+)["']/i)
-              || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image["']/i);
-            if (ogImgMatch && ogImgMatch[1]) {
-              return new Response(JSON.stringify({ success: true, mediaUrl: ogImgMatch[1].replace(/&amp;/g, '&'), mediaType: 'image' }), { headers });
+            // 6. Last fallback: clean i.pinimg.com/originals image excluding boilerplate UI PNGs
+            const allOrigMatches = html.match(/https:\/\/i\.pinimg\.com\/originals\/[^"'\s\\<>()]+\.(?:webp|png|jpe?g)/gi) || [];
+            const cleanOrig = allOrigMatches.find((u) => !isPinterestUiBoilerplate(u));
+            if (cleanOrig) {
+              return new Response(JSON.stringify({ success: true, mediaUrl: cleanOrig, mediaType: 'image' }), { headers });
             }
 
             return new Response(JSON.stringify({ success: false, message: 'Bu sayfada doğrudan görsel/GIF bulunamadı.' }), { status: 404, headers });

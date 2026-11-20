@@ -61,7 +61,7 @@ import {
 } from 'lucide-react';
 import { downloadCloudflareD1Sql } from '../utils/cloudflareD1Export';
 import { ThemeBackgroundEffects } from './ThemeBackgroundEffects';
-import { ThemeBackgroundMedia } from './ThemeBackgroundMedia';
+import { ThemeBackgroundMedia, isResolvableExternalPageUrl, resolveExternalMediaLink } from './ThemeBackgroundMedia';
 import { ShopItem, ThemeStyle } from '../data/shopData';
 import { AdminNotificationsManager } from './AdminNotificationsManager';
 import { ImageUploadField } from './ImageUploadField';
@@ -377,34 +377,36 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
     }
   ];
 
-  const resolveExternalMediaUrl = async (rawUrl: string) => {
+  const resolveExternalMediaUrl = async (rawUrl: string): Promise<string | null> => {
     const trimmed = (rawUrl || '').trim();
-    if (!trimmed) return;
+    if (!trimmed) return null;
     setIsResolvingThemeMedia(true);
     setThemeMediaResolveMsg({ type: 'info', text: 'Pinterest / medya bağlantısı çözümleniyor...' });
     try {
-      const res = await fetch(`/api/resolve-media?url=${encodeURIComponent(trimmed)}`);
-      const data = await res.json();
-      if (data && data.success && data.mediaUrl) {
+      const info = await resolveExternalMediaLink(trimmed);
+      if (info && info.mediaUrl) {
         setThemeBgPreviewError(false);
-        setEditingThemeStyle(prev => (prev ? { ...prev, cardBgImageUrl: data.mediaUrl } : prev));
+        setEditingThemeStyle(prev => (prev ? { ...prev, cardBgImageUrl: info.mediaUrl } : prev));
         setThemeMediaResolveMsg({
           type: 'success',
-          text: data.mediaType === 'video'
+          text: info.mediaType === 'video'
             ? '🎬 Hareketli video (MP4) bağlantısı otomatik çıkarıldı!'
             : '✨ Doğrudan görsel / hareketli GIF bağlantısı otomatik çıkarıldı!'
         });
+        return info.mediaUrl;
       } else {
         setThemeMediaResolveMsg({
           type: 'error',
-          text: data?.message || 'Doğrudan GIF/resim linki çıkarılamadı. Pinterest\'ten "Resmi yeni sekmede aç" veya "Görsel adresini kopyala" ile i.pinimg.com linkini yapıştırın.'
+          text: 'Doğrudan GIF/video linki çıkarılamadı. Pinterest\'ten "Görsel adresini kopyala" ile i.pinimg.com linkini veya pin.it linkini yapıştırın.'
         });
+        return null;
       }
     } catch {
       setThemeMediaResolveMsg({
         type: 'error',
         text: 'Bağlantı çözümlenemedi. Doğrudan .gif, .webp veya .mp4 linki yapıştırın.'
       });
+      return null;
     } finally {
       setIsResolvingThemeMedia(false);
     }
@@ -413,23 +415,13 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const handleThemeBgUrlInputChange = (val: string) => {
     setThemeBgPreviewError(false);
     setThemeMediaResolveMsg(null);
+    // Extract clean URL if pasted with surrounding share text
+    const extracted = val.trim().match(/https?:\/\/[^\s<>"']+/i)?.[0] || val;
     if (editingThemeStyle) {
-      setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: val });
+      setEditingThemeStyle({ ...editingThemeStyle, cardBgImageUrl: extracted });
     }
-    const trimmed = val.trim();
-    if (!trimmed.startsWith('http')) return;
-    const lower = trimmed.toLowerCase();
-    const isAlreadyDirect =
-      lower.includes('i.pinimg.com') ||
-      lower.includes('v1.pinimg.com') ||
-      /\.(gif|webp|png|jpe?g|mp4|webm|svg)(\?.*)?$/i.test(lower);
-    const isResolvablePage =
-      lower.includes('pinterest.') ||
-      lower.includes('pin.it/') ||
-      lower.includes('tenor.com/view/') ||
-      lower.includes('giphy.com/gifs/');
-    if (!isAlreadyDirect && isResolvablePage) {
-      resolveExternalMediaUrl(trimmed);
+    if (isResolvableExternalPageUrl(extracted)) {
+      resolveExternalMediaUrl(extracted);
     }
   };
 
@@ -462,21 +454,42 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
   const handleSaveShopEdit = async () => {
     if (!editingShopItem) return;
 
-    const styleToSave =
-      editingShopItem.category === 'theme' && editingThemeStyle
+    let itemToSave = { ...editingShopItem };
+    if (isResolvableExternalPageUrl(itemToSave.icon)) {
+      const resolvedIcon = await resolveExternalMediaLink(itemToSave.icon);
+      if (resolvedIcon?.mediaUrl) {
+        itemToSave.icon = resolvedIcon.mediaUrl;
+      }
+    }
+    if (isResolvableExternalPageUrl(itemToSave.frameImageUrl)) {
+      const resolvedFrame = await resolveExternalMediaLink(itemToSave.frameImageUrl!);
+      if (resolvedFrame?.mediaUrl) {
+        itemToSave.frameImageUrl = resolvedFrame.mediaUrl;
+      }
+    }
+
+    let styleToSave =
+      itemToSave.category === 'theme' && editingThemeStyle
         ? {
             ...editingThemeStyle,
-            name: editingShopItem.name,
-            themeType: editingShopItem.themeType
+            name: itemToSave.name,
+            themeType: itemToSave.themeType
           }
         : null;
 
-    const saved = await saveShopItemAndStyle(editingShopItem, styleToSave);
+    if (styleToSave && isResolvableExternalPageUrl(styleToSave.cardBgImageUrl)) {
+      const resolvedBg = await resolveExternalMediaUrl(styleToSave.cardBgImageUrl || '');
+      if (resolvedBg) {
+        styleToSave = { ...styleToSave, cardBgImageUrl: resolvedBg };
+      }
+    }
+
+    const saved = await saveShopItemAndStyle(itemToSave, styleToSave);
 
     setShopAdminMessage(
       saved
-        ? { type: 'success', text: `"${editingShopItem.name}" başarıyla veritabanına kaydedildi!` }
-        : { type: 'error', text: `"${editingShopItem.name}" yerel olarak güncellendi ancak sunucu kaydı doğrulanamadı.` }
+        ? { type: 'success', text: `"${itemToSave.name}" başarıyla veritabanına kaydedildi!` }
+        : { type: 'error', text: `"${itemToSave.name}" yerel olarak güncellendi ancak sunucu kaydı doğrulanamadı.` }
     );
     setShowShopEditModal(false);
     setTimeout(() => setShopAdminMessage(null), 4500);
@@ -5216,7 +5229,7 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
                   <div className="relative border-2 border-dashed border-amber-500/50 hover:border-amber-400 bg-gray-950/80 hover:bg-black rounded-2xl p-4 text-center transition cursor-pointer flex flex-col items-center justify-center gap-1.5 group">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,video/mp4,video/webm"
                       disabled={isShopR2Uploading}
                       onChange={e => handleUploadShopImageToR2(e, 'theme_bg')}
                       className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
@@ -6056,11 +6069,12 @@ const handleUploadShopImageToR2 = async (e: React.ChangeEvent<HTMLInputElement>,
               </button>
               <button
                 type="button"
+                disabled={isResolvingThemeMedia}
                 onClick={handleSaveShopEdit}
-                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transition transform active:scale-95 cursor-pointer"
+                className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 disabled:opacity-60 text-black font-extrabold text-xs sm:text-sm px-5 py-2.5 rounded-xl shadow-lg flex items-center gap-1.5 transition transform active:scale-95 cursor-pointer"
               >
                 <Save size={16} />
-                Değişiklikleri Kaydet
+                {isResolvingThemeMedia ? 'Link Çözülüyor...' : 'Değişiklikleri Kaydet'}
               </button>
             </div>
           </div>
