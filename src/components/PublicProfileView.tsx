@@ -414,13 +414,11 @@ export const PublicProfileView: React.FC<{ userId: string }> = ({ userId }) => {
             />
           </div>
 
-          <div className="mt-5 flex flex-col items-center justify-center gap-1">
-            <div className="flex items-center justify-center gap-2.5 flex-wrap">
-              <h1 className={`text-3xl sm:text-4xl font-black tracking-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${activeThemeStyle?.nameClass || 'text-white'}`}>
-                {profile.name}
-              </h1>
-              <TeamBadges roles={getUserTeamRoles(profile)} size="sm" />
-            </div>
+          <div className="mt-5 flex flex-col items-center justify-center gap-1.5">
+            <h1 className={`text-3xl sm:text-4xl font-black tracking-tight text-center drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] ${activeThemeStyle?.nameClass || 'text-white'}`}>
+              {profile.name}
+            </h1>
+            <TeamBadges roles={getUserTeamRoles(profile)} size="sm" className="justify-center" />
             {/* Benzersiz Kullanıcı Adı @kullanici */}
             <span className="text-xs sm:text-sm text-purple-200 font-mono font-bold bg-purple-950/80 border border-purple-500/40 px-3 py-0.5 rounded-full shadow-md">
               {formatUserHandle(profile.username || toCanonicalUsername(profile.name))}
