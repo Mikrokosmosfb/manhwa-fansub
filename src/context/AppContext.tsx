@@ -1365,11 +1365,46 @@ const deleteShopItemAndStyle = (itemId: string) => {
     };
   };
 
+  const syncEquippedToCloud = (updatedUser: User) => {
+    try {
+      safeSetItem('mk_user', JSON.stringify(updatedUser));
+      if (updatedUser.uid) {
+        safeSetItem(`mk_equipped_dirty_${updatedUser.uid}`, String(Date.now()));
+      }
+    } catch (e) {}
+
+    if (!updatedUser.uid) return;
+    fetch('/api/auth/library', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        uid: updatedUser.uid,
+        equipped_theme: updatedUser.equippedTheme || null,
+        equipped_badge: updatedUser.equippedBadge || null,
+        equipped_badges: JSON.stringify(
+          updatedUser.equippedBadges || (updatedUser.equippedBadge ? [updatedUser.equippedBadge] : [])
+        ),
+        equipped_frame: updatedUser.equippedFrame || null
+      })
+    })
+      .then(r => r.json())
+      .then(resData => {
+        if (resData && resData.success) {
+          try {
+            localStorage.removeItem(`mk_equipped_dirty_${updatedUser.uid}`);
+          } catch (e) {}
+        }
+      })
+      .catch(() => {});
+  };
+
   // Equip Theme
   const equipTheme = (themeId: string | null) => {
     if (!user) return;
     const updatedUser: User = { ...user, equippedTheme: themeId };
     setUser(updatedUser);
+    syncEquippedToCloud(updatedUser);
   };
 
   // Equip or Toggle VIP Title Badge (Support up to 5 badges simultaneously)
@@ -1379,6 +1414,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       // Clear all active badges
       const updatedUser: User = { ...user, equippedBadge: null, equippedBadges: [] };
       setUser(updatedUser);
+      syncEquippedToCloud(updatedUser);
       showToast({
         title: 'Tüm Unvanlar Çıkarıldı',
         message: 'Kuşanılmış tüm VIP unvanlarınız kaldırıldı.',
@@ -1426,6 +1462,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
       equippedBadges: updatedBadges
     };
     setUser(updatedUser);
+    syncEquippedToCloud(updatedUser);
   };
 
   // Equip Frame
@@ -1433,6 +1470,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
     if (!user) return;
     const updatedUser: User = { ...user, equippedFrame: frameId };
     setUser(updatedUser);
+    syncEquippedToCloud(updatedUser);
   };
 
       // Promo Codes State
@@ -2721,22 +2759,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           keepalive: true,
           body: JSON.stringify({
             uid: user.uid,
-            bookmarks: JSON.stringify(bookmarks),
-            reading_lists: JSON.stringify(packed),
-            followed_series: JSON.stringify(followedSeriesIds),
-            reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
-            notifications: JSON.stringify(notifications),
-            cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(
-              normalizeShopInventory([user.inventory, user.unlockedEmojiPacks], user.inventoryExpiresAt).serializedForCloud
-            ),
-            equipped_theme: user.equippedTheme || null,
-            equipped_badge: user.equippedBadge || null,
-            equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
-            equipped_frame: user.equippedFrame || null,
-            daily_checkin_day: user.dailyCheckinDay || 0,
-            last_daily_checkin: user.lastDailyCheckin || null,
-            claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
+            reading_lists: JSON.stringify(packed)
           })
         })
           .then(res => res.json())
@@ -2793,22 +2816,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
           keepalive: true,
           body: JSON.stringify({
             uid: user.uid,
-            bookmarks: JSON.stringify(bookmarks),
-            reading_lists: JSON.stringify(packed),
-            followed_series: JSON.stringify(followedSeriesIds),
-            reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
-            notifications: JSON.stringify(notifications),
-            cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(
-              normalizeShopInventory([user.inventory, user.unlockedEmojiPacks], user.inventoryExpiresAt).serializedForCloud
-            ),
-            equipped_theme: user.equippedTheme || null,
-            equipped_badge: user.equippedBadge || null,
-            equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
-            equipped_frame: user.equippedFrame || null,
-            daily_checkin_day: user.dailyCheckinDay || 0,
-            last_daily_checkin: user.lastDailyCheckin || null,
-            claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
+            reading_lists: JSON.stringify(packed)
           })
         })
           .then(res => res.json())
@@ -2978,12 +2986,21 @@ const deleteShopItemAndStyle = (itemId: string) => {
                   prev.inventoryExpiresAt
                 );
 
+                const isEquippedDirty = Boolean(prev.uid && localStorage.getItem(`mk_equipped_dirty_${prev.uid}`));
                 const candidateUser: User = {
                   ...prev,
-                  equippedTheme: data.equipped_theme !== undefined ? data.equipped_theme : prev.equippedTheme,
-                  equippedBadge: data.equipped_badge !== undefined ? data.equipped_badge : prev.equippedBadge,
-                  equippedBadges: Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : [],
-                  equippedFrame: data.equipped_frame !== undefined ? data.equipped_frame : prev.equippedFrame
+                  equippedTheme: isEquippedDirty
+                    ? prev.equippedTheme
+                    : (data.equipped_theme !== undefined ? (data.equipped_theme || null) : prev.equippedTheme),
+                  equippedBadge: isEquippedDirty
+                    ? prev.equippedBadge
+                    : (data.equipped_badge !== undefined ? (data.equipped_badge || null) : prev.equippedBadge),
+                  equippedBadges: isEquippedDirty
+                    ? (prev.equippedBadges || [])
+                    : (Array.isArray(fetchedBadges) ? fetchedBadges.slice(0, 5) : []),
+                  equippedFrame: isEquippedDirty
+                    ? prev.equippedFrame
+                    : (data.equipped_frame !== undefined ? (data.equipped_frame || null) : prev.equippedFrame)
                 };
                 const stripped = stripExpiredEquippedFromUser(
                   candidateUser,
@@ -2991,7 +3008,7 @@ const deleteShopItemAndStyle = (itemId: string) => {
                   shopItems || SHOP_ITEMS
                 );
 
-                if ((normalized.hasExpiredChanges || stripped.didUnequip || normalized.serializedForCloud.length !== safeInventory.length) && prev.uid) {
+                if ((isEquippedDirty || normalized.hasExpiredChanges || stripped.didUnequip || normalized.serializedForCloud.length !== safeInventory.length) && prev.uid) {
                   fetch('/api/auth/library', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -3004,7 +3021,14 @@ const deleteShopItemAndStyle = (itemId: string) => {
                       equipped_badges: JSON.stringify(stripped.equippedBadges),
                       equipped_frame: stripped.equippedFrame
                     })
-                  }).catch(() => {});
+                  })
+                    .then(r => r.json())
+                    .then(resData => {
+                      if (resData && resData.success && prev.uid) {
+                        try { localStorage.removeItem(`mk_equipped_dirty_${prev.uid}`); } catch (e) {}
+                      }
+                    })
+                    .catch(() => {});
                 }
 
                 return {
@@ -3062,33 +3086,36 @@ const deleteShopItemAndStyle = (itemId: string) => {
           [user.inventory, user.unlockedEmojiPacks],
           user.inventoryExpiresAt
         );
+        const payloadStr = JSON.stringify({
+          uid: user.uid,
+          bookmarks: JSON.stringify(bookmarks),
+          reading_lists: JSON.stringify(packed),
+          followed_series: JSON.stringify(followedSeriesIds),
+          reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
+          notifications: JSON.stringify(notifications),
+          cosmo_points: user.coins || 0,
+          shop_items: JSON.stringify(normalizedSync.serializedForCloud),
+          equipped_theme: user.equippedTheme || null,
+          equipped_badge: user.equippedBadge || null,
+          equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
+          equipped_frame: user.equippedFrame || null,
+          daily_checkin_day: user.dailyCheckinDay || 0,
+          last_daily_checkin: user.lastDailyCheckin || null,
+          claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
+        });
         safeFetchJson('/api/auth/library', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          keepalive: true,
-          body: JSON.stringify({
-            uid: user.uid,
-            bookmarks: JSON.stringify(bookmarks),
-            reading_lists: JSON.stringify(packed),
-            followed_series: JSON.stringify(followedSeriesIds),
-            reading_history: JSON.stringify(trimReadingHistory(readingHistory, 500)),
-            notifications: JSON.stringify(notifications),
-            cosmo_points: user.coins || 0,
-            shop_items: JSON.stringify(normalizedSync.serializedForCloud),
-            equipped_theme: user.equippedTheme || null,
-            equipped_badge: user.equippedBadge || null,
-            equipped_badges: JSON.stringify(user.equippedBadges || (user.equippedBadge ? [user.equippedBadge] : [])),
-            equipped_frame: user.equippedFrame || null,
-            daily_checkin_day: user.dailyCheckinDay || 0,
-            last_daily_checkin: user.lastDailyCheckin || null,
-            claimed_checkin_days: JSON.stringify(user.claimedCheckinDays || [])
-          })
+          // Chrome/Chromium rejects keepalive fetches > 64KB silently
+          keepalive: payloadStr.length < 50000,
+          body: payloadStr
         })
           .then(resData => {
             if (resData && resData.success) {
               try {
                 localStorage.removeItem('mk_reading_lists_dirty');
                 localStorage.removeItem('mk_kosmospins_dirty');
+                localStorage.removeItem(`mk_equipped_dirty_${user.uid}`);
               } catch (e) {}
             }
           })
